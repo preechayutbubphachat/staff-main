@@ -16,6 +16,10 @@ Main matrix:
 - `ตำแหน่ง`
 - `แผนก`
 - day columns from `1` to the last day of the selected month
+- `จำนวนเวร`
+- `ชั่วโมงรวม`
+- `OT`
+- `หมายเหตุ`
 
 Footer:
 - notes / legend
@@ -119,6 +123,17 @@ This monthly matrix reflects actual approved attendance/shift logs, not future p
 - approved-only source = `checked_at IS NOT NULL`
 - future days in the current month remain blank
 
+## End-column meaning
+
+- `จำนวนเวร`
+  - counts only monthly matrix days that resolved to a safe visible shift code
+- `ชั่วโมงรวม`
+  - sums hours only from resolved counted shifts in the matrix
+- `OT`
+  - blank in the current implementation because there is no reliable structured OT source in `time_logs`
+- `หมายเหตุ`
+  - blank in the current implementation because there is no reliable month-level summary note source
+
 ## Footer notes / signature structure
 
 Legend section:
@@ -129,6 +144,7 @@ Legend section:
 
 Signature section:
 - `ลงชื่อ ...............................................................`
+- `(...............................................................)`
 - role label: `ผู้ตรวจสอบเวร`
 
 ## A4 landscape print strategy

@@ -535,6 +535,7 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
             t.work_date,
             t.time_in,
             t.time_out,
+            t.work_hours,
             t.note,
             t.approval_note,
             t.checked_by,
@@ -564,6 +565,8 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
     foreach ($staffRows as $index => $staff) {
         $userId = (int) ($staff['user_id'] ?? 0);
         $dayCells = [];
+        $rowShiftCount = 0;
+        $rowTotalHours = 0.0;
 
         foreach ($days as $dayMeta) {
             $dayNumber = (int) $dayMeta['day'];
@@ -573,7 +576,12 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
             }
 
             $dayLogs = $logsByUserDay[$userId][$dayNumber] ?? [];
-            $dayCells[$dayNumber] = app_get_department_monthly_matrix_day_code($dayLogs);
+            $dayResolution = app_get_department_monthly_matrix_day_resolution($dayLogs);
+            $dayCells[$dayNumber] = $dayResolution['code'];
+            $resolvedShiftCount = (int) ($dayResolution['counted_shifts'] ?? 0);
+            $resolvedHours = (float) ($dayResolution['counted_hours'] ?? 0);
+            $rowShiftCount += $resolvedShiftCount;
+            $rowTotalHours += $resolvedHours;
         }
 
         $rows[] = [
@@ -583,6 +591,10 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
             'position_name' => (string) ($staff['position_name'] ?? '-'),
             'department_name' => (string) ($staff['department_name'] ?? '-'),
             'day_cells' => $dayCells,
+            'total_shifts' => (int) ($rowShiftCount ?? 0),
+            'total_hours' => (float) ($rowTotalHours ?? 0),
+            'ot_value' => '',
+            'remark' => '',
         ];
     }
 
@@ -657,12 +669,23 @@ function app_match_shift_abbreviation(array $row): string
 
 function app_get_department_monthly_matrix_day_code(array $recordsForOneDay): string
 {
+    return app_get_department_monthly_matrix_day_resolution($recordsForOneDay)['code'];
+}
+
+function app_get_department_monthly_matrix_day_resolution(array $recordsForOneDay): array
+{
     if (!$recordsForOneDay) {
-        return '';
+        return [
+            'code' => '',
+            'counted_shifts' => 0,
+            'counted_hours' => 0.0,
+            'remark' => '',
+        ];
     }
 
     $hasExplicitBd = false;
-    $standardCodes = [];
+    $bdHours = 0.0;
+    $standardMatches = [];
 
     foreach ($recordsForOneDay as $row) {
         if (empty($row['checked_at'])) {
@@ -671,25 +694,44 @@ function app_get_department_monthly_matrix_day_code(array $recordsForOneDay): st
 
         if (app_is_bd_shift($row)) {
             $hasExplicitBd = true;
+            $bdHours += (float) ($row['work_hours'] ?? 0);
             continue;
         }
 
         $code = app_match_shift_abbreviation($row);
         if (in_array($code, ['ช', 'บ', 'ด'], true)) {
-            $standardCodes[] = $code;
+            $standardMatches[] = [
+                'code' => $code,
+                'hours' => (float) ($row['work_hours'] ?? 0),
+            ];
         }
     }
 
     if ($hasExplicitBd) {
-        return 'BD';
+        return [
+            'code' => 'BD',
+            'counted_shifts' => 1,
+            'counted_hours' => $bdHours > 0 ? $bdHours : 0.0,
+            'remark' => '',
+        ];
     }
 
-    $standardCodes = array_values(array_unique($standardCodes));
-    if (count($standardCodes) === 1) {
-        return $standardCodes[0];
+    $uniqueStandardCodes = array_values(array_unique(array_column($standardMatches, 'code')));
+    if (count($uniqueStandardCodes) === 1) {
+        return [
+            'code' => $uniqueStandardCodes[0],
+            'counted_shifts' => 1,
+            'counted_hours' => array_sum(array_column($standardMatches, 'hours')),
+            'remark' => '',
+        ];
     }
 
-    return '';
+    return [
+        'code' => '',
+        'counted_shifts' => 0,
+        'counted_hours' => 0.0,
+        'remark' => '',
+    ];
 }
 
 function app_build_scoped_time_log_filters(PDO $conn, array $input, string $defaultStatus = 'pending'): array

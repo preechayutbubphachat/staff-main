@@ -51,6 +51,10 @@ if ($type === 'my') {
     foreach (($matrixData['days'] ?? []) as $dayMeta) {
         $headers[] = (int) $dayMeta['day'];
     }
+    $headers[] = 'จำนวนเวร';
+    $headers[] = 'ชั่วโมงรวม';
+    $headers[] = 'OT';
+    $headers[] = 'หมายเหตุ';
     fputcsv($output, $headers);
 
     foreach (($matrixData['rows'] ?? []) as $row) {
@@ -63,6 +67,10 @@ if ($type === 'my') {
         foreach (($matrixData['days'] ?? []) as $dayMeta) {
             $csvRow[] = $row['day_cells'][(int) $dayMeta['day']] ?? '';
         }
+        $csvRow[] = (int) ($row['total_shifts'] ?? 0);
+        $csvRow[] = number_format((float) ($row['total_hours'] ?? 0), 2, '.', '');
+        $csvRow[] = $row['ot_value'] ?? '';
+        $csvRow[] = $row['remark'] ?? '';
         fputcsv($output, $csvRow);
     }
 } elseif ($type === 'daily') {

@@ -103,7 +103,7 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">??????????</label>
+                        <label class="form-label fw-semibold small text-muted">โหมดรายงาน</label>
                         <select name="mode" class="form-select">
                             <?php foreach ($modeOptions as $modeValue => $modeLabel): ?>
                                 <option value="<?= htmlspecialchars($modeValue) ?>" <?= $mode === $modeValue ? 'selected' : '' ?>><?= htmlspecialchars($modeLabel) ?></option>
@@ -111,11 +111,11 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
                         </select>
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">??????</label>
-                        <input type="date" name="date" class="form-control thai-date-input" value="<?= htmlspecialchars($selectedDate) ?>" data-thai-date-display="full" data-thai-date-empty="???/?????/??">
+                        <label class="form-label fw-semibold small text-muted">วันที่</label>
+                        <input type="date" name="date" class="form-control thai-date-input" value="<?= htmlspecialchars($selectedDate) ?>" data-thai-date-display="full" data-thai-date-empty="วัน/เดือน/ปี">
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">?????</label>
+                        <label class="form-label fw-semibold small text-muted">เดือน</label>
                         <select name="month" class="form-select">
                             <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
                                 <option value="<?= (int) $monthValue ?>" <?= $selectedMonth === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
@@ -123,20 +123,20 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
                         </select>
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">?? (?.?.)</label>
+                        <label class="form-label fw-semibold small text-muted">ปี (พ.ศ.)</label>
                         <input type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">????</label>
+                        <label class="form-label fw-semibold small text-muted">แผนก</label>
                         <select name="department" class="form-select">
-                            <option value="">?????????????</option>
+                            <option value="">ทุกแผนกในระบบ</option>
                             <?php foreach ($departmentOptions as $department): ?>
                                 <option value="<?= (int) $department['id'] ?>" <?= (string) $selectedDepartment === (string) $department['id'] ? 'selected' : '' ?>><?= htmlspecialchars($department['department_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">???????????????</label>
+                        <label class="form-label fw-semibold small text-muted">สถานะการตรวจสอบ</label>
                         <select name="review_status" class="form-select">
                             <?php foreach ($reviewStatusOptions as $statusValue => $statusLabel): ?>
                                 <option value="<?= htmlspecialchars($statusValue) ?>" <?= $reviewStatus === $statusValue ? 'selected' : '' ?>><?= htmlspecialchars($statusLabel) ?></option>
@@ -144,8 +144,8 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
                         </select>
                     </div>
                     <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">???????????????</label>
-                        <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($name) ?>" placeholder="???????????????????????">
+                        <label class="form-label fw-semibold small text-muted">ชื่อเจ้าหน้าที่</label>
+                        <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($name) ?>" placeholder="ค้นหาจากชื่อเจ้าหน้าที่">
                     </div>
                 </form>
             </div>
@@ -196,23 +196,23 @@ function buildDailyScheduleHeroContext(form) {
     const monthValue = monthField ? parseInt(monthField.value || '0', 10) : 0;
     const yearBeValue = yearField ? parseInt(yearField.value || '0', 10) : 0;
     const departmentValue = departmentField ? String(departmentField.value || '').trim() : '';
-    const thaiMonths = ['', '??????', '??????????', '??????', '??????', '???????', '????????', '???????', '???????', '???????', '??????', '?????????', '???????'];
+    const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
     let periodLabel = '';
     if (modeValue === 'monthly') {
         if (monthValue >= 1 && monthValue <= 12 && yearBeValue >= 2400) {
-            periodLabel = '????? ' + (thaiMonths[monthValue] || '') + ' ' + yearBeValue;
+            periodLabel = 'เดือน ' + (thaiMonths[monthValue] || '') + ' ' + yearBeValue;
         }
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
         const parts = dateValue.split('-');
-        periodLabel = '?????? ' + parseInt(parts[2], 10) + ' ' + (thaiMonths[parseInt(parts[1], 10)] || '') + ' ' + (parseInt(parts[0], 10) + 543);
+        periodLabel = 'วันที่ ' + parseInt(parts[2], 10) + ' ' + (thaiMonths[parseInt(parts[1], 10)] || '') + ' ' + (parseInt(parts[0], 10) + 543);
     }
 
     return {
         periodLabel: periodLabel,
         scopeLabel: departmentValue !== '' && departmentOption
-            ? '??????????????????? ' + String(departmentOption.text || '').trim()
-            : '?????????????'
+            ? 'แสดงข้อมูลเฉพาะแผนก ' + String(departmentOption.text || '').trim()
+            : 'ทุกแผนกในระบบ'
     };
 }
 

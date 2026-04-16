@@ -24,10 +24,12 @@ $summaryCards = [];
 $tableHeaders = [];
 $tableRows = [];
 $reportLayout = 'table';
+$monthlyMatrixShowTailColumns = false;
 $monthlyDays = [];
 $monthlyRows = [];
 $footerLegendItems = [];
 $signatureLabel = '';
+$signatureName = '';
 $notesBlockText = '';
 $title = '';
 $subtitle = '';
@@ -82,6 +84,7 @@ if ($type === 'my') {
     $subtitle = $headingContext['subheading_text'];
     $reportTypeLabel = 'รายงานแผนกประจำเดือน';
     $reportLayout = 'monthly_matrix';
+    $monthlyMatrixShowTailColumns = true;
     $monthlyDays = $matrixData['days'] ?? [];
     $monthlyRows = $matrixData['rows'] ?? [];
     $footerLegendItems = [
@@ -321,11 +324,15 @@ if ($type === 'my') {
         .empty-state{text-align:center;padding:26px 16px;border:1px dashed var(--line);color:var(--muted)}
         .monthly-matrix-table{table-layout:fixed}
         .monthly-matrix-table th,.monthly-matrix-table td{font-size:.7rem;padding:4px 3px;text-align:center}
-        .monthly-matrix-table th:nth-child(1),.monthly-matrix-table td:nth-child(1){width:42px}
-        .monthly-matrix-table th:nth-child(2),.monthly-matrix-table td:nth-child(2){width:170px;text-align:left}
-        .monthly-matrix-table th:nth-child(3),.monthly-matrix-table td:nth-child(3){width:110px;text-align:left}
-        .monthly-matrix-table th:nth-child(4),.monthly-matrix-table td:nth-child(4){width:95px;text-align:left}
-        .monthly-matrix-table th:nth-child(n+5),.monthly-matrix-table td:nth-child(n+5){width:28px;min-width:28px}
+        .monthly-matrix-table .monthly-col-no{width:42px}
+        .monthly-matrix-table .monthly-col-name{width:170px;text-align:left}
+        .monthly-matrix-table .monthly-col-position{width:110px;text-align:left}
+        .monthly-matrix-table .monthly-col-department{width:95px;text-align:left}
+        .monthly-matrix-table .monthly-col-day{width:28px;min-width:28px}
+        .monthly-matrix-table .monthly-col-total{width:62px}
+        .monthly-matrix-table .monthly-col-hours{width:74px}
+        .monthly-matrix-table .monthly-col-ot{width:54px}
+        .monthly-matrix-table .monthly-col-remark{width:120px;text-align:left}
         .monthly-matrix-future{background:#f5f7fa}
         .footer-block{margin-top:18px;border-top:1.5px solid var(--ink);padding-top:12px;display:grid;grid-template-columns:2fr 1fr;gap:18px}
         .footer-title{font-family:'Prompt',sans-serif;font-size:1rem;margin:0 0 8px}
@@ -389,26 +396,38 @@ if ($type === 'my') {
                     <table class="monthly-matrix-table">
                         <thead>
                             <tr>
-                                <th>ลำดับ</th>
-                                <th>ชื่อ-สกุล</th>
-                                <th>ตำแหน่ง</th>
-                                <th>แผนก</th>
+                                <th class="monthly-col-no">ลำดับ</th>
+                                <th class="monthly-col-name">ชื่อ-สกุล</th>
+                                <th class="monthly-col-position">ตำแหน่ง</th>
+                                <th class="monthly-col-department">แผนก</th>
                                 <?php foreach ($monthlyDays as $dayMeta): ?>
-                                    <th><?= (int) $dayMeta['day'] ?></th>
+                                    <th class="monthly-col-day"><?= (int) $dayMeta['day'] ?></th>
                                 <?php endforeach; ?>
+                                <?php if ($monthlyMatrixShowTailColumns): ?>
+                                    <th class="monthly-col-total">จำนวนเวร</th>
+                                    <th class="monthly-col-hours">ชั่วโมงรวม</th>
+                                    <th class="monthly-col-ot">OT</th>
+                                    <th class="monthly-col-remark">หมายเหตุ</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($monthlyRows as $row): ?>
                                 <tr>
-                                    <td><?= (int) ($row['row_number'] ?? 0) ?></td>
-                                    <td><?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?></td>
-                                    <td><?= htmlspecialchars((string) ($row['position_name'] ?? '-')) ?></td>
-                                    <td><?= htmlspecialchars((string) ($row['department_name'] ?? '-')) ?></td>
+                                    <td class="monthly-col-no"><?= (int) ($row['row_number'] ?? 0) ?></td>
+                                    <td class="monthly-col-name"><?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?></td>
+                                    <td class="monthly-col-position"><?= htmlspecialchars((string) ($row['position_name'] ?? '-')) ?></td>
+                                    <td class="monthly-col-department"><?= htmlspecialchars((string) ($row['department_name'] ?? '-')) ?></td>
                                     <?php foreach ($monthlyDays as $dayMeta): ?>
                                         <?php $cellCode = $row['day_cells'][(int) $dayMeta['day']] ?? ''; ?>
-                                        <td class="<?= !empty($dayMeta['is_future']) ? 'monthly-matrix-future' : '' ?>"><?= htmlspecialchars((string) $cellCode) ?></td>
+                                        <td class="monthly-col-day <?= !empty($dayMeta['is_future']) ? 'monthly-matrix-future' : '' ?>"><?= htmlspecialchars((string) $cellCode) ?></td>
                                     <?php endforeach; ?>
+                                    <?php if ($monthlyMatrixShowTailColumns): ?>
+                                        <td class="monthly-col-total"><?= (int) ($row['total_shifts'] ?? 0) ?></td>
+                                        <td class="monthly-col-hours"><?= number_format((float) ($row['total_hours'] ?? 0), 2) ?></td>
+                                        <td class="monthly-col-ot"><?= htmlspecialchars((string) ($row['ot_value'] ?? '')) ?></td>
+                                        <td class="monthly-col-remark"><?= htmlspecialchars((string) ($row['remark'] ?? '')) ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -455,6 +474,7 @@ if ($type === 'my') {
                     <div class="signature-box">
                         <div class="signature-line"></div>
                         <div>ลงชื่อ ...............................................................</div>
+                        <div>(<?= htmlspecialchars($signatureName !== '' ? $signatureName : '...............................................................') ?>)</div>
                         <div class="signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
                     </div>
                 </div>
