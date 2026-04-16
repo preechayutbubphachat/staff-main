@@ -297,104 +297,131 @@ if ($type === 'my') {
     <title><?= htmlspecialchars($title) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root{--ink:#16324f;--muted:#5b6f84;--line:#d9e2ea;--soft:#f5f8fb}
+        :root{--ink:#12263f;--muted:#52657c;--line:#cdd9e5;--soft:#f5f8fb;--accent:#1f5f8b}
         *{box-sizing:border-box}
-        body{margin:0;background:linear-gradient(180deg,#eef4f8,#f8fbfd);color:var(--ink);font-family:'Sarabun',sans-serif}
-        .print-actions{width:min(1120px,calc(100% - 32px));margin:20px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-        .print-actions button,.print-actions a{border:0;border-radius:999px;padding:12px 18px;text-decoration:none;font:inherit;cursor:pointer}
+        @page{size:A4 landscape;margin:10mm}
+        body{margin:0;background:#eef3f7;color:var(--ink);font-family:'Sarabun',sans-serif}
+        .print-actions{width:min(1560px,calc(100% - 32px));margin:18px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+        .print-actions button,.print-actions a{border:0;border-radius:999px;padding:11px 18px;text-decoration:none;font:inherit;cursor:pointer}
         .print-actions .primary{background:var(--ink);color:#fff}
         .print-actions .secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
-        .page{width:min(1120px,calc(100% - 32px));margin:18px auto 32px;background:#fff;border-radius:30px;box-shadow:0 24px 56px rgba(16,36,59,.12);overflow:hidden}
-        .page-head{padding:30px 34px 24px;background:linear-gradient(135deg,#16324f,#24595f);color:#fff}
-        .brand-row{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
-        .brand{display:flex;align-items:center;gap:16px}
-        .brand img{width:60px;height:60px;object-fit:contain;background:rgba(255,255,255,.12);border-radius:18px;padding:8px}
-        .org-name,.report-heading h1,.summary-card .value{font-family:'Prompt',sans-serif}
-        .org-name{font-size:1.25rem;font-weight:600}
-        .system-name,.report-subtitle{color:rgba(255,255,255,.84)}
-        .report-heading{margin-top:26px;display:grid;gap:10px}
-        .report-heading h1{margin:0;font-size:clamp(1.75rem,2.6vw,2.55rem);line-height:1.15}
-        .report-chip{display:inline-flex;align-items:center;gap:8px;width:fit-content;border-radius:999px;padding:10px 14px;background:rgba(255,255,255,.12);font-size:.92rem}
-        .body{padding:30px 34px 36px}
-        .summary-grid,.meta-grid{display:grid;gap:14px}
-        .summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:22px}
-        .meta-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:24px}
-        .summary-card,.meta-box{border:1px solid var(--line);border-radius:20px;background:var(--soft);padding:16px 18px}
-        .summary-card .label,.meta-box strong{display:block;color:var(--muted);font-size:.84rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
-        .summary-card .value{margin-top:8px;font-size:1.65rem}
-        .meta-box span{display:block;margin-top:8px;color:var(--ink)}
-        .section-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px;flex-wrap:wrap}
-        .section-head h2{margin:0;font-family:'Prompt',sans-serif;font-size:1.15rem}
-        .section-head p{margin:4px 0 0;color:var(--muted)}
-        table{width:100%;border-collapse:collapse;border-radius:18px;overflow:hidden}
-        th,td{border:1px solid var(--line);padding:11px 12px;text-align:left;vertical-align:top;font-size:.94rem}
-        th{background:#edf3f7;white-space:nowrap}
-        .empty-state{text-align:center;padding:36px 20px;border:1px dashed var(--line);border-radius:20px;color:var(--muted)}
-        @media print{body{background:#fff}.print-actions{display:none!important}.page{width:100%;margin:0;border-radius:0;box-shadow:none}tr,td,th,.summary-card,.meta-box{break-inside:avoid}thead{display:table-header-group}}
-        @media (max-width:900px){.summary-grid,.meta-grid{grid-template-columns:1fr 1fr}}
-        @media (max-width:640px){.summary-grid,.meta-grid{grid-template-columns:1fr}.page-head,.body{padding:24px 20px}}
+        .page{width:min(1560px,calc(100% - 32px));margin:16px auto 28px;background:#fff;box-shadow:0 24px 56px rgba(18,38,63,.12)}
+        .page-head{padding:18px 24px 16px;border-bottom:2px solid var(--ink)}
+        .doc-topline{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:16px}
+        .doc-brand{font-size:.94rem;line-height:1.55}
+        .doc-brand strong{display:block;font-family:'Prompt',sans-serif;font-size:1.15rem}
+        .doc-title{text-align:center}
+        .doc-title h1{margin:0;font-family:'Prompt',sans-serif;font-size:1.55rem;line-height:1.25}
+        .doc-title .subtitle{margin-top:8px;color:var(--muted);font-size:.98rem}
+        .doc-meta{text-align:right;font-size:.92rem;line-height:1.55}
+        .doc-meta strong{font-weight:600}
+        .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 24px 0}
+        .summary-card{border:1px solid var(--line);padding:12px 14px;background:#fff}
+        .summary-card .label{display:block;color:var(--muted);font-size:.82rem;font-weight:600}
+        .summary-card .value{display:block;margin-top:6px;font-family:'Prompt',sans-serif;font-size:1.35rem}
+        .body{padding:16px 24px 20px}
+        .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:12px}
+        .section-head h2{margin:0;font-family:'Prompt',sans-serif;font-size:1.05rem}
+        .section-head p{margin:4px 0 0;color:var(--muted);font-size:.92rem}
+        table{width:100%;border-collapse:collapse}
+        th,td{border:1px solid #4a5f73;padding:7px 8px;font-size:.88rem;vertical-align:middle}
+        th{background:#eef3f7;font-weight:700;white-space:nowrap}
+        .empty-state{text-align:center;padding:26px 16px;border:1px dashed var(--line);color:var(--muted)}
+        .monthly-matrix-table{table-layout:fixed}
+        .monthly-matrix-table th,.monthly-matrix-table td{font-size:.7rem;padding:4px 3px;text-align:center}
+        .monthly-matrix-table th:nth-child(1),.monthly-matrix-table td:nth-child(1){width:42px}
+        .monthly-matrix-table th:nth-child(2),.monthly-matrix-table td:nth-child(2){width:170px;text-align:left}
+        .monthly-matrix-table th:nth-child(3),.monthly-matrix-table td:nth-child(3){width:110px;text-align:left}
+        .monthly-matrix-table th:nth-child(4),.monthly-matrix-table td:nth-child(4){width:95px;text-align:left}
+        .monthly-matrix-table th:nth-child(n+5),.monthly-matrix-table td:nth-child(n+5){width:28px;min-width:28px}
+        .monthly-matrix-future{background:#f5f7fa}
+        .footer-block{margin-top:18px;border-top:1.5px solid var(--ink);padding-top:12px;display:grid;grid-template-columns:2fr 1fr;gap:18px}
+        .footer-title{font-family:'Prompt',sans-serif;font-size:1rem;margin:0 0 8px}
+        .legend-list{margin:0;padding-left:18px;font-size:.9rem;line-height:1.6}
+        .notes-text{margin-top:8px;font-size:.9rem;color:var(--muted)}
+        .signature-box{min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center}
+        .signature-line{width:82%;border-bottom:1px solid var(--ink);height:42px;margin-bottom:8px}
+        .signature-role{color:var(--muted);font-size:.92rem}
+        @media print{body{background:#fff}.print-actions{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}}
     </style>
 </head>
 <body>
     <div class="print-actions">
-        <a class="secondary" href="javascript:window.close()">ปิดหน้าต่าง</a>
-        <button class="secondary" type="button" id="downloadPdfBtn">ดาวน์โหลด PDF</button>
-        <button class="primary" type="button" onclick="window.print()">พิมพ์รายงาน</button>
+        <a class="secondary" href="javascript:window.close()">???????????</a>
+        <button class="secondary" type="button" id="downloadPdfBtn">????????? PDF</button>
+        <button class="primary" type="button" onclick="window.print()">???????????</button>
     </div>
 
     <main class="page" id="reportSurface">
         <header class="page-head">
-            <div class="brand-row">
-                <div class="brand">
-                    <img src="../LOGO/nongphok_logo.png" alt="Logo">
-                    <div>
-                        <div class="org-name"><?= htmlspecialchars($organizationName) ?></div>
-                        <div class="system-name"><?= htmlspecialchars($systemName) ?></div>
-                    </div>
+            <div class="doc-topline">
+                <div class="doc-brand">
+                    <strong><?= htmlspecialchars($organizationName) ?></strong>
+                    <div><?= htmlspecialchars($systemName) ?></div>
                 </div>
-                <div class="report-chip"><?= htmlspecialchars($reportTypeLabel) ?></div>
-            </div>
-
-            <div class="report-heading">
-                <h1><?= htmlspecialchars($title) ?></h1>
-                <div class="report-subtitle"><?= htmlspecialchars($subtitle) ?></div>
+                <div class="doc-title">
+                    <h1><?= htmlspecialchars($title) ?></h1>
+                    <div class="subtitle"><?= htmlspecialchars($subtitle) ?></div>
+                </div>
+                <div class="doc-meta">
+                    <div><strong>????????:</strong> <?= htmlspecialchars($generatedBy) ?></div>
+                    <div><strong>??????????:</strong> <?= htmlspecialchars(app_format_thai_datetime(date('Y-m-d H:i:s'))) ?></div>
+                    <div><strong>??????:</strong> ?????? A4</div>
+                </div>
             </div>
         </header>
 
+        <section class="summary-grid">
+            <?php foreach ($summaryCards as $card): ?>
+                <div class="summary-card">
+                    <span class="label"><?= htmlspecialchars($card['label']) ?></span>
+                    <span class="value"><?= htmlspecialchars((string) $card['value']) ?></span>
+                </div>
+            <?php endforeach; ?>
+        </section>
+
         <section class="body">
-            <div class="summary-grid">
-                <?php foreach ($summaryCards as $card): ?>
-                    <div class="summary-card">
-                        <span class="label"><?= htmlspecialchars($card['label']) ?></span>
-                        <span class="value"><?= htmlspecialchars((string) $card['value']) ?></span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-            <div class="meta-grid">
-                <div class="meta-box">
-                    <strong>จัดทำโดย</strong>
-                    <span><?= htmlspecialchars($generatedBy) ?></span>
-                </div>
-                <div class="meta-box">
-                    <strong>เวลาที่สร้างรายงาน</strong>
-                    <span><?= htmlspecialchars($generatedAt) ?></span>
-                </div>
-                <div class="meta-box">
-                    <strong>หมายเหตุ</strong>
-                    <span>เอกสารนี้ใช้ข้อมูลชุดเดียวกับหน้ารายงานในระบบ เพื่อให้ตัวเลขบนหน้าจอ การพิมพ์ และไฟล์ที่ดาวน์โหลดตรงกัน</span>
-                </div>
-            </div>
-
             <div class="section-head">
                 <div>
-                    <h2>รายละเอียดรายงาน</h2>
-                    <p>เหมาะสำหรับพิมพ์เอกสารราชการและบันทึกเป็นไฟล์ PDF</p>
+                    <h2>????????????????</h2>
+                    <p>????????????????????????????????????????????? ???????????????????????????????????????</p>
                 </div>
             </div>
 
-            <?php if (!$tableRows): ?>
-                <div class="empty-state">ไม่พบข้อมูลสำหรับรายงานนี้</div>
+            <?php if ($reportLayout === 'monthly_matrix'): ?>
+                <?php if (!$monthlyRows): ?>
+                    <div class="empty-state">?????????????????????????????????????????????????</div>
+                <?php else: ?>
+                    <table class="monthly-matrix-table">
+                        <thead>
+                            <tr>
+                                <th>?????</th>
+                                <th>????-????</th>
+                                <th>???????</th>
+                                <th>????</th>
+                                <?php foreach ($monthlyDays as $dayMeta): ?>
+                                    <th><?= (int) $dayMeta['day'] ?></th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($monthlyRows as $row): ?>
+                                <tr>
+                                    <td><?= (int) ($row['row_number'] ?? 0) ?></td>
+                                    <td><?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?></td>
+                                    <td><?= htmlspecialchars((string) ($row['position_name'] ?? '-')) ?></td>
+                                    <td><?= htmlspecialchars((string) ($row['department_name'] ?? '-')) ?></td>
+                                    <?php foreach ($monthlyDays as $dayMeta): ?>
+                                        <?php $cellCode = $row['day_cells'][(int) $dayMeta['day']] ?? ''; ?>
+                                        <td class="<?= !empty($dayMeta['is_future']) ? 'monthly-matrix-future' : '' ?>"><?= htmlspecialchars((string) $cellCode) ?></td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            <?php elseif (!$tableRows): ?>
+                <div class="empty-state">??????????????????????????</div>
             <?php else: ?>
                 <table>
                     <thead>
@@ -415,6 +442,29 @@ if ($type === 'my') {
                     </tbody>
                 </table>
             <?php endif; ?>
+
+            <?php if ($footerLegendItems || $signatureLabel !== ''): ?>
+                <div class="footer-block">
+                    <div>
+                        <h3 class="footer-title">????????</h3>
+                        <?php if ($footerLegendItems): ?>
+                            <ul class="legend-list">
+                                <?php foreach ($footerLegendItems as $legendItem): ?>
+                                    <li><?= htmlspecialchars($legendItem) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                        <?php if ($notesBlockText !== ''): ?>
+                            <div class="notes-text"><?= htmlspecialchars($notesBlockText) ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="signature-box">
+                        <div class="signature-line"></div>
+                        <div>?????? ...............................................................</div>
+                        <div class="signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : '??????????????????') ?></div>
+                    </div>
+                </div>
+            <?php endif; ?>
         </section>
     </main>
 
@@ -430,7 +480,7 @@ if ($type === 'my') {
             });
 
             const imageData = canvas.toDataURL('image/png');
-            const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+            const pdf = new window.jspdf.jsPDF('l', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             const imageWidth = pageWidth;

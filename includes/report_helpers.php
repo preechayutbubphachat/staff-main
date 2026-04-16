@@ -966,6 +966,13 @@ function app_fetch_daily_schedule_monthly_matrix(PDO $conn, array $baseSchedule,
         }
     }
 
+    if ($reviewStatus !== 'all') {
+        $eligibleUserIds = array_fill_keys(array_map('intval', array_keys($logsByUserDay)), true);
+        $staffRows = array_values(array_filter($staffRows, static function (array $staff) use ($eligibleUserIds): bool {
+            return isset($eligibleUserIds[(int) ($staff['user_id'] ?? 0)]);
+        }));
+    }
+
     $matrixRows = [];
 
     foreach ($staffRows as $index => $staff) {

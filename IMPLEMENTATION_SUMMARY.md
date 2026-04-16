@@ -1,41 +1,50 @@
-## Implementation Summary
+## สิ่งที่ปรับในรอบนี้
 
-งานรอบนี้แก้ daily schedule ใน 3 จุดหลัก:
+- ปรับ `report_print.php` ให้เป็นเอกสารแนวนอน A4 ทั้งโหมดพิมพ์และดาวน์โหลด PDF
+- ย้ายข้อมูล `จัดทำโดย` และ `พิมพ์เมื่อ` จากกล่อง metadata เดิมขึ้นไปอยู่ในส่วนหัวรายงาน
+- ปรับ daily schedule ให้รองรับ `โหมดรายวัน` และ `โหมดรายเดือน`
+- เพิ่ม monthly shift matrix แบบ 1 คนต่อ 1 แถว และ 1 วันต่อ 1 คอลัมน์
+- ทำให้ print / PDF / CSV ใช้ filter context ชุดเดียวกับหน้า daily schedule
+- เพิ่ม footer ส่วน `หมายเหตุ` และพื้นที่ `ลงชื่อผู้ตรวจสอบเวร`
 
-1. แก้ warning `Undefined variable $dateHeading` ที่เกิดตอน first load
-2. ย้าย logic ของ heading context ไปไว้ใน helper กลาง
-3. ปรับหัวข้อหลักและหัวข้อกลุ่มเวรให้สื่อแผนก + วันที่ไทย + จำนวนรายการ + ช่วงเวลาเวรมาตรฐานชัดขึ้น
+## Landscape Print / PDF
 
-### Fix For Undefined Variable
+- ใช้ `@page { size: A4 landscape; }` ใน [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
+- เปลี่ยน jsPDF เป็น `new jsPDF('l', 'mm', 'a4')`
+- ตารางรายเดือนและตารางรายวันจึงพอดีกับงานพิมพ์แนวนอนมากขึ้น
 
-- partial [partials/reports/daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php) ไม่พึ่งตัวแปร `$dateHeading` แบบลอย ๆ อีกต่อไป
-- partial จะอ่าน `heading_context` จาก `$schedule` ก่อน และ fallback ผ่าน helper กลางหากจำเป็น
-- ฝั่ง [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php) และ [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php) ใช้ context ชุดเดียวกัน
+## Monthly Matrix Report
 
-### Daily Schedule Heading
+- เพิ่ม helper สำหรับสร้าง monthly matrix ใน [report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
+- ใช้รหัสเวร:
+  - `ช` = เวรเช้า 08.30 - 16.30 น.
+  - `บ` = เวรบ่าย 16.30 - 00.30 น.
+  - `ด` = เวรดึก 00.30 - 08.30 น.
+  - `BD` = เวรบ่ายนอกเวลาราชการ
+- ถ้าวันใดมีหลายรายการในวันเดียว ระบบจะรวมรหัสที่พบเป็นรูปแบบเช่น `ช/บ` แทนการเดาเลือกเพียงรายการเดียว
+- ถ้าเป็นเดือนปัจจุบัน วันในอนาคตจะถูกเว้นว่างเสมอ
 
-- เพิ่ม helper `app_get_daily_schedule_heading_context(...)` ใน [includes/report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
-- heading หลักของผลลัพธ์ตอนนี้อยู่ในรูป:
-  - `รายงานเวรประจำวัน แผนก {ชื่อแผนก} ประจำวันที่ {วันที่ไทย}`
-  - หรือ `รายงานเวรประจำวัน ทุกแผนก ประจำวันที่ {วันที่ไทย}`
-- kicker/context line ของตารางก็แสดงบริบทแผนกด้วยเช่นกัน
+## Header / Footer รายงาน
 
-### Grouped Shift Headers
+- หัวรายงานถูกจัดใหม่ให้มี:
+  - ชื่อหน่วยงาน
+  - ชื่อระบบ
+  - ชื่อรายงาน
+  - ขอบเขตรายงานตามตัวกรอง
+  - ผู้จัดทำ
+  - เวลาพิมพ์
+  - รูปแบบเอกสารแนวนอน
+- footer มี:
+  - legend ของรหัสเวร
+  - หมายเหตุสำหรับเดือนที่ยังไม่ครบ
+  - เส้นลงชื่อผู้ตรวจสอบเวร
 
-- เพิ่ม helper `app_get_daily_shift_group_display_meta(...)`
-- หัวข้อกลุ่มเวรตอนนี้แสดงแบบ:
-  - `เวรเช้า / 2 รายการ / เวลา 08.30 น. - 16.30 น.`
-  - `เวรบ่าย / 2 รายการ / เวลา 16.30 น. - 00.30 น.`
-  - `เวรดึก / 2 รายการ / เวลา 00.30 น. - 08.30 น.`
-  - `เวลาอื่นๆ / 2 รายการ`
-- กลุ่ม `เวลาอื่นๆ` ไม่มี suffix เวลาคงที่ตามที่กำหนด
-
-### Files Changed
+## ไฟล์ที่แก้ไข
 
 - [includes/report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
 - [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
 - [partials/reports/daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
 - [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
-- [IMPLEMENTATION_SUMMARY.md](C:/xampp/htdocs/staff-main/IMPLEMENTATION_SUMMARY.md)
-- [DAILY_SCHEDULE_HEADING_AND_GROUP_NOTES.md](C:/xampp/htdocs/staff-main/DAILY_SCHEDULE_HEADING_AND_GROUP_NOTES.md)
-- [BUG_AUDIT.md](C:/xampp/htdocs/staff-main/BUG_AUDIT.md)
+- [pages/report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
+- [pages/export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)
+- [assets/css/app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css)

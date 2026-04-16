@@ -8,6 +8,9 @@ $view = $_GET['view'] ?? 'table';
 $view = in_array($view, ['cards', 'table'], true) ? $view : 'table';
 $schedule = app_fetch_daily_schedule_data($conn, $_GET);
 $mode = $schedule['mode'];
+if ($mode === 'monthly') {
+    $view = 'table';
+}
 $selectedDate = $schedule['selected_date'];
 $selectedDepartment = $schedule['selected_department'];
 $name = $schedule['name'];

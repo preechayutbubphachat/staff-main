@@ -1,43 +1,35 @@
-## Bug Audit
+# BUG AUDIT
 
-### First-Load Warning Checked
+## ตรวจแล้ว
 
-- แก้ warning `Undefined variable $dateHeading` ที่ [partials/reports/daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
-- partial ไม่พึ่งตัวแปรที่บาง path อาจไม่ได้ส่งมาอีกต่อไป
-- ใช้ `heading_context` จาก `$schedule` เป็นหลัก และมี fallback helper เผื่อกรณี render context ไม่ครบ
+- landscape print ถูกตั้งไว้ใน [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
+- landscape PDF ถูกตั้งไว้ใน jsPDF ของ [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
+- daily schedule รองรับ `mode=daily|monthly` ใน:
+  - [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
+  - [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
+- monthly matrix ถูกสร้างจาก helper กลางใน [report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
+- footer notes + signature ถูกเพิ่มใน layout พิมพ์
+- metadata card `เวลาที่สร้างรายงาน` ถูกย้ายขึ้น header report แล้ว
+- CSV ของ daily report รองรับทั้ง daily และ monthly mode ใน [export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)
 
-### AJAX / Partial Render Warning Checked
+## กติกาที่ตรวจซ้ำ
 
-- [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php) ถูกปรับให้ใช้ `heading_context` จากผลลัพธ์เดียวกับ first load
-- heading และ scope ของ partial refresh จึงใช้ source เดียวกับหน้าเต็ม
+- จำนวนวันของเดือนใช้ค่า dynamic ตามเดือนจริง
+- วันในอนาคตของเดือนปัจจุบันถูกปล่อยว่าง
+- mapping `ช / บ / ด / BD` อยู่ใน helper กลาง ไม่ได้กระจายหลายไฟล์
+- print / PDF / CSV ใช้ context เดียวกับหน้า daily schedule
 
-### Heading / Filter Sync Checked
+## Manual Follow-up ที่ยังควรเช็ก
 
-- main heading ขึ้นกับ:
-  - วันที่
-  - แผนกที่เลือก
-- scope label และ table context label มาจาก helper เดียวกัน
-- เมื่อเปลี่ยน filter แล้ว heading ไม่ควรหลุดไปคนละแผนกกับข้อมูลในตาราง
+- ทดลองพิมพ์เดือน 31 วันจริงบนเครื่องพิมพ์หรือ PDF viewer จริง เพื่อดูความแน่นของคอลัมน์
+- ทดลองกรณีหนึ่งคนมีหลายเวรในวันเดียวและยืนยันว่ารูปแบบ `ช/บ` อ่านได้ตามที่หน่วยงานต้องการ
+- ตรวจดู wording ในเอกสารจริงอีกครั้งบนเครื่องผู้ใช้ เพราะ console ของ Windows ใน environment นี้แสดงภาษาไทยเพี้ยน แต่ไฟล์ lint ผ่านและบันทึกเป็น UTF-8 แล้ว
 
-### Grouped Count Labels Checked
-
-- `app_group_daily_schedule_rows_by_shift(...)` เติมข้อมูล `item_count`, `time_range_label`, `heading_text` ให้แต่ละกลุ่ม
-- เวรเช้า / เวรบ่าย / เวรดึก แสดงช่วงเวลามาตรฐาน
-- `เวลาอื่นๆ` แสดงเฉพาะชื่อกลุ่มและจำนวนรายการ ไม่มีเวลาคงที่ต่อท้าย
-
-### Syntax Check
-
-ตรวจผ่าน `C:\xampp\php\php.exe -l` แล้วสำหรับ:
+## Syntax Check
 
 - [includes/report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
 - [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
 - [partials/reports/daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
 - [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
-
-### Manual Follow-Up
-
-- เปิดหน้า daily schedule ครั้งแรกหลังล็อกอินและยืนยันว่าไม่มี warning
-- เปลี่ยนแผนกแล้วดูว่า heading หลักเปลี่ยนเป็นชื่อแผนกที่เลือก
-- เลือกทุกแผนกแล้วดูว่า heading หลักกลับเป็น “ทุกแผนก”
-- ตรวจว่า group header ของ เวรเช้า / เวรบ่าย / เวรดึก แสดงช่วงเวลาคงที่ถูกต้อง
-- ตรวจว่า `เวลาอื่นๆ` ไม่มี suffix เวลา
+- [pages/report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
+- [pages/export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)

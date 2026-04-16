@@ -65,25 +65,47 @@ if ($type === 'my') {
     $dailyDepartments = app_get_daily_schedule_departments($conn)['departments'];
     $dailySelectedDepartment = trim((string) ($_GET['department'] ?? ''));
     $dailyScopeLabel = $dailySelectedDepartment !== ''
-        ? 'แสดงข้อมูลเฉพาะแผนก ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: 'ที่เลือก')
-        : 'ทุกแผนกในระบบ';
-    $reportData['scope_label'] = $dailyScopeLabel;
+        ? '??????????????????? ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: '????????')
+        : '?????????????';
+    $dailyMode = (string) ($reportData['mode'] ?? 'daily');
+
     fputcsv($output, [$reportData['date_heading']]);
-    fputcsv($output, [$reportData['scope_label'] . ' | สถานะ ' . $reportData['review_status_label']]);
+    fputcsv($output, [$dailyScopeLabel . ' | ????? ' . ($reportData['review_status_label'] ?? '???????')]);
     fputcsv($output, []);
 
-    fputcsv($output, ['กลุ่มเวร', 'ลำดับ', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เบอร์โทรศัพท์', 'หมายเหตุ']);
-    foreach ($reportData['grouped_logs'] as $group) {
-        foreach ($group['rows'] as $index => $row) {
-            fputcsv($output, [
-                $group['heading_text'] ?? $group['label'],
-                $index + 1,
+    if ($dailyMode === 'monthly') {
+        $headers = ['?????', '????-????', '???????', '????'];
+        foreach (($reportData['matrix_days'] ?? []) as $dayMeta) {
+            $headers[] = (int) $dayMeta['day'];
+        }
+        fputcsv($output, $headers);
+
+        foreach (($reportData['matrix_rows'] ?? []) as $row) {
+            $csvRow = [
+                (int) ($row['row_number'] ?? 0),
                 $row['fullname'] ?? '',
                 $row['position_name'] ?? '',
                 $row['department_name'] ?? '',
-                $row['phone_number'] ?? '',
-                $row['note'] ?? '',
-            ]);
+            ];
+            foreach (($reportData['matrix_days'] ?? []) as $dayMeta) {
+                $csvRow[] = $row['day_cells'][(int) $dayMeta['day']] ?? '';
+            }
+            fputcsv($output, $csvRow);
+        }
+    } else {
+        fputcsv($output, ['????????', '?????', '???????????????', '???????', '????', '?????????????', '????????']);
+        foreach (($reportData['grouped_logs'] ?? []) as $group) {
+            foreach (($group['rows'] ?? []) as $index => $row) {
+                fputcsv($output, [
+                    $group['heading_text'] ?? $group['label'],
+                    $index + 1,
+                    $row['fullname'] ?? '',
+                    $row['position_name'] ?? '',
+                    $row['department_name'] ?? '',
+                    $row['phone_number'] ?? '',
+                    $row['note'] ?? '',
+                ]);
+            }
         }
     }
 } elseif ($type === 'approval') {

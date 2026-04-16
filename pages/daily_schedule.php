@@ -13,6 +13,9 @@ $view = in_array($view, ['cards', 'table'], true) ? $view : 'table';
 $schedule = app_fetch_daily_schedule_data($conn, $_GET);
 $mode = $schedule['mode'];
 $modeOptions = app_daily_schedule_mode_options();
+if ($mode === 'monthly') {
+    $view = 'table';
+}
 $selectedDate = $schedule['selected_date'];
 $selectedDepartment = $schedule['selected_department'];
 $name = $schedule['name'];
@@ -23,6 +26,9 @@ $logs = $schedule['logs'];
 $dateLabel = $schedule['date_label'];
 $headingContext = $schedule['heading_context'];
 $dateHeading = $headingContext['main_heading'];
+$heroPeriodLabel = $mode === 'monthly'
+    ? 'เดือน ' . ($schedule['heading_month_year_th'] ?? '')
+    : $dateLabel;
 $departmentOptions = app_get_daily_schedule_departments($conn)['departments'];
 $monthOptions = app_get_thai_month_select_options();
 $scopeLabel = $headingContext['scope_label'];
@@ -76,7 +82,7 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
             <aside class="ops-hero-side">
                 <div class="ops-hero-stat">
                     <span>วันที่ที่เลือก</span>
-                    <strong><?= htmlspecialchars($dateLabel) ?></strong>
+                    <strong><?= htmlspecialchars($heroPeriodLabel) ?></strong>
                 </div>
                 <div class="ops-hero-stat">
                     <span>ขอบเขตข้อมูล</span>
