@@ -1,61 +1,45 @@
-## Scope completed
+﻿## Scope completed
 
-- Made the select-all action on Approval Queue easier to notice.
-- Rebuilt the bulk confirmation modal into a single scrollable row-based table.
-- Removed the old selected-staff / departments / IDs accordion sections.
+- Redesigned the dashboard itself so important destinations are visibly presented as action shortcuts.
+- Added a dedicated quick-actions section with clear CTA buttons instead of relying on small text links.
+- Upgraded key dashboard cards to include prominent action buttons and clearer clickability cues.
 
-## Select-all visibility
+## Dashboard action clarity improvements
 
-- Added a stronger select-all area in [results_block.php](C:/xampp/htdocs/staff-main/partials/approval/results_block.php).
-- Kept the existing select-all checkbox.
-- Added a clearer action button:
-  - `เลือกรายการทั้งหมดในหน้าที่เห็น`
-- The button selects all currently visible selectable rows only.
+- Added a new `ทางลัดการใช้งาน` section near the top of [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
+- The quick-action cards now highlight the most important destinations with:
+  - icon
+  - action title
+  - short description
+  - obvious CTA button
+- Important action wording now uses clear Thai-first labels such as:
+  - `ไปหน้าลงเวลาเวร`
+  - `เปิดหน้าตรวจสอบเวร`
+  - `เปิดตารางเวรวันนี้`
+  - `เปิดรายงานของฉัน`
+  - `เปิดรายงานแผนก`
+  - `จัดการโปรไฟล์และรูปภาพ`
 
-## Confirmation modal redesign
+## Permission-aware shortcuts
 
-- The modal in [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php) now shows:
-  - summary cards
-  - one scrollable selected-items table
-  - standard action footer
-- The detailed review area is now a real table with columns:
-  - `ลำดับ`
-  - `วันที่`
-  - `ชื่อ`
-  - `ตำแหน่ง`
-  - `แผนก`
-  - `เวลา`
+- `ตรวจสอบเวร` appears only when `can_approve_logs` is allowed.
+- `รายงานแผนก` appears only when `can_view_department_reports` is allowed.
+- Admin / back-office style shortcut appears only when the current user has one of:
+  - `can_manage_database`
+  - `can_manage_user_permissions`
+  - `can_manage_time_logs`
+- No inaccessible shortcut is intentionally shown to users without permission.
 
-## Removed old sections
+## Existing cards upgraded
 
-Removed the old accordion/dropdown review sections for:
-
-- selected staff names
-- related departments
-- selected record IDs
-
-Those values are still used internally where needed, but the reviewer now verifies records directly from the selected-items table.
-
-## Selection data flow
-
-- Expanded [get_selection_summary.php](C:/xampp/htdocs/staff-main/ajax/approval/get_selection_summary.php) so it returns row-level details needed by the modal table.
-- Updated [approval-queue.js](C:/xampp/htdocs/staff-main/assets/js/approval-queue.js) to render every selected record as its own row.
-- Repeated names remain repeated rows when multiple records are selected for the same person.
-- Modal table state is reset when clearing selection or closing the modal.
-
-## Styling updates
-
-- Added compact modal table styles and scrollable container behavior in [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
-- Added clearer select-all styling in the approval results header.
+- The profile card now ends with a clear profile-management button.
+- Operational cards now use stronger CTA buttons instead of subtle text links.
+- The review queue card keeps the pending count but now also exposes a more obvious approval CTA.
+- The latest personal activity card now includes a direct follow-up action back to `time.php`.
 
 ## Files changed
 
-- [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php)
-- [approval-queue.js](C:/xampp/htdocs/staff-main/assets/js/approval-queue.js)
-- [report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
-- [get_selection_summary.php](C:/xampp/htdocs/staff-main/ajax/approval/get_selection_summary.php)
-- [results_block.php](C:/xampp/htdocs/staff-main/partials/approval/results_block.php)
-- [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css)
+- [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php)
 - [IMPLEMENTATION_SUMMARY.md](C:/xampp/htdocs/staff-main/IMPLEMENTATION_SUMMARY.md)
-- [APPROVAL_CONFIRM_MODAL_REDESIGN_NOTES.md](C:/xampp/htdocs/staff-main/APPROVAL_CONFIRM_MODAL_REDESIGN_NOTES.md)
+- [DASHBOARD_ACTIONS_UX_NOTES.md](C:/xampp/htdocs/staff-main/DASHBOARD_ACTIONS_UX_NOTES.md)
 - [BUG_AUDIT.md](C:/xampp/htdocs/staff-main/BUG_AUDIT.md)
