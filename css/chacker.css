@@ -1,0 +1,74 @@
+:root {
+    --primary-color: #4e73df;
+    --success-color: #1cc88a;
+    --warning-color: #f6c23e;
+    --danger-color: #e74a3b;
+    --bg-body: #f8f9fc;
+}
+
+body {
+    background-color: var(--bg-body);
+    font-family: 'Sarabun', sans-serif;
+    color: #5a5c69;
+}
+
+.navbar {
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%) !important;
+}
+
+.card { border: none; border-radius: 15px; }
+
+.dashboard-card {
+    border-left: 5px solid;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important; }
+.dashboard-card i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 2.5rem; opacity: 0.15; }
+
+.table-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1); }
+.table thead th { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 2px solid #e3e6f0; }
+
+.status-pill { padding: 0.4rem 1rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; }
+
+.nav-pills .nav-link { color: #6c757d; background-color: transparent; font-weight: 500; }
+.nav-pills .nav-link.active { background-color: rgba(78, 115, 223, 0.15); color: #4e73df; }
+.nav-pills .nav-link:hover { background-color: rgba(78, 115, 223, 0.08); }
+
+.table-red thead th { background: linear-gradient(135deg,#fdeaea,#f8d7d7); color:#c0392b; }
+.table-yellow thead th { background: linear-gradient(135deg,#fff7df,#fdf0c9); color:#b9770e; }
+.table-green thead th { background: linear-gradient(135deg,#e8f7ec,#dff3e5); color:#1e8449; }
+
+.btn-warning { background-color:#fff3cd; border-color:#ffe69c; color:#b7791f; }
+.btn-warning:hover { background-color:#ffe69c; border-color:#ffd54d; color:#8a5a12; }
+
+
+.modal-content { border-radius: 20px; border: none; }
+.time-box h4 { font-size: 1.5rem; }
+.info-box { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; }
+
+
+.swal2-popup { font-family: 'Sarabun', sans-serif !important; border-radius: 15px; }
+
+.text-purple { color: #7b2cbf !important; }
+.bg-purple { background-color: #7b2cbf !important; color: #ffffff; }
+
+.table-purple thead th { 
+    background-color: #f3e8ff; 
+    color: #5a189a; 
+    border-radius: 8px 8px 0 0; 
+}
+
+.btn-purple { 
+    background-color: #f3e8ff; 
+    color: #7b2cbf; 
+    border: none; 
+    transition: all 0.2s ease; 
+}
+.btn-purple:hover { 
+    background-color: #e0cffc; 
+    color: #5a189a; 
+    transform: translateY(-2px); 
+}

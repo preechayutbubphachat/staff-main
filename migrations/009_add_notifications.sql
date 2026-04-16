@@ -1,0 +1,23 @@
+CREATE TABLE notifications (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  user_id INT(11) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  message VARCHAR(255) NOT NULL,
+  target_url VARCHAR(255) DEFAULT NULL,
+  target_entity_type VARCHAR(50) DEFAULT NULL,
+  target_entity_id INT(11) DEFAULT NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  read_at DATETIME DEFAULT NULL,
+  metadata_json LONGTEXT DEFAULT NULL,
+  source_type VARCHAR(30) NOT NULL DEFAULT 'system',
+  actor_user_id INT(11) DEFAULT NULL,
+  priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notifications_user_read_created (user_id, is_read, created_at),
+  KEY idx_notifications_type_target (type, target_entity_type, target_entity_id),
+  KEY idx_notifications_actor_user (actor_user_id),
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_actor_user FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

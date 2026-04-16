@@ -1,0 +1,63 @@
+.global-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(14, 24, 39, 0.28);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.global-loading-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.global-loading-panel {
+    width: min(100%, 340px);
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.48);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 26px 56px rgba(16, 36, 59, 0.18);
+    padding: 1.5rem 1.4rem;
+    text-align: center;
+    color: #10243b;
+}
+
+.global-loading-spinner {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 0.95rem;
+    color: #153b68;
+}
+
+.global-loading-title {
+    font-family: 'Prompt', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.global-loading-subtitle {
+    margin-top: 0.45rem;
+    color: #6b7a8d;
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+body.global-loading-active {
+    cursor: progress;
+}
+
+body.global-loading-active .global-loading-disable-on-busy,
+body.global-loading-active [data-global-loading-trigger].is-busy {
+    pointer-events: none;
+}
