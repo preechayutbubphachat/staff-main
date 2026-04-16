@@ -44,6 +44,6 @@ $queryBase = [
     'per_page' => $perPage,
 ];
 
-ajax_html(ajax_capture(function () use ($schedule, $view, $pagedLogs, $pagedGroups, $dateLabel, $dateHeading, $scopeLabel, $page, $perPage, $totalPages, $totalRows, $queryBase): void {
+ajax_html(ajax_capture(function () use ($schedule, $view, $pagedLogs, $pagedGroups, $dateLabel, $dateHeading, $scopeLabel, $page, $perPage, $totalPages, $totalRows, $queryBase, $mode, $matrixRows, $pagedMatrixRows, $matrixDays): void {
     require __DIR__ . '/../../partials/reports/daily_schedule_results.php';
 }));

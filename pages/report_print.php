@@ -323,16 +323,18 @@ if ($type === 'my') {
         th{background:#eef3f7;font-weight:700;white-space:nowrap}
         .empty-state{text-align:center;padding:26px 16px;border:1px dashed var(--line);color:var(--muted)}
         .monthly-matrix-table{table-layout:fixed}
-        .monthly-matrix-table th,.monthly-matrix-table td{font-size:.7rem;padding:4px 3px;text-align:center}
-        .monthly-matrix-table .monthly-col-no{width:42px}
-        .monthly-matrix-table .monthly-col-name{width:170px;text-align:left}
-        .monthly-matrix-table .monthly-col-position{width:110px;text-align:left}
-        .monthly-matrix-table .monthly-col-department{width:95px;text-align:left}
-        .monthly-matrix-table .monthly-col-day{width:28px;min-width:28px}
-        .monthly-matrix-table .monthly-col-total{width:62px}
-        .monthly-matrix-table .monthly-col-hours{width:74px}
-        .monthly-matrix-table .monthly-col-ot{width:54px}
-        .monthly-matrix-table .monthly-col-remark{width:120px;text-align:left}
+        .monthly-matrix-table th,.monthly-matrix-table td{font-size:.64rem;padding:3px 2px;text-align:center}
+        .monthly-matrix-table .monthly-col-no{width:34px}
+        .monthly-matrix-table .monthly-col-name{width:132px;text-align:left}
+        .monthly-matrix-table .monthly-col-position{width:80px;text-align:left}
+        .monthly-matrix-table .monthly-col-department{width:72px;text-align:left}
+        .monthly-matrix-table .monthly-col-day{width:22px;min-width:22px}
+        .monthly-matrix-table .monthly-col-total{width:34px}
+        .monthly-matrix-table .monthly-col-hours{width:38px}
+        .monthly-matrix-table .monthly-col-ot{width:30px}
+        .monthly-matrix-table .monthly-col-remark{width:76px;text-align:left}
+        .report-matrix-header-vertical{padding:0!important;vertical-align:bottom}
+        .report-matrix-header-vertical > span{display:inline-flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);min-height:74px;line-height:1;letter-spacing:.02em;padding:4px 0}
         .monthly-matrix-future{background:#f5f7fa}
         .footer-block{margin-top:18px;border-top:1.5px solid var(--ink);padding-top:12px;display:grid;grid-template-columns:2fr 1fr;gap:18px}
         .footer-title{font-family:'Prompt',sans-serif;font-size:1rem;margin:0 0 8px}
@@ -404,9 +406,9 @@ if ($type === 'my') {
                                     <th class="monthly-col-day"><?= (int) $dayMeta['day'] ?></th>
                                 <?php endforeach; ?>
                                 <?php if ($monthlyMatrixShowTailColumns): ?>
-                                    <th class="monthly-col-total">จำนวนเวร</th>
-                                    <th class="monthly-col-hours">ชั่วโมงรวม</th>
-                                    <th class="monthly-col-ot">OT</th>
+                                    <th class="monthly-col-total report-matrix-header-vertical"><span>จำนวนเวร</span></th>
+                                    <th class="monthly-col-hours report-matrix-header-vertical"><span>ชั่วโมงรวม</span></th>
+                                    <th class="monthly-col-ot report-matrix-header-vertical"><span>OT</span></th>
                                     <th class="monthly-col-remark">หมายเหตุ</th>
                                 <?php endif; ?>
                             </tr>

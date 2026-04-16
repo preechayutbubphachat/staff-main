@@ -1,17 +1,22 @@
 <?php
 $headingContext = $headingContext ?? ($schedule['heading_context'] ?? app_get_daily_schedule_heading_context($schedule));
 $mode = $schedule['mode'] ?? 'daily';
-$dateHeading = $dateHeading ?? ($headingContext['main_heading'] ?? ($schedule['date_heading'] ?? '?????????????????'));
-$scopeLabel = $scopeLabel ?? ($headingContext['scope_label'] ?? ($schedule['scope_label'] ?? '?????????????'));
-$tableContextLabel = $headingContext['table_context_label'] ?? ($mode === 'monthly' ? '??????????????????????' : '????????????????????????');
+$dateHeading = $dateHeading ?? ($headingContext['main_heading'] ?? ($schedule['date_heading'] ?? 'รายงานเวรประจำวัน'));
+$scopeLabel = $scopeLabel ?? ($headingContext['scope_label'] ?? ($schedule['scope_label'] ?? 'ทุกแผนกในระบบ'));
+$tableContextLabel = $headingContext['table_context_label'] ?? ($mode === 'monthly' ? 'ตารางสรุปเวรประจำเดือน' : 'ตารางเวรประจำวันที่เลือก');
 $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year_th'] ?? ($schedule['date_label'] ?? ''));
+$matrixDays = $matrixDays ?? ($schedule['matrix_days'] ?? []);
+$pagedMatrixRows = $pagedMatrixRows ?? [];
+$pagedGroups = $pagedGroups ?? [];
+$pagedLogs = $pagedLogs ?? [];
+$reviewStatusLabel = $schedule['review_status_label'] ?? 'ทั้งหมด';
 ?>
 <section class="ops-results-panel">
     <section class="row g-4 mb-4" data-results-summary>
-        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label"><?= $mode === 'monthly' ? '???????????????????' : '??????????????????' ?></div><div class="report-stat-value"><?= (int) ($schedule['unique_staff_count'] ?? 0) ?></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label"><?= $mode === 'monthly' ? '???????????????' : '???????????' ?></div><div class="report-stat-value"><?= number_format((int) ($schedule['total_rows'] ?? count($schedule['logs'] ?? []))) ?></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label">?????????</div><div class="report-stat-value"><?= (int) ($schedule['department_count'] ?? 0) ?></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label">?????????????</div><div class="report-stat-value"><?= number_format((float) ($schedule['total_hours'] ?? 0), 2) ?></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label"><?= $mode === 'monthly' ? 'จำนวนเจ้าหน้าที่' : 'จำนวนเจ้าหน้าที่' ?></div><div class="report-stat-value"><?= (int) ($schedule['unique_staff_count'] ?? 0) ?></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label"><?= $mode === 'monthly' ? 'จำนวนรายการเวร' : 'จำนวนรายการ' ?></div><div class="report-stat-value"><?= number_format((int) ($schedule['total_rows'] ?? count($schedule['logs'] ?? []))) ?></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label">จำนวนแผนก</div><div class="report-stat-value"><?= (int) ($schedule['department_count'] ?? 0) ?></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="report-stat-card"><div class="report-stat-label">ชั่วโมงรวม</div><div class="report-stat-value"><?= number_format((float) ($schedule['total_hours'] ?? 0), 2) ?></div></div></div>
     </section>
 
     <div class="ops-results-header ops-results-header--stack">
@@ -20,17 +25,17 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
             <h2 class="ops-results-title ops-results-title--large"><?= htmlspecialchars($dateHeading) ?></h2>
             <p class="ops-results-subtitle">
                 <?php if ($mode === 'monthly'): ?>
-                    ???????????????????????????????????????????? ? / ? / ? / BD ??????????????????????????????????????????
+                    แสดงผลในรูปแบบตารางรายบุคคล โดยใช้รหัสเวร ช / บ / ด / BD ตามรายการที่ตรงกับเงื่อนไขอย่างปลอดภัย
                 <?php else: ?>
-                    ????????????????????????????????????????????? ????????????????????????????????????????????????????????????????????
+                    จัดกลุ่มตามช่วงเวรเพื่อสแกนรายชื่อได้เร็วขึ้น พร้อมเบอร์โทรศัพท์สำหรับติดต่อและสถานะการตรวจสอบที่ใช้เฉพาะในตัวกรอง
                 <?php endif; ?>
             </p>
         </div>
         <?php if ($mode === 'daily'): ?>
             <div class="table-toolbar-side">
                 <div class="nav nav-pills view-switch">
-                    <a class="nav-link <?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link>?????</a>
-                    <a class="nav-link <?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link>?????</a>
+                    <a class="nav-link <?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link>ตาราง</a>
+                    <a class="nav-link <?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link>การ์ด</a>
                 </div>
             </div>
         <?php endif; ?>
@@ -38,27 +43,27 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
 
     <div class="ops-selection-hint">
         <div class="selection-chip">
-            <span>????????????</span>
+            <span>ขอบเขตข้อมูล</span>
             <strong><?= htmlspecialchars($scopeLabel) ?></strong>
         </div>
         <div class="selection-chip">
-            <span><?= $mode === 'monthly' ? '?????????' : '?????????????' ?></span>
-            <strong><?= htmlspecialchars($mode === 'monthly' ? $periodLabel : ($schedule['review_status_label'] ?? '???????')) ?></strong>
+            <span><?= $mode === 'monthly' ? 'ช่วงเดือน' : 'สถานะที่เลือก' ?></span>
+            <strong><?= htmlspecialchars($mode === 'monthly' ? $periodLabel : $reviewStatusLabel) ?></strong>
         </div>
     </div>
 
     <?php if ($mode === 'monthly'): ?>
         <?php if (!$pagedMatrixRows): ?>
-            <div class="ops-empty">????????????????????????????????????????????????????</div>
+            <div class="ops-empty">ไม่พบข้อมูลเวรที่ตรงกับตัวกรองสำหรับสรุปรายเดือนในช่วงเวลานี้</div>
         <?php else: ?>
             <div class="table-shell table-responsive monthly-matrix-shell">
                 <table class="table align-middle mb-0 monthly-matrix-table">
                     <thead class="table-light">
                         <tr>
-                            <th>?????</th>
-                            <th>????-????</th>
-                            <th>???????</th>
-                            <th>????</th>
+                            <th>ลำดับ</th>
+                            <th>ชื่อ-สกุล</th>
+                            <th>ตำแหน่ง</th>
+                            <th>แผนก</th>
                             <?php foreach ($matrixDays as $dayMeta): ?>
                                 <th class="text-center"><?= (int) $dayMeta['day'] ?></th>
                             <?php endforeach; ?>
@@ -85,14 +90,14 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
                 </table>
             </div>
             <div class="monthly-legend mt-3">
-                <span><strong>?</strong> = ??????? 08.30 - 16.30 ?.</span>
-                <span><strong>?</strong> = ??????? 16.30 - 00.30 ?.</span>
-                <span><strong>?</strong> = ?????? 00.30 - 08.30 ?.</span>
-                <span><strong>BD</strong> = ????????????????????</span>
+                <span><strong>ช</strong> = เวรเช้า 08.30 - 16.30 น.</span>
+                <span><strong>บ</strong> = เวรบ่าย 16.30 - 00.30 น.</span>
+                <span><strong>ด</strong> = เวรดึก 00.30 - 08.30 น.</span>
+                <span><strong>BD</strong> = เวรบ่ายนอกเวลาราชการ</span>
             </div>
         <?php endif; ?>
     <?php elseif (!$pagedLogs): ?>
-        <div class="ops-empty">??????????????????????????????????????????????</div>
+        <div class="ops-empty">ไม่พบรายการเวรประจำวันที่ตรงกับตัวกรองในขณะนี้</div>
     <?php elseif ($view === 'table'): ?>
         <?php $rowOffset = 0; ?>
         <div class="daily-roster-groups">
@@ -100,7 +105,7 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
                 <section class="shift-group-card <?= htmlspecialchars($group['class']) ?>">
                     <div class="shift-group-header">
                         <div class="shift-group-title-wrap">
-                            <strong><?= htmlspecialchars($group['heading_text'] ?? ($group['label'] . ' / ' . count($group['rows']) . ' ??????')) ?></strong>
+                            <strong><?= htmlspecialchars($group['heading_text'] ?? ($group['label'] . ' / ' . count($group['rows']) . ' รายการ')) ?></strong>
                         </div>
                     </div>
                     <div class="table-shell table-responsive">
@@ -108,12 +113,12 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
                             <?php app_render_table_colgroup('daily_roster'); ?>
                             <thead class="table-light">
                                 <tr>
-                                    <th>?????</th>
-                                    <th>???????????????</th>
-                                    <th>???????</th>
-                                    <th>????</th>
-                                    <th>?????????????</th>
-                                    <th>????????</th>
+                                    <th>ลำดับ</th>
+                                    <th>ชื่อเจ้าหน้าที่</th>
+                                    <th>ตำแหน่ง</th>
+                                    <th>แผนก</th>
+                                    <th>เบอร์โทรศัพท์</th>
+                                    <th>หมายเหตุ</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -149,7 +154,7 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
                 <section class="shift-group-card <?= htmlspecialchars($group['class']) ?>">
                     <div class="shift-group-header">
                         <div class="shift-group-title-wrap">
-                            <strong><?= htmlspecialchars($group['heading_text'] ?? ($group['label'] . ' / ' . count($group['rows']) . ' ??????')) ?></strong>
+                            <strong><?= htmlspecialchars($group['heading_text'] ?? ($group['label'] . ' / ' . count($group['rows']) . ' รายการ')) ?></strong>
                         </div>
                     </div>
                     <div class="row g-3">
@@ -159,13 +164,13 @@ $periodLabel = $headingContext['period_label'] ?? ($schedule['heading_month_year
                                 <article class="schedule-card daily-roster-card">
                                     <div class="daily-roster-card-top">
                                         <div>
-                                            <div class="small text-muted mb-2">???????? <?= app_table_row_number($page, $perPage, $rowOffset + $index) ?></div>
+                                            <div class="small text-muted mb-2">ลำดับ <?= app_table_row_number($page, $perPage, $rowOffset + $index) ?></div>
                                             <button type="button" class="staff-link btn btn-link p-0 text-start" data-profile-modal-trigger data-user-id="<?= (int) ($log['user_id'] ?? 0) ?>"><?= htmlspecialchars($displayName) ?></button>
-                                            <div class="text-muted"><?= htmlspecialchars($log['position_name'] ?: '-') ?> ? <?= htmlspecialchars($log['department_name'] ?: '-') ?></div>
+                                            <div class="text-muted"><?= htmlspecialchars($log['position_name'] ?: '-') ?> • <?= htmlspecialchars($log['department_name'] ?: '-') ?></div>
                                         </div>
                                         <span class="meta-pill"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars($log['phone_number'] ?: '-') ?></span>
                                     </div>
-                                    <div class="daily-roster-note mt-3"><?= htmlspecialchars($log['note'] ?: '??????????????????????') ?></div>
+                                    <div class="daily-roster-note mt-3"><?= htmlspecialchars($log['note'] ?: 'ไม่มีหมายเหตุเพิ่มเติม') ?></div>
                                 </article>
                             </div>
                         <?php endforeach; ?>
