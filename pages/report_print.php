@@ -75,65 +75,57 @@ if ($type === 'my') {
 } elseif ($type === 'department') {
     app_require_permission('can_view_department_reports');
     $reportData = app_fetch_department_report_data($conn, $_GET);
-    $summary = $reportData['department_totals'];
     $headingContext = $reportData['heading_context'] ?? app_get_department_report_heading_context($reportData['filters']);
+    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $reportData['filters']);
 
     $title = $headingContext['heading_text'];
     $subtitle = $headingContext['subheading_text'];
-    $reportTypeLabel = 'รายงานแผนก';
-    $summaryCards = [
-        ['label' => 'จำนวนเจ้าหน้าที่', 'value' => (int) $summary['staff_count']],
-        ['label' => 'จำนวนเวร', 'value' => (int) $summary['total_logs']],
-        ['label' => 'ชั่วโมงรวม', 'value' => number_format((float) $summary['total_hours'], 2)],
-        ['label' => 'รอตรวจ', 'value' => (int) $summary['pending_logs']],
+    $reportTypeLabel = 'รายงานแผนกประจำเดือน';
+    $reportLayout = 'monthly_matrix';
+    $monthlyDays = $matrixData['days'] ?? [];
+    $monthlyRows = $matrixData['rows'] ?? [];
+    $footerLegendItems = [
+        'ช = เวรเช้า เวลา 08.30 - 16.30 น.',
+        'บ = เวรบ่าย เวลา 16.30 - 00.30 น.',
+        'ด = เวรดึก เวลา 00.30 - 08.30 น.',
+        'BD = เวรบ่ายนอกเวลาราชการ',
     ];
-    $tableHeaders = ['ลำดับ', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'จำนวนเวร', 'ชั่วโมงรวม', 'ตรวจแล้ว', 'รอตรวจ'];
-    foreach ($reportData['staff_rows'] as $index => $row) {
-        $tableRows[] = [
-            $index + 1,
-            $row['fullname'] ?: '-',
-            $row['position_name'] ?: '-',
-            $row['department_name'] ?: '-',
-            (int) $row['total_logs'],
-            number_format((float) $row['total_hours'], 2),
-            (int) $row['approved_logs'],
-            max(0, (int) $row['total_logs'] - (int) $row['approved_logs']),
-        ];
-    }
+    $signatureLabel = 'ผู้ตรวจสอบเวร';
+    $notesBlockText = 'เอกสารนี้สรุปเวรประจำเดือนแบบตารางรายบุคคล โดยวันในอนาคตของเดือนปัจจุบันจะปล่อยว่างตามข้อมูลจริง';
 } elseif ($type === 'daily') {
     $reportData = app_fetch_daily_schedule_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_daily_schedule_heading_context($reportData);
     $dailyDepartments = app_get_daily_schedule_departments($conn)['departments'];
     $dailySelectedDepartment = trim((string) ($_GET['department'] ?? ''));
     $dailyScopeLabel = $dailySelectedDepartment !== ''
-        ? '??????????????????? ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: '????????')
-        : '?????????????';
+        ? 'แสดงข้อมูลเฉพาะแผนก ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: 'ไม่ระบุแผนก')
+        : 'ทุกแผนกในระบบ';
     $dailyMode = (string) ($reportData['mode'] ?? 'daily');
 
     $title = $headingContext['main_heading'] ?? $reportData['date_heading'];
-    $subtitle = $dailyScopeLabel . ' | ????? ' . ($reportData['review_status_label'] ?? '???????');
-    $reportTypeLabel = $dailyMode === 'monthly' ? '???????????????????' : '??????????????????????';
+    $subtitle = $dailyScopeLabel . ' | สถานะ ' . ($reportData['review_status_label'] ?? 'ทั้งหมด');
+    $reportTypeLabel = $dailyMode === 'monthly' ? 'รายงานเวรประจำเดือน' : 'รายงานเวรประจำวัน';
     $summaryCards = [
-        ['label' => $dailyMode === 'monthly' ? '???????????????????' : '???????????', 'value' => (int) ($reportData['unique_staff_count'] ?? 0)],
-        ['label' => $dailyMode === 'monthly' ? '???????????????' : '???????????', 'value' => (int) ($reportData['total_rows'] ?? count($reportData['logs'] ?? []))],
-        ['label' => '??????????', 'value' => number_format((float) ($reportData['total_hours'] ?? 0), 2)],
-        ['label' => '????????', 'value' => (int) ($reportData['approved_count'] ?? 0)],
+        ['label' => $dailyMode === 'monthly' ? 'จำนวนเจ้าหน้าที่' : 'จำนวนกะ', 'value' => (int) ($reportData['unique_staff_count'] ?? 0)],
+        ['label' => $dailyMode === 'monthly' ? 'จำนวนรายการเวร' : 'จำนวนรายการ', 'value' => (int) ($reportData['total_rows'] ?? count($reportData['logs'] ?? []))],
+        ['label' => 'ชั่วโมงรวม', 'value' => number_format((float) ($reportData['total_hours'] ?? 0), 2)],
+        ['label' => 'อนุมัติแล้ว', 'value' => (int) ($reportData['approved_count'] ?? 0)],
     ];
     $footerLegendItems = [
-        '? = ??????? ???? 08.30 - 16.30 ?.',
-        '? = ??????? ???? 16.30 - 00.30 ?.',
-        '? = ?????? ???? 00.30 - 08.30 ?.',
-        'BD = ????????????????????',
+        'ช = เวรเช้า เวลา 08.30 - 16.30 น.',
+        'บ = เวรบ่าย เวลา 16.30 - 00.30 น.',
+        'ด = เวรดึก เวลา 00.30 - 08.30 น.',
+        'BD = เวรบ่ายนอกเวลาราชการ',
     ];
-    $signatureLabel = '?????????????';
-    $notesBlockText = '????????????????????????????? ?????????????????????????????????????????????????????????????????';
+    $signatureLabel = 'ผู้ตรวจสอบเวร';
+    $notesBlockText = 'รายงานนี้แสดงตารางเวรตามตัวกรองปัจจุบัน และจัดรูปแบบให้เหมาะสำหรับพิมพ์เอกสารทางการ';
 
     if ($dailyMode === 'monthly') {
         $reportLayout = 'monthly_matrix';
         $monthlyDays = $reportData['matrix_days'] ?? [];
         $monthlyRows = $reportData['matrix_rows'] ?? [];
     } else {
-        $tableHeaders = ['????????', '?????', '???????????????', '???????', '????', '?????????????', '????????'];
+        $tableHeaders = ['กลุ่มเวร', 'ลำดับ', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เบอร์โทรศัพท์', 'หมายเหตุ'];
         foreach (($reportData['grouped_logs'] ?? []) as $group) {
             foreach (($group['rows'] ?? []) as $index => $row) {
                 $tableRows[] = [
@@ -347,9 +339,9 @@ if ($type === 'my') {
 </head>
 <body>
     <div class="print-actions">
-        <a class="secondary" href="javascript:window.close()">???????????</a>
-        <button class="secondary" type="button" id="downloadPdfBtn">????????? PDF</button>
-        <button class="primary" type="button" onclick="window.print()">???????????</button>
+        <a class="secondary" href="javascript:window.close()">ปิดหน้าต่าง</a>
+        <button class="secondary" type="button" id="downloadPdfBtn">ดาวน์โหลด PDF</button>
+        <button class="primary" type="button" onclick="window.print()">พิมพ์รายงาน</button>
     </div>
 
     <main class="page" id="reportSurface">
@@ -364,13 +356,14 @@ if ($type === 'my') {
                     <div class="subtitle"><?= htmlspecialchars($subtitle) ?></div>
                 </div>
                 <div class="doc-meta">
-                    <div><strong>????????:</strong> <?= htmlspecialchars($generatedBy) ?></div>
-                    <div><strong>??????????:</strong> <?= htmlspecialchars(app_format_thai_datetime(date('Y-m-d H:i:s'))) ?></div>
-                    <div><strong>??????:</strong> ?????? A4</div>
+                    <div><strong>จัดทำโดย:</strong> <?= htmlspecialchars($generatedBy) ?></div>
+                    <div><strong>พิมพ์เมื่อ:</strong> <?= htmlspecialchars(app_format_thai_datetime(date('Y-m-d H:i:s'))) ?></div>
+                    <div><strong>รูปแบบ:</strong> แนวนอน A4</div>
                 </div>
             </div>
         </header>
 
+        <?php if ($summaryCards): ?>
         <section class="summary-grid">
             <?php foreach ($summaryCards as $card): ?>
                 <div class="summary-card">
@@ -379,26 +372,27 @@ if ($type === 'my') {
                 </div>
             <?php endforeach; ?>
         </section>
+        <?php endif; ?>
 
         <section class="body">
             <div class="section-head">
                 <div>
-                    <h2>????????????????</h2>
-                    <p>????????????????????????????????????????????? ???????????????????????????????????????</p>
+                    <h2>รายละเอียดรายงาน</h2>
+                    <p>ออกแบบสำหรับพิมพ์เป็นเอกสารทางการ โดยใช้ข้อมูลชุดเดียวกับหน้ารายงานในระบบ</p>
                 </div>
             </div>
 
             <?php if ($reportLayout === 'monthly_matrix'): ?>
                 <?php if (!$monthlyRows): ?>
-                    <div class="empty-state">?????????????????????????????????????????????????</div>
+                    <div class="empty-state">ไม่พบข้อมูลสำหรับจัดทำรายงานในช่วงเวลาหรือขอบเขตที่เลือก</div>
                 <?php else: ?>
                     <table class="monthly-matrix-table">
                         <thead>
                             <tr>
-                                <th>?????</th>
-                                <th>????-????</th>
-                                <th>???????</th>
-                                <th>????</th>
+                                <th>ลำดับ</th>
+                                <th>ชื่อ-สกุล</th>
+                                <th>ตำแหน่ง</th>
+                                <th>แผนก</th>
                                 <?php foreach ($monthlyDays as $dayMeta): ?>
                                     <th><?= (int) $dayMeta['day'] ?></th>
                                 <?php endforeach; ?>
@@ -421,7 +415,7 @@ if ($type === 'my') {
                     </table>
                 <?php endif; ?>
             <?php elseif (!$tableRows): ?>
-                <div class="empty-state">??????????????????????????</div>
+                <div class="empty-state">ไม่พบข้อมูลสำหรับแสดงในรายงานนี้</div>
             <?php else: ?>
                 <table>
                     <thead>
@@ -446,7 +440,7 @@ if ($type === 'my') {
             <?php if ($footerLegendItems || $signatureLabel !== ''): ?>
                 <div class="footer-block">
                     <div>
-                        <h3 class="footer-title">????????</h3>
+                        <h3 class="footer-title">หมายเหตุ</h3>
                         <?php if ($footerLegendItems): ?>
                             <ul class="legend-list">
                                 <?php foreach ($footerLegendItems as $legendItem): ?>
@@ -460,8 +454,8 @@ if ($type === 'my') {
                     </div>
                     <div class="signature-box">
                         <div class="signature-line"></div>
-                        <div>?????? ...............................................................</div>
-                        <div class="signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : '??????????????????') ?></div>
+                        <div>ลงชื่อ ...............................................................</div>
+                        <div class="signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
                     </div>
                 </div>
             <?php endif; ?>

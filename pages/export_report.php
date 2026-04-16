@@ -42,39 +42,44 @@ if ($type === 'my') {
     app_require_permission('can_view_department_reports');
     $reportData = app_fetch_department_report_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_department_report_heading_context($reportData['filters']);
+    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $reportData['filters']);
     fputcsv($output, [$headingContext['heading_text']]);
     fputcsv($output, [$headingContext['subheading_text']]);
     fputcsv($output, []);
 
-    fputcsv($output, ['ลำดับ', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'จำนวนเวร', 'ชั่วโมงรวม', 'ตรวจแล้ว', 'รอตรวจ']);
-    foreach ($reportData['staff_rows'] as $index => $row) {
-        $pendingLogs = max(0, (int) $row['total_logs'] - (int) $row['approved_logs']);
-        fputcsv($output, [
-            $index + 1,
+    $headers = ['ลำดับ', 'ชื่อ-สกุล', 'ตำแหน่ง', 'แผนก'];
+    foreach (($matrixData['days'] ?? []) as $dayMeta) {
+        $headers[] = (int) $dayMeta['day'];
+    }
+    fputcsv($output, $headers);
+
+    foreach (($matrixData['rows'] ?? []) as $row) {
+        $csvRow = [
+            (int) ($row['row_number'] ?? 0),
             $row['fullname'] ?? '',
             $row['position_name'] ?? '',
             $row['department_name'] ?? '',
-            (int) $row['total_logs'],
-            number_format((float) $row['total_hours'], 2, '.', ''),
-            (int) $row['approved_logs'],
-            $pendingLogs,
-        ]);
+        ];
+        foreach (($matrixData['days'] ?? []) as $dayMeta) {
+            $csvRow[] = $row['day_cells'][(int) $dayMeta['day']] ?? '';
+        }
+        fputcsv($output, $csvRow);
     }
 } elseif ($type === 'daily') {
     $reportData = app_fetch_daily_schedule_data($conn, $_GET);
     $dailyDepartments = app_get_daily_schedule_departments($conn)['departments'];
     $dailySelectedDepartment = trim((string) ($_GET['department'] ?? ''));
     $dailyScopeLabel = $dailySelectedDepartment !== ''
-        ? '??????????????????? ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: '????????')
-        : '?????????????';
+        ? 'แสดงข้อมูลเฉพาะแผนก ' . (app_find_department_name($dailyDepartments, (int) $dailySelectedDepartment) ?: 'ไม่ระบุแผนก')
+        : 'ทุกแผนกในระบบ';
     $dailyMode = (string) ($reportData['mode'] ?? 'daily');
 
     fputcsv($output, [$reportData['date_heading']]);
-    fputcsv($output, [$dailyScopeLabel . ' | ????? ' . ($reportData['review_status_label'] ?? '???????')]);
+    fputcsv($output, [$dailyScopeLabel . ' | สถานะ ' . ($reportData['review_status_label'] ?? 'ทั้งหมด')]);
     fputcsv($output, []);
 
     if ($dailyMode === 'monthly') {
-        $headers = ['?????', '????-????', '???????', '????'];
+        $headers = ['ลำดับ', 'ชื่อ-สกุล', 'ตำแหน่ง', 'แผนก'];
         foreach (($reportData['matrix_days'] ?? []) as $dayMeta) {
             $headers[] = (int) $dayMeta['day'];
         }
@@ -93,7 +98,7 @@ if ($type === 'my') {
             fputcsv($output, $csvRow);
         }
     } else {
-        fputcsv($output, ['????????', '?????', '???????????????', '???????', '????', '?????????????', '????????']);
+        fputcsv($output, ['กลุ่มเวร', 'ลำดับ', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เบอร์โทรศัพท์', 'หมายเหตุ']);
         foreach (($reportData['grouped_logs'] ?? []) as $group) {
             foreach (($group['rows'] ?? []) as $index => $row) {
                 fputcsv($output, [

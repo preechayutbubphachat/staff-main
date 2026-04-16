@@ -495,6 +495,203 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
     ];
 }
 
+function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): array
+{
+    $yearCe = (int) ($filters['year_ce'] ?? date('Y'));
+    $monthNumber = (int) ($filters['month_number'] ?? date('n'));
+    $departmentIds = (int) ($filters['selected_department_id'] ?? 0) > 0
+        ? [(int) $filters['selected_department_id']]
+        : ($filters['scope']['ids'] ?? []);
+
+    if (!$departmentIds) {
+        return [
+            'days' => app_build_daily_schedule_matrix_days($yearCe, $monthNumber),
+            'rows' => [],
+        ];
+    }
+
+    $days = app_build_daily_schedule_matrix_days($yearCe, $monthNumber);
+    $placeholders = implode(', ', array_fill(0, count($departmentIds), '?'));
+
+    $staffStmt = $conn->prepare("
+        SELECT
+            u.id AS user_id,
+            u.fullname,
+            COALESCE(u.position_name, '') AS position_name,
+            d.department_name
+        FROM users u
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE u.department_id IN ($placeholders)
+        ORDER BY d.department_name ASC, u.fullname ASC
+    ");
+    $staffStmt->execute($departmentIds);
+    $staffRows = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $logParams = array_merge([$yearCe, $monthNumber], $departmentIds);
+    $logStmt = $conn->prepare("
+        SELECT
+            t.id,
+            t.user_id,
+            t.work_date,
+            t.time_in,
+            t.time_out,
+            t.note,
+            t.approval_note,
+            t.checked_by,
+            t.checked_at,
+            t.created_at,
+            t.updated_at
+        FROM time_logs t
+        WHERE YEAR(t.work_date) = ?
+          AND MONTH(t.work_date) = ?
+          AND t.department_id IN ($placeholders)
+          AND t.checked_at IS NOT NULL
+        ORDER BY t.work_date ASC, t.time_in ASC, t.id ASC
+    ");
+    $logStmt->execute($logParams);
+    $logs = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $logsByUserDay = [];
+    foreach ($logs as $log) {
+        $userId = (int) ($log['user_id'] ?? 0);
+        $dayNumber = (int) date('j', strtotime((string) ($log['work_date'] ?? '')));
+        if ($userId > 0 && $dayNumber > 0) {
+            $logsByUserDay[$userId][$dayNumber][] = $log;
+        }
+    }
+
+    $rows = [];
+    foreach ($staffRows as $index => $staff) {
+        $userId = (int) ($staff['user_id'] ?? 0);
+        $dayCells = [];
+
+        foreach ($days as $dayMeta) {
+            $dayNumber = (int) $dayMeta['day'];
+            if (!empty($dayMeta['is_future'])) {
+                $dayCells[$dayNumber] = '';
+                continue;
+            }
+
+            $dayLogs = $logsByUserDay[$userId][$dayNumber] ?? [];
+            $dayCells[$dayNumber] = app_get_department_monthly_matrix_day_code($dayLogs);
+        }
+
+        $rows[] = [
+            'row_number' => $index + 1,
+            'user_id' => $userId,
+            'fullname' => (string) ($staff['fullname'] ?? '-'),
+            'position_name' => (string) ($staff['position_name'] ?? '-'),
+            'department_name' => (string) ($staff['department_name'] ?? '-'),
+            'day_cells' => $dayCells,
+        ];
+    }
+
+    return [
+        'days' => $days,
+        'rows' => $rows,
+    ];
+}
+
+function app_normalize_shift_time(?string $value): string
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('/(\d{2}):(\d{2})/', $value, $matches)) {
+        return $matches[1] . ':' . $matches[2];
+    }
+
+    return '';
+}
+
+function app_department_monthly_matrix_note_markers(array $row): array
+{
+    return [
+        trim((string) ($row['note'] ?? '')),
+        trim((string) ($row['approval_note'] ?? '')),
+    ];
+}
+
+function app_is_bd_shift(array $row): bool
+{
+    foreach (app_department_monthly_matrix_note_markers($row) as $noteText) {
+        if ($noteText === '') {
+            continue;
+        }
+
+        $normalized = mb_strtolower($noteText, 'UTF-8');
+        if ($normalized === 'bd' || preg_match('/\bbd\b/i', $noteText)) {
+            return true;
+        }
+
+        if (str_contains($normalized, 'เวรบ่ายนอกเวลาราชการ')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function app_match_shift_abbreviation(array $row): string
+{
+    if (!empty($row['checked_at']) === false) {
+        return '';
+    }
+
+    if (app_is_bd_shift($row)) {
+        return 'BD';
+    }
+
+    $timeIn = app_normalize_shift_time($row['time_in'] ?? null);
+    $timeOut = app_normalize_shift_time($row['time_out'] ?? null);
+
+    return match ($timeIn . '|' . $timeOut) {
+        '08:30|16:30' => 'ช',
+        '16:30|00:30' => 'บ',
+        '00:30|08:30' => 'ด',
+        default => '',
+    };
+}
+
+function app_get_department_monthly_matrix_day_code(array $recordsForOneDay): string
+{
+    if (!$recordsForOneDay) {
+        return '';
+    }
+
+    $hasExplicitBd = false;
+    $standardCodes = [];
+
+    foreach ($recordsForOneDay as $row) {
+        if (empty($row['checked_at'])) {
+            continue;
+        }
+
+        if (app_is_bd_shift($row)) {
+            $hasExplicitBd = true;
+            continue;
+        }
+
+        $code = app_match_shift_abbreviation($row);
+        if (in_array($code, ['ช', 'บ', 'ด'], true)) {
+            $standardCodes[] = $code;
+        }
+    }
+
+    if ($hasExplicitBd) {
+        return 'BD';
+    }
+
+    $standardCodes = array_values(array_unique($standardCodes));
+    if (count($standardCodes) === 1) {
+        return $standardCodes[0];
+    }
+
+    return '';
+}
+
 function app_build_scoped_time_log_filters(PDO $conn, array $input, string $defaultStatus = 'pending'): array
 {
     $filters = app_build_time_log_filters($input, $defaultStatus);
@@ -635,7 +832,7 @@ function app_get_daily_schedule_heading_context(array $schedule): array
     $departmentName = $selectedDepartment !== ''
         ? app_find_department_name($departmentOptions, (int) $selectedDepartment)
         : '';
-    $departmentLabel = $departmentName !== '' ? '???? ' . $departmentName : '???????';
+    $departmentLabel = $departmentName !== '' ? 'แผนก ' . $departmentName : 'ทุกแผนก';
     $periodLabel = $mode === 'monthly'
         ? (string) ($schedule['heading_month_year_th'] ?? app_format_thai_month_year(sprintf(
             '%04d-%02d',
@@ -644,11 +841,11 @@ function app_get_daily_schedule_heading_context(array $schedule): array
         )))
         : app_format_thai_date($selectedDate);
     $mainHeading = $mode === 'monthly'
-        ? '??????????????????? ' . $departmentLabel . ' ?????????? ' . $periodLabel
-        : '????????????????? ' . $departmentLabel . ' ??????????? ' . $periodLabel;
+        ? 'รายงานเวรประจำเดือน ' . $departmentLabel . ' ประจำเดือน ' . $periodLabel
+        : 'รายงานเวรประจำวัน ' . $departmentLabel . ' ประจำวันที่ ' . $periodLabel;
     $tableContextLabel = $mode === 'monthly'
-        ? '?????????????????????? ' . $departmentLabel
-        : '???????????????????????? ' . $departmentLabel;
+        ? 'ตารางสรุปเวรประจำเดือน ' . $departmentLabel
+        : 'ตารางเวรประจำวันที่เลือก ' . $departmentLabel;
 
     return [
         'mode' => $mode,
@@ -656,7 +853,7 @@ function app_get_daily_schedule_heading_context(array $schedule): array
         'date_heading_th' => $periodLabel,
         'department_name' => $departmentName,
         'department_label' => $departmentLabel,
-        'scope_label' => $departmentName !== '' ? '??????????????????? ' . $departmentName : '?????????????',
+        'scope_label' => $departmentName !== '' ? 'แสดงข้อมูลเฉพาะแผนก ' . $departmentName : 'ทุกแผนกในระบบ',
         'main_heading' => $mainHeading,
         'table_context_label' => $tableContextLabel,
         'period_label' => $periodLabel,

@@ -1,35 +1,55 @@
-# BUG AUDIT
+## Checked items
 
-## ตรวจแล้ว
+- Approval report Thai text rendering in shared print/export template.
+- Department report monthly matrix day-count generation.
+- Shift code mapping for `ช / บ / ด / BD`.
+- Strict BD detection rule.
+- Same-day conflict handling for monthly matrix cells.
+- Blank future-day rule for the current incomplete month.
+- Footer legend and signature area in print layout.
+- A4 landscape configuration in print/PDF path.
 
-- landscape print ถูกตั้งไว้ใน [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
-- landscape PDF ถูกตั้งไว้ใน jsPDF ของ [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
-- daily schedule รองรับ `mode=daily|monthly` ใน:
-  - [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
-  - [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
-- monthly matrix ถูกสร้างจาก helper กลางใน [report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
-- footer notes + signature ถูกเพิ่มใน layout พิมพ์
-- metadata card `เวลาที่สร้างรายงาน` ถูกย้ายขึ้น header report แล้ว
-- CSV ของ daily report รองรับทั้ง daily และ monthly mode ใน [export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)
+## Findings addressed
 
-## กติกาที่ตรวจซ้ำ
+- Approval/review report text corruption came from broken Thai literals inside shared report templates, not from the database query itself.
+- Department report did not have a formal monthly matrix output; a dedicated department-only matrix mode was added to print and CSV export.
+- Daily schedule helper heading text had leftover placeholder strings in the shared helper and was restored while touching the shared report layer.
+- Monthly matrix mapping is now deterministic and conservative: approved-only, exact-time matching, explicit BD only, blank on unresolved conflict.
 
-- จำนวนวันของเดือนใช้ค่า dynamic ตามเดือนจริง
-- วันในอนาคตของเดือนปัจจุบันถูกปล่อยว่าง
-- mapping `ช / บ / ด / BD` อยู่ใน helper กลาง ไม่ได้กระจายหลายไฟล์
-- print / PDF / CSV ใช้ context เดียวกับหน้า daily schedule
+## Manual follow-up still recommended
 
-## Manual Follow-up ที่ยังควรเช็ก
+- Open [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php?type=approval) in a browser and confirm Thai labels render correctly in the live print view.
+- Open [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php?type=department) with several month lengths:
+  - 28 days
+  - 29 days
+  - 30 days
+  - 31 days
+- Generate PDF from the department report and confirm the matrix still fits A4 landscape cleanly on the actual viewer/printer used in the hospital.
+- Verify the business expectation for duplicate same-day shifts. Current rule keeps all recognized codes joined in one cell (example: `ช/บ`) instead of discarding data.
+- Verify the business expectation for duplicate same-day shifts. Current rule is now:
+  - explicit `BD` wins
+  - one unique standard shift code wins
+  - conflicting same-day standard shift codes produce a blank cell
 
-- ทดลองพิมพ์เดือน 31 วันจริงบนเครื่องพิมพ์หรือ PDF viewer จริง เพื่อดูความแน่นของคอลัมน์
-- ทดลองกรณีหนึ่งคนมีหลายเวรในวันเดียวและยืนยันว่ารูปแบบ `ช/บ` อ่านได้ตามที่หน่วยงานต้องการ
-- ตรวจดู wording ในเอกสารจริงอีกครั้งบนเครื่องผู้ใช้ เพราะ console ของ Windows ใน environment นี้แสดงภาษาไทยเพี้ยน แต่ไฟล์ lint ผ่านและบันทึกเป็น UTF-8 แล้ว
+## Manual test checklist
 
-## Syntax Check
-
-- [includes/report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
-- [pages/daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
-- [partials/reports/daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
-- [ajax/reports/daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
-- [pages/report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
-- [pages/export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)
+- Approval/review report Thai headings display correctly.
+- Approval/review report Thai labels display correctly in print/PDF/CSV.
+- Department monthly report reflects the selected department correctly.
+- Department monthly report reflects the selected Thai month/year correctly.
+- Department monthly report prints as A4 landscape.
+- Department monthly report PDF exports as A4 landscape.
+- One row per person appears in the matrix.
+- Correct number of day columns appears for the selected month.
+- `ช / บ / ด / BD` mapping appears correctly from real logs.
+- `08:30–16:30` maps to `ช`.
+- `16:30–00:30` maps to `บ`.
+- `00:30–08:30` maps to `ด`.
+- explicit `BD` marker maps to `BD`.
+- unmatched or conflicting same-day records stay blank.
+- Future days in the current incomplete month remain blank.
+- Notes legend appears at the bottom.
+- Signature section appears at the bottom.
+- No PHP warnings/notices introduced.
+- No JS errors introduced.
+- No permission regression introduced.
