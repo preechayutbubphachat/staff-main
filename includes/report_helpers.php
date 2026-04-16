@@ -1717,6 +1717,8 @@ function app_get_selected_time_log_summary(PDO $conn, array $selectedIds, bool $
             t.id,
             t.user_id,
             t.work_date,
+            t.time_in,
+            t.time_out,
             u.fullname,
             u.position_name,
             d.department_name

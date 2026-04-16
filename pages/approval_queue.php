@@ -225,18 +225,25 @@ $csvQuery = app_approval_query($filters, ['type' => 'approval']);
                     <div class="col-md-4"><div class="p-3 rounded-4 bg-light"><div class="small text-muted">จำนวนเจ้าหน้าที่ไม่ซ้ำ</div><div class="fs-4 fw-bold" id="modalStaffCount">0</div></div></div>
                     <div class="col-md-4"><div class="p-3 rounded-4 bg-light"><div class="small text-muted">จำนวนแผนกไม่ซ้ำ</div><div class="fs-4 fw-bold" id="modalDepartmentCount">0</div></div></div>
                 </div>
-                <div class="accordion" id="approveSummaryAccordion">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#selectedStaffPanel">รายชื่อเจ้าหน้าที่ที่เลือก</button></h2>
-                        <div id="selectedStaffPanel" class="accordion-collapse collapse show" data-bs-parent="#approveSummaryAccordion"><div class="accordion-body"><ul class="mb-0" id="selectedStaffList"></ul></div></div>
-                    </div>
-                    <div class="accordion-item">
-                        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#selectedDepartmentsPanel">รายชื่อแผนกที่เกี่ยวข้อง</button></h2>
-                        <div id="selectedDepartmentsPanel" class="accordion-collapse collapse" data-bs-parent="#approveSummaryAccordion"><div class="accordion-body"><ul class="mb-0" id="selectedDepartmentsList"></ul></div></div>
-                    </div>
-                    <div class="accordion-item">
-                        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#selectedLogsPanel">รหัสรายการที่เลือก</button></h2>
-                        <div id="selectedLogsPanel" class="accordion-collapse collapse" data-bs-parent="#approveSummaryAccordion"><div class="accordion-body"><ul class="mb-0" id="selectedLogIdsList"></ul></div></div>
+                <div class="approval-modal-table-wrap">
+                    <div class="table-responsive approval-modal-table-scroll">
+                        <table class="table align-middle mb-0 approval-modal-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ลำดับ</th>
+                                    <th>วันที่</th>
+                                    <th>ชื่อ</th>
+                                    <th>ตำแหน่ง</th>
+                                    <th>แผนก</th>
+                                    <th>เวลา</th>
+                                </tr>
+                            </thead>
+                            <tbody id="selectedItemsTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">ยังไม่มีรายการที่เลือก</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

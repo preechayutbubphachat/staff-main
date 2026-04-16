@@ -29,6 +29,7 @@
         const selectedSummaryText = document.getElementById('selectedSummaryText');
         const openApproveModalBtn = document.getElementById('openApproveModalBtn');
         const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const selectedItemsTableBody = document.getElementById('selectedItemsTableBody');
         const approveModalElement = document.getElementById('approveModal');
         const messageContainer = document.getElementById(config.messageId || 'approvalQueueMessage');
 
@@ -119,6 +120,28 @@
         function clearSelection() {
             selectedIds = new Set();
             updateSelectionUI();
+        }
+
+        function renderSelectedItemsTable(rows) {
+            if (!selectedItemsTableBody) {
+                return;
+            }
+
+            if (!Array.isArray(rows) || rows.length === 0) {
+                selectedItemsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีรายการที่เลือก</td></tr>';
+                return;
+            }
+
+            selectedItemsTableBody.innerHTML = rows.map(function (row, index) {
+                return '<tr>'
+                    + '<td class="fw-semibold">' + (index + 1) + '</td>'
+                    + '<td>' + (row.date || '-') + '</td>'
+                    + '<td>' + (row.name || '-') + '</td>'
+                    + '<td>' + (row.position_name || '-') + '</td>'
+                    + '<td>' + (row.department_name || '-') + '</td>'
+                    + '<td>' + (row.time_range || '-') + '</td>'
+                    + '</tr>';
+            }).join('');
         }
 
         function setCheckboxSelected(checkbox, checked) {
@@ -241,6 +264,16 @@
         });
 
         resultsContainer.addEventListener('click', function (event) {
+            const selectAllButton = event.target.closest('[data-select-all-visible]');
+            if (selectAllButton) {
+                event.preventDefault();
+                getSelectableCheckboxes().forEach(function (checkbox) {
+                    setCheckboxSelected(checkbox, true);
+                });
+                updateSelectionUI();
+                return;
+            }
+
             const pageLink = event.target.closest('[data-approval-page-link], [data-approval-view-link]');
             if (pageLink) {
                 event.preventDefault();
@@ -271,8 +304,13 @@
         if (clearSelectionBtn) {
             clearSelectionBtn.addEventListener('click', function () {
                 clearSelection();
+                renderSelectedItemsTable([]);
             });
         }
+
+        approveModalElement.addEventListener('hidden.bs.modal', function () {
+            renderSelectedItemsTable([]);
+        });
 
         if (openApproveModalBtn) {
             openApproveModalBtn.addEventListener('click', async function () {
@@ -286,31 +324,7 @@
                     document.getElementById('modalSelectedCount').textContent = summary.count || 0;
                     document.getElementById('modalStaffCount').textContent = summary.staff_count || 0;
                     document.getElementById('modalDepartmentCount').textContent = summary.department_count || 0;
-
-                    const staffList = document.getElementById('selectedStaffList');
-                    const departmentList = document.getElementById('selectedDepartmentsList');
-                    const logList = document.getElementById('selectedLogIdsList');
-
-                    staffList.innerHTML = '';
-                    (summary.staff || []).forEach(function (staff) {
-                        const li = document.createElement('li');
-                        const button = document.createElement('button');
-                        button.type = 'button';
-                        button.className = 'staff-list-btn';
-                        button.setAttribute('data-profile-modal-trigger', '');
-                        button.setAttribute('data-user-id', staff.user_id || '');
-                        button.textContent = staff.name;
-                        li.appendChild(button);
-                        staffList.appendChild(li);
-                    });
-
-                    departmentList.innerHTML = (summary.departments || []).map(function (item) {
-                        return '<li>' + item + '</li>';
-                    }).join('') || '<li>ไม่มีข้อมูล</li>';
-
-                    logList.innerHTML = (summary.ids || []).map(function (item) {
-                        return '<li>#' + item + '</li>';
-                    }).join('') || '<li>ไม่มีข้อมูล</li>';
+                    renderSelectedItemsTable(summary.rows || []);
 
                     approveModal.show();
                 } catch (error) {

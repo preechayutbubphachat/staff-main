@@ -1,43 +1,50 @@
 ## Checked items
 
-- Daily Schedule Thai text in page labels.
-- Daily Schedule Thai text in result partial / AJAX refresh path.
-- Department monthly matrix landscape width.
-- Vertical header readability for narrow end columns.
-- Print/PDF report output alignment.
-- Signature block structure.
+- Select-all visibility in the approval results area.
+- Selected count vs rendered modal rows.
+- Modal stale state after close / clear selection.
+- Scrollable table usability inside the confirmation modal.
+- Backend bulk approval action still receiving the correct selected IDs.
 
 ## Findings addressed
 
-- Daily Schedule still had real placeholder literals (`????`) in page and partial source files.
-- The AJAX render path for Daily Schedule did not pass the full results context consistently into the shared partial.
-- Department monthly matrix width became too wide after adding end-summary columns.
-- Narrow end columns benefited from vertical header treatment in print layout.
+- The previous confirmation modal split review data into three accordion sections, which made bulk verification slower.
+- The previous detail layout could hide repeated selected records behind grouped summaries.
+- Select-all existed but was not prominent enough in the results header.
+
+## Current behavior
+
+- Select-all is now exposed with:
+  - a checkbox
+  - a stronger `เลือกรายการทั้งหมดในหน้าที่เห็น` button
+- Modal detail review is now a single row-based table.
+- Repeated staff names remain repeated rows when multiple records are selected.
+- Old accordion sections for staff / departments / IDs were removed.
+- Selection state is cleared from the modal table when clearing selection or closing the modal.
 
 ## Manual follow-up still recommended
 
-- Open [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php) and confirm all visible labels render as Thai, not `????`.
-- Open the Department monthly print view from [department_reports.php](C:/xampp/htdocs/staff-main/pages/department_reports.php) and confirm the matrix fits A4 landscape on the actual browser/printer combination used.
-- Generate PDF from the department monthly report and confirm vertical headers do not clip.
-- Confirm whether a real reviewer name should later populate the parenthesized signature line.
+- Open the approval queue in both `table` and `cards` view and confirm select-all works the same way.
+- Test a large selection to confirm the modal scroll area is comfortable on the actual reviewer screen size.
+- Confirm the time range format matches reviewer expectations for overnight rows.
 
 ## Manual test checklist
 
-- Daily Schedule page headings are correct in Thai.
-- Daily Schedule filter labels are correct in Thai.
-- Daily Schedule summary/context labels are correct in Thai.
-- Daily Schedule AJAX refresh still shows Thai correctly after filter changes.
-- Department monthly report fits landscape A4 better.
-- `จำนวนเวร` header is readable.
-- `ชั่วโมงรวม` header is readable.
-- `OT` header is readable.
-- Day columns still align properly.
-- Matrix body is still readable.
-- Print preview looks correct.
-- PDF output looks correct.
-- No clipped or overlapping text appears.
-- Signature line appears.
-- Parenthesized line appears below the signature line.
-- `ผู้ตรวจสอบเวร` appears below the parentheses line.
+- Select-all control is easy to find.
+- Clicking select-all selects all current visible rows correctly.
+- Selected summary count updates correctly.
+- Opening the confirmation modal shows all selected rows in a table.
+- Repeated names appear as repeated rows if multiple records are selected.
+- Modal table columns show:
+  - `ลำดับ`
+  - `วันที่`
+  - `ชื่อ`
+  - `ตำแหน่ง`
+  - `แผนก`
+  - `เวลา`
+- Time shows as one combined range like `08.30 น. - 16.30 น.`
+- Old dropdown/accordion sections are removed.
+- Scroll works when many rows are selected.
+- Confirm action still processes the correct selected records.
 - No PHP warnings/notices introduced.
 - No JS errors introduced.

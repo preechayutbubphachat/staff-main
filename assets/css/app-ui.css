@@ -1174,6 +1174,54 @@ main.container {
     display: block;
 }
 
+.approval-select-all {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 10px 14px;
+    border-radius: 18px;
+    background: rgba(28, 107, 99, 0.08);
+    border: 1px solid rgba(28, 107, 99, 0.16);
+}
+
+.approval-select-all-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    font-weight: 700;
+    color: var(--app-ink);
+}
+
+.approval-select-all-btn {
+    font-weight: 700;
+}
+
+.approval-modal-table-wrap {
+    border: 1px solid rgba(16, 36, 59, 0.08);
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.approval-modal-table-scroll {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.approval-modal-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+}
+
+.approval-modal-table td,
+.approval-modal-table th {
+    vertical-align: middle;
+}
+
 .ops-results-panel {
     padding: 24px;
 }

@@ -1,63 +1,61 @@
 ## Scope completed
 
-- Fixed remaining broken Thai text on the Daily Schedule page and its AJAX result partial.
-- Tightened the Department Monthly Matrix Report so it fits A4 landscape more cleanly.
-- Added vertical header treatment for selected narrow monthly summary columns.
+- Made the select-all action on Approval Queue easier to notice.
+- Rebuilt the bulk confirmation modal into a single scrollable row-based table.
+- Removed the old selected-staff / departments / IDs accordion sections.
 
-## Thai text fixes
+## Select-all visibility
 
-- Daily Schedule still had leftover placeholder literals such as `????` in:
-  - [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
-  - [daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
-- Replaced those placeholder strings with real Thai labels and helper text.
-- Updated the AJAX render path in [daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php) so the results partial always receives the full matrix/table context it expects.
-- Shared print/export templates remain on UTF-8 paths and continue using Thai-safe fonts.
+- Added a stronger select-all area in [results_block.php](C:/xampp/htdocs/staff-main/partials/approval/results_block.php).
+- Kept the existing select-all checkbox.
+- Added a clearer action button:
+  - `เลือกรายการทั้งหมดในหน้าที่เห็น`
+- The button selects all currently visible selectable rows only.
 
-## Department monthly matrix width changes
+## Confirmation modal redesign
 
-- Kept the document in A4 landscape.
-- Reduced monthly matrix width pressure in [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php) by:
-  - shrinking person-column widths
-  - shrinking day-column widths
-  - reducing print font size and cell padding slightly
-  - keeping the remark column compact but readable
-- Added vertical header text for:
-  - `จำนวนเวร`
-  - `ชั่วโมงรวม`
-  - `OT`
+- The modal in [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php) now shows:
+  - summary cards
+  - one scrollable selected-items table
+  - standard action footer
+- The detailed review area is now a real table with columns:
+  - `ลำดับ`
+  - `วันที่`
+  - `ชื่อ`
+  - `ตำแหน่ง`
+  - `แผนก`
+  - `เวลา`
 
-## Monthly matrix trailing columns
+## Removed old sections
 
-The department monthly matrix now ends with:
+Removed the old accordion/dropdown review sections for:
 
-- `จำนวนเวร`
-- `ชั่วโมงรวม`
-- `OT`
-- `หมายเหตุ`
+- selected staff names
+- related departments
+- selected record IDs
 
-Behavior:
+Those values are still used internally where needed, but the reviewer now verifies records directly from the selected-items table.
 
-- `จำนวนเวร` counts only safely resolved matrix shifts.
-- `ชั่วโมงรวม` sums only those resolved counted shifts.
-- `OT` stays blank because there is no reliable structured OT source in current `time_logs`.
-- `หมายเหตุ` stays blank because there is no reliable month-level summary note source in the current schema.
+## Selection data flow
 
-## Signature area
+- Expanded [get_selection_summary.php](C:/xampp/htdocs/staff-main/ajax/approval/get_selection_summary.php) so it returns row-level details needed by the modal table.
+- Updated [approval-queue.js](C:/xampp/htdocs/staff-main/assets/js/approval-queue.js) to render every selected record as its own row.
+- Repeated names remain repeated rows when multiple records are selected for the same person.
+- Modal table state is reset when clearing selection or closing the modal.
 
-The print signature block now renders:
+## Styling updates
 
-- `ลงชื่อ ...............................................................`
-- `(...............................................................)`
-- `ผู้ตรวจสอบเวร`
+- Added compact modal table styles and scrollable container behavior in [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
+- Added clearer select-all styling in the approval results header.
 
-## Files changed in this round
+## Files changed
 
-- [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
-- [daily_schedule_results.php](C:/xampp/htdocs/staff-main/partials/reports/daily_schedule_results.php)
-- [daily_schedule_rows.php](C:/xampp/htdocs/staff-main/ajax/reports/daily_schedule_rows.php)
+- [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php)
+- [approval-queue.js](C:/xampp/htdocs/staff-main/assets/js/approval-queue.js)
 - [report_helpers.php](C:/xampp/htdocs/staff-main/includes/report_helpers.php)
-- [report_print.php](C:/xampp/htdocs/staff-main/pages/report_print.php)
-- [export_report.php](C:/xampp/htdocs/staff-main/pages/export_report.php)
+- [get_selection_summary.php](C:/xampp/htdocs/staff-main/ajax/approval/get_selection_summary.php)
+- [results_block.php](C:/xampp/htdocs/staff-main/partials/approval/results_block.php)
+- [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css)
 - [IMPLEMENTATION_SUMMARY.md](C:/xampp/htdocs/staff-main/IMPLEMENTATION_SUMMARY.md)
-- [THAI_TEXT_AND_MATRIX_WIDTH_FIX_NOTES.md](C:/xampp/htdocs/staff-main/THAI_TEXT_AND_MATRIX_WIDTH_FIX_NOTES.md)
+- [APPROVAL_CONFIRM_MODAL_REDESIGN_NOTES.md](C:/xampp/htdocs/staff-main/APPROVAL_CONFIRM_MODAL_REDESIGN_NOTES.md)
 - [BUG_AUDIT.md](C:/xampp/htdocs/staff-main/BUG_AUDIT.md)

@@ -55,10 +55,15 @@ $tableQuery = http_build_query(array_filter([
             <p class="ops-results-subtitle">เลือกทั้งแถวหรือทั้งการ์ดได้ทันที จากนั้นตรวจสรุปรายการในหน้าต่างยืนยันก่อนอนุมัติจริง</p>
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <label class="d-inline-flex align-items-center gap-2 fw-semibold">
-                <input type="checkbox" class="form-check-input" id="<?= $view === 'cards' ? 'selectAllCards' : 'selectAllTable' ?>">
-                <span>เลือกทั้งหมดในหน้านี้</span>
-            </label>
+            <div class="approval-select-all">
+                <label class="approval-select-all-check">
+                    <input type="checkbox" class="form-check-input" id="<?= $view === 'cards' ? 'selectAllCards' : 'selectAllTable' ?>">
+                    <span>เลือกทั้งหมด</span>
+                </label>
+                <button type="button" class="btn btn-outline-primary btn-pill approval-select-all-btn" data-select-all-visible>
+                    <i class="bi bi-check2-square me-1"></i>เลือกรายการทั้งหมดในหน้าที่เห็น
+                </button>
+            </div>
             <div class="ops-view-switch">
                 <a class="btn <?= $view === 'cards' ? 'btn-dark' : 'btn-outline-dark' ?>" href="?<?= htmlspecialchars($cardsQuery) ?>" data-approval-view-link="cards"><i class="bi bi-grid-3x2-gap me-1"></i>การ์ด</a>
                 <a class="btn <?= $view === 'table' ? 'btn-dark' : 'btn-outline-dark' ?>" href="?<?= htmlspecialchars($tableQuery) ?>" data-approval-view-link="table"><i class="bi bi-table me-1"></i>ตาราง</a>
