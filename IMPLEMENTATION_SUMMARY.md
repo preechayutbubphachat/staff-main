@@ -1,45 +1,33 @@
 ﻿## Scope completed
 
-- Redesigned the dashboard itself so important destinations are visibly presented as action shortcuts.
-- Added a dedicated quick-actions section with clear CTA buttons instead of relying on small text links.
-- Upgraded key dashboard cards to include prominent action buttons and clearer clickability cues.
+- Refreshed the first logged-in page at [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
+- Kept the hospital-operational purpose intact while making the page cleaner, lighter, and easier to scan.
+- Confirmed the repo root [index.php](C:/xampp/htdocs/staff-main/index.php) only redirects logged-in users into the dashboard, so the main redesign was focused on the actual first working page.
 
-## Dashboard action clarity improvements
+## What was redesigned
 
-- Added a new `ทางลัดการใช้งาน` section near the top of [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
-- The quick-action cards now highlight the most important destinations with:
-  - icon
-  - action title
-  - short description
-  - obvious CTA button
-- Important action wording now uses clear Thai-first labels such as:
-  - `ไปหน้าลงเวลาเวร`
-  - `เปิดหน้าตรวจสอบเวร`
-  - `เปิดตารางเวรวันนี้`
-  - `เปิดรายงานของฉัน`
-  - `เปิดรายงานแผนก`
-  - `จัดการโปรไฟล์และรูปภาพ`
+- Reworked the hero area into a brighter and softer entry section with less visual weight.
+- Reduced copy in the hero, summary cards, and action cards so the page reads faster.
+- Kept the dashboard shortcuts but restyled them into lighter, cleaner quick-action cards with stronger CTAs.
+- Simplified supporting cards such as personal activity, review queue, and profile actions so they feel more operational and less text-heavy.
 
-## Permission-aware shortcuts
+## Text density reduction
 
-- `ตรวจสอบเวร` appears only when `can_approve_logs` is allowed.
-- `รายงานแผนก` appears only when `can_view_department_reports` is allowed.
-- Admin / back-office style shortcut appears only when the current user has one of:
-  - `can_manage_database`
-  - `can_manage_user_permissions`
-  - `can_manage_time_logs`
-- No inaccessible shortcut is intentionally shown to users without permission.
+- Shortened the hero description to one concise supporting line.
+- Shortened quick-action descriptions so each card communicates one action quickly.
+- Reduced supporting/helper copy inside lower cards.
+- Simplified metric card helper text to short scan-friendly lines.
 
-## Existing cards upgraded
+## Color and mood refresh
 
-- The profile card now ends with a clear profile-management button.
-- Operational cards now use stronger CTA buttons instead of subtle text links.
-- The review queue card keeps the pending count but now also exposes a more obvious approval CTA.
-- The latest personal activity card now includes a direct follow-up action back to `time.php`.
+- Changed the dashboard hero from a heavy dark presentation to a bright layered surface.
+- Kept the navy/teal identity, but used it as accent instead of making the whole first screen dark.
+- Shifted cards to lighter white surfaces with softer borders and shadows.
+- Used restrained aqua / blue / teal accents to keep the page fresh but still professional.
 
 ## Files changed
 
 - [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php)
 - [IMPLEMENTATION_SUMMARY.md](C:/xampp/htdocs/staff-main/IMPLEMENTATION_SUMMARY.md)
-- [DASHBOARD_ACTIONS_UX_NOTES.md](C:/xampp/htdocs/staff-main/DASHBOARD_ACTIONS_UX_NOTES.md)
+- [HOMEPAGE_UI_REFRESH_NOTES.md](C:/xampp/htdocs/staff-main/HOMEPAGE_UI_REFRESH_NOTES.md)
 - [BUG_AUDIT.md](C:/xampp/htdocs/staff-main/BUG_AUDIT.md)

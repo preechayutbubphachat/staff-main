@@ -88,7 +88,7 @@ $quickActions = [
         'icon' => 'bi-clock-history',
         'eyebrow' => 'งานประจำที่ใช้บ่อย',
         'title' => 'ลงเวลาเวร',
-        'description' => 'บันทึกเวลาเข้าออก ดูประวัติของตัวเอง และเริ่มงานประจำวันจากหน้าที่ใช้งานบ่อยที่สุด',
+        'description' => 'บันทึกเวลาเข้าออกและกลับไปดูรายการของตัวเองได้ทันที',
         'button_label' => 'ไปหน้าลงเวลาเวร',
         'tone' => 'primary',
     ],
@@ -97,7 +97,7 @@ $quickActions = [
         'icon' => 'bi-calendar-week',
         'eyebrow' => 'ประสานงานประจำวัน',
         'title' => 'เวรวันนี้',
-        'description' => 'เปิดตารางเวรประจำวันเพื่อดูว่าใครกำลังปฏิบัติงานอยู่บ้างในแต่ละแผนก',
+        'description' => 'ดูทีมที่กำลังปฏิบัติงานในวันนี้ได้จากตารางเวรแบบรวดเร็ว',
         'button_label' => 'เปิดตารางเวรวันนี้',
         'tone' => 'teal',
     ],
@@ -106,7 +106,7 @@ $quickActions = [
         'icon' => 'bi-bar-chart-line',
         'eyebrow' => 'รายงานส่วนตัว',
         'title' => 'รายงานของฉัน',
-        'description' => 'ดูสรุปรายสัปดาห์ รายเดือน รายปี และพิมพ์รายงานส่วนตัวได้ทันที',
+        'description' => 'ดูสรุปและพิมพ์รายงานส่วนตัวจากหน้าเดียว',
         'button_label' => 'เปิดรายงานของฉัน',
         'tone' => 'light',
     ],
@@ -115,7 +115,7 @@ $quickActions = [
         'icon' => 'bi-person-circle',
         'eyebrow' => 'ข้อมูลบัญชี',
         'title' => 'โปรไฟล์และลายเซ็น',
-        'description' => 'อัปเดตรูปประจำตัว ลายเซ็น และข้อมูลส่วนตัวให้พร้อมสำหรับงานเอกสารในระบบ',
+        'description' => 'อัปเดตรูปประจำตัว ลายเซ็น และข้อมูลส่วนตัวให้พร้อมใช้งาน',
         'button_label' => 'จัดการโปรไฟล์และรูปภาพ',
         'tone' => 'light',
     ],
@@ -127,7 +127,7 @@ if (app_can('can_approve_logs')) {
         'icon' => 'bi-patch-check',
         'eyebrow' => 'งานตรวจสอบ',
         'title' => 'ตรวจสอบเวร',
-        'description' => 'ตรวจรายการที่รออนุมัติและเปิดคิวตรวจสอบได้อย่างชัดเจนจากหน้าแดชบอร์ด',
+        'description' => 'เปิดคิวรายการที่รอตรวจและยืนยันงานที่อยู่ในความรับผิดชอบ',
         'button_label' => 'เปิดหน้าตรวจสอบเวร',
         'tone' => 'warning',
     ]]);
@@ -139,7 +139,7 @@ if (app_can('can_view_department_reports')) {
         'icon' => 'bi-building',
         'eyebrow' => 'ภาพรวมหน่วยงาน',
         'title' => 'รายงานแผนก',
-        'description' => 'ดูสรุปชั่วโมง เวร และสถานะตรวจสอบของเจ้าหน้าที่ตามขอบเขตที่คุณมีสิทธิ์เข้าถึง',
+        'description' => 'ดูภาพรวมเวรและชั่วโมงของเจ้าหน้าที่ตามสิทธิ์ที่เข้าถึงได้',
         'button_label' => 'เปิดรายงานแผนก',
         'tone' => 'light',
     ];
@@ -152,7 +152,7 @@ if (app_can('can_manage_database')) {
         'icon' => 'bi-database-gear',
         'eyebrow' => 'พื้นที่ผู้ดูแล',
         'title' => 'เปิดหน้าหลังบ้าน',
-        'description' => 'เข้าสู่เครื่องมือดูแลข้อมูลและระบบหลังบ้านสำหรับงานผู้ดูแลที่ได้รับมอบหมาย',
+        'description' => 'เข้าสู่เครื่องมือดูแลข้อมูลและงานหลังบ้านของระบบ',
         'button_label' => 'เปิดหน้าหลังบ้าน',
     ];
 } elseif (app_can('can_manage_user_permissions')) {
@@ -161,7 +161,7 @@ if (app_can('can_manage_database')) {
         'icon' => 'bi-shield-lock',
         'eyebrow' => 'พื้นที่ผู้ดูแล',
         'title' => 'จัดการผู้ใช้งาน',
-        'description' => 'เปิดหน้าจัดการผู้ใช้งานและสิทธิ์เพื่อดูแลบัญชีในระบบได้จากแดชบอร์ดทันที',
+        'description' => 'ดูแลบัญชีผู้ใช้และสิทธิ์การเข้าถึงจากหน้าจัดการหลัก',
         'button_label' => 'เปิดหน้าผู้ดูแลผู้ใช้งาน',
     ];
 } elseif (app_can('can_manage_time_logs')) {
@@ -170,7 +170,7 @@ if (app_can('can_manage_database')) {
         'icon' => 'bi-pencil-square',
         'eyebrow' => 'งานปฏิบัติการ',
         'title' => 'จัดการรายการลงเวลาเวร',
-        'description' => 'ตรวจสอบและแก้ไขรายการลงเวลาเวรภาพรวมสำหรับผู้ที่ได้รับสิทธิ์จัดการข้อมูล',
+        'description' => 'ตรวจสอบและแก้ไขรายการลงเวลาเวรในภาพรวม',
         'button_label' => 'เปิดหน้าจัดการลงเวลาเวร',
     ];
 }
@@ -186,83 +186,154 @@ if (app_can('can_manage_database')) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/css/app-ui.css">
     <style>
-        .dashboard-shell { padding: 32px 0 48px; }
+        .dashboard-shell { padding: 24px 0 44px; }
         .dashboard-hero {
+            position: relative;
             padding: 32px;
-            border-radius: 34px;
+            border-radius: 32px;
             overflow: hidden;
-            background: linear-gradient(145deg, rgba(16, 36, 59, 0.98), rgba(28, 107, 99, 0.92)), url('../LOGO/nongphok_logo.png') right 42px center/180px no-repeat;
-            color: #f6fbff;
-            min-height: 320px;
-            display: grid;
-            align-items: stretch;
+            min-height: 280px;
+            background:
+                radial-gradient(circle at top right, rgba(110, 223, 209, 0.34), transparent 24%),
+                radial-gradient(circle at bottom left, rgba(184, 229, 255, 0.46), transparent 30%),
+                linear-gradient(180deg, #fcfeff, #eef8fa);
+            border: 1px solid rgba(16, 36, 59, 0.08);
+            box-shadow: 0 20px 44px rgba(16, 36, 59, 0.06);
         }
-        .dashboard-hero-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr); gap: 24px; align-items: stretch; }
+        .dashboard-hero-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); gap: 22px; align-items: stretch; }
         .dashboard-hero h1, .section-title, .metric-card .value, .profile-title, .hero-side-title, .hero-side-value, .quick-action-title, .workspace-card--action h3 { font-family: 'Prompt', sans-serif; }
-        .hero-badge { width: fit-content; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; }
-        .hero-copy h1 { font-size: clamp(2rem, 3vw, 3.3rem); line-height: 1.05; margin: 18px 0 12px; max-width: 720px; }
-        .hero-copy p { color: rgba(246, 251, 255, 0.84); line-height: 1.8; max-width: 700px; margin: 0; }
-        .hero-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
-        .hero-meta span { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.08); color: rgba(246,251,255,0.94); font-size: 0.92rem; }
-        .hero-side { padding: 22px; border-radius: 26px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(12px); display: grid; gap: 14px; align-content: start; }
-        .hero-side-title { font-size: 1.05rem; margin: 0; }
-        .hero-side-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .hero-badge { width: fit-content; display: inline-flex; align-items: center; gap: 8px; background: rgba(28, 107, 99, 0.08); color: #0f5f59; border: 1px solid rgba(28, 107, 99, 0.12); border-radius: 999px; padding: 9px 14px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; }
+        .hero-copy h1 { font-size: clamp(2rem, 3vw, 3rem); line-height: 1.08; margin: 16px 0 10px; max-width: 640px; color: #10243b; }
+        .hero-copy p { color: #5f7287; line-height: 1.75; max-width: 560px; margin: 0; font-size: 0.98rem; }
+        .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .hero-meta span { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 999px; background: rgba(255,255,255,0.78); color: #35516a; font-size: 0.9rem; border: 1px solid rgba(16,36,59,0.08); }
+        .hero-side {
+            padding: 22px;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(16,36,59,0.08);
+            box-shadow: 0 16px 34px rgba(16,36,59,0.06);
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+        .hero-side-title { font-size: 1.02rem; margin: 0; color: #10243b; }
+        .hero-side-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(16,36,59,0.08); }
+        .hero-side-row:first-of-type { padding-top: 4px; }
         .hero-side-row:last-child { padding-bottom: 0; border-bottom: 0; }
-        .hero-side-label { color: rgba(246,251,255,0.82); font-size: 0.92rem; }
-        .hero-side-value { font-size: 1.8rem; font-weight: 700; }
-        .metric-card, .workspace-card, .profile-card { background: rgba(255,255,255,0.9); border-radius: 26px; border: 1px solid rgba(16,36,59,.08); padding: 24px; height: 100%; }
-        .metric-card .label { color: #6b7a8d; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .metric-card .value { font-size: 2rem; margin-top: 10px; }
-        .profile-card { display: grid; gap: 20px; }
-        .profile-top { display: grid; grid-template-columns: 112px 1fr; gap: 18px; align-items: center; }
-        .avatar-frame { width: 112px; height: 112px; border-radius: 32px; overflow: hidden; position: relative; background: linear-gradient(135deg, rgba(16, 36, 59, 0.96), rgba(28, 107, 99, 0.88)), url('../LOGO/nongphok_logo.png') center/72px no-repeat; }
+        .hero-side-label { color: #677a8e; font-size: 0.92rem; }
+        .hero-side-value { font-size: 1.6rem; font-weight: 700; color: #10243b; }
+        .metric-card, .workspace-card, .profile-card {
+            background: rgba(255,255,255,0.94);
+            border-radius: 24px;
+            border: 1px solid rgba(16,36,59,.07);
+            padding: 22px;
+            height: 100%;
+            box-shadow: 0 16px 30px rgba(16,36,59,.05);
+        }
+        .metric-card { position: relative; overflow: hidden; }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 22px;
+            right: 22px;
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(28,107,99,0.84), rgba(103,173,255,0.84));
+        }
+        .metric-card .label { color: #6b7a8d; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .metric-card .value { font-size: 1.9rem; margin-top: 12px; color: #10243b; }
+        .metric-card .text-muted { margin-top: 8px; line-height: 1.65; }
+        .profile-card { display: grid; gap: 18px; }
+        .profile-top { display: grid; grid-template-columns: 104px 1fr; gap: 16px; align-items: center; }
+        .avatar-frame { width: 104px; height: 104px; border-radius: 28px; overflow: hidden; position: relative; background: linear-gradient(145deg, rgba(16, 36, 59, 0.92), rgba(69, 165, 151, 0.78)), url('../LOGO/nongphok_logo.png') center/68px no-repeat; }
         .avatar-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .avatar-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.96); background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)), linear-gradient(135deg, rgba(16, 36, 59, 0.96), rgba(28, 107, 99, 0.88)); }
-        .avatar-fallback .person { font-size: 2.8rem; line-height: 1; transform: translateY(-4px); }
-        .avatar-fallback .hospital-mark { position: absolute; inset: auto 12px 12px auto; width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,.12) url('../LOGO/nongphok_logo.png') center/24px no-repeat; border: 1px solid rgba(255,255,255,.14); }
-        .profile-title { font-size: 1.6rem; margin-bottom: 6px; }
-        .profile-subtitle, .workspace-card p { color: #6b7a8d; margin-bottom: 0; line-height: 1.7; }
-        .role-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 999px; background: rgba(16,36,59,.06); border: 1px solid rgba(16,36,59,.08); font-weight: 700; }
-        .signature-box { padding: 14px 16px; border-radius: 20px; border: 1px dashed rgba(16,36,59,.12); background: #fbfdff; }
-        .signature-box img { max-height: 86px; object-fit: contain; display: block; }
+        .avatar-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.96); background: linear-gradient(145deg, rgba(16, 36, 59, 0.92), rgba(69, 165, 151, 0.78)); }
+        .avatar-fallback .person { font-size: 2.5rem; line-height: 1; transform: translateY(-3px); }
+        .avatar-fallback .hospital-mark { position: absolute; inset: auto 10px 10px auto; width: 34px; height: 34px; border-radius: 11px; background: rgba(255,255,255,.14) url('../LOGO/nongphok_logo.png') center/22px no-repeat; border: 1px solid rgba(255,255,255,.16); }
+        .profile-title { font-size: 1.5rem; margin-bottom: 4px; color: #10243b; }
+        .profile-subtitle, .workspace-card p { color: #6b7a8d; margin-bottom: 0; line-height: 1.68; }
+        .role-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 999px; background: rgba(103, 173, 255, 0.08); border: 1px solid rgba(103, 173, 255, 0.18); font-weight: 700; color: #23476f; }
+        .signature-box { padding: 14px 16px; border-radius: 18px; border: 1px dashed rgba(16,36,59,.12); background: #fbfdff; }
+        .signature-box img { max-height: 82px; object-fit: contain; display: block; }
         .workspace-card { display: grid; gap: 10px; align-content: start; }
-        .section-kicker { display: inline-flex; align-items: center; gap: 8px; color: #36516e; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
-        .section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-        .section-header p { color: #6b7a8d; margin: 8px 0 0; max-width: 760px; line-height: 1.8; }
-        .section-header .section-title { font-size: 1.75rem; margin: 0; color: #10243b; }
-        .quick-action-card { background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244, 249, 253, 0.96)); border-radius: 28px; border: 1px solid rgba(16, 36, 59, 0.08); padding: 24px; height: 100%; display: grid; gap: 16px; box-shadow: 0 18px 42px rgba(16, 36, 59, 0.08); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
-        .quick-action-card:hover { transform: translateY(-3px); box-shadow: 0 24px 48px rgba(16, 36, 59, 0.12); border-color: rgba(28, 107, 99, 0.24); }
-        .quick-action-card--primary { background: linear-gradient(145deg, rgba(16, 36, 59, 0.98), rgba(22, 74, 117, 0.96)); color: #f6fbff; }
-        .quick-action-card--teal { background: linear-gradient(145deg, rgba(20, 93, 85, 0.98), rgba(60, 138, 124, 0.94)); color: #f5fffd; }
-        .quick-action-card--warning { background: linear-gradient(145deg, rgba(255, 247, 225, 0.98), rgba(255, 239, 196, 0.98)); border-color: rgba(212, 154, 42, 0.22); }
-        .quick-action-card--light { background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246, 249, 252, 0.98)); }
-        .quick-action-card--primary .quick-action-eyebrow, .quick-action-card--primary .quick-action-title, .quick-action-card--primary .quick-action-copy, .quick-action-card--teal .quick-action-eyebrow, .quick-action-card--teal .quick-action-title, .quick-action-card--teal .quick-action-copy { color: #f6fbff; }
+        .section-kicker { display: inline-flex; align-items: center; gap: 8px; color: #4e6983; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+        .section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        .section-header p { color: #6b7a8d; margin: 6px 0 0; max-width: 640px; line-height: 1.7; font-size: 0.96rem; }
+        .section-header .section-title { font-size: 1.6rem; margin: 0; color: #10243b; }
+        .quick-action-card {
+            background: rgba(255,255,255,0.96);
+            border-radius: 24px;
+            border: 1px solid rgba(16, 36, 59, 0.08);
+            padding: 22px;
+            height: 100%;
+            display: grid;
+            gap: 14px;
+            box-shadow: 0 16px 34px rgba(16, 36, 59, 0.05);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        .quick-action-card:hover { transform: translateY(-2px); box-shadow: 0 22px 38px rgba(16, 36, 59, 0.08); border-color: rgba(28, 107, 99, 0.18); }
+        .quick-action-card--primary { background: linear-gradient(180deg, rgba(237,248,255,0.96), rgba(255,255,255,0.98)); border-color: rgba(44,115,186,0.12); }
+        .quick-action-card--teal { background: linear-gradient(180deg, rgba(235,251,248,0.96), rgba(255,255,255,0.98)); border-color: rgba(28,107,99,0.14); }
+        .quick-action-card--warning { background: linear-gradient(180deg, rgba(255,250,236,0.96), rgba(255,255,255,0.98)); border-color: rgba(211,154,40,0.16); }
+        .quick-action-card--light { background: rgba(255,255,255,0.96); }
         .quick-action-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-        .quick-action-icon { width: 56px; height: 56px; border-radius: 20px; display: grid; place-items: center; font-size: 1.35rem; background: rgba(16, 36, 59, 0.08); color: #10243b; flex: 0 0 auto; }
-        .quick-action-card--primary .quick-action-icon, .quick-action-card--teal .quick-action-icon { background: rgba(255,255,255,0.12); color: #fff; }
-        .quick-action-eyebrow { color: #5d7288; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-        .quick-action-title { font-size: 1.32rem; margin: 0; color: #10243b; }
-        .quick-action-copy { color: #5d7288; line-height: 1.75; margin: 0; }
-        .dashboard-action-button, .workspace-action-button { width: fit-content; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(16, 36, 59, 0.12); font-weight: 700; text-decoration: none; transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease; }
-        .dashboard-action-button:hover, .workspace-action-button:hover { transform: translateY(-1px); box-shadow: 0 14px 24px rgba(16, 36, 59, 0.1); }
-        .dashboard-action-button { background: #fff; color: #10243b; }
-        .quick-action-card--primary .dashboard-action-button, .quick-action-card--teal .dashboard-action-button { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.16); }
+        .quick-action-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            font-size: 1.2rem;
+            background: rgba(16, 36, 59, 0.06);
+            color: #10243b;
+            flex: 0 0 auto;
+        }
+        .quick-action-card--primary .quick-action-icon { background: rgba(44,115,186,0.10); color: #1f538d; }
+        .quick-action-card--teal .quick-action-icon { background: rgba(28,107,99,0.10); color: #0f5f59; }
+        .quick-action-card--warning .quick-action-icon { background: rgba(211,154,40,0.12); color: #9c6d12; }
+        .quick-action-eyebrow { color: #6c7f92; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+        .quick-action-title { font-size: 1.24rem; margin: 0; color: #10243b; }
+        .quick-action-copy { color: #637487; line-height: 1.65; margin: 0; font-size: 0.95rem; }
+        .dashboard-action-button, .workspace-action-button {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 11px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(16, 36, 59, 0.10);
+            font-weight: 700;
+            text-decoration: none;
+            transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease;
+        }
+        .dashboard-action-button:hover, .workspace-action-button:hover { transform: translateY(-1px); box-shadow: 0 14px 24px rgba(16, 36, 59, 0.08); }
+        .dashboard-action-button { background: #10243b; color: #fff; }
         .workspace-card--action { gap: 16px; }
         .workspace-card--action .workspace-header { display: grid; gap: 10px; }
         .workspace-card--action .workspace-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-        .workspace-card--action .workspace-icon { width: 48px; height: 48px; border-radius: 18px; display: grid; place-items: center; background: rgba(16,36,59,.06); color: #10243b; font-size: 1.2rem; }
+        .workspace-card--action .workspace-icon { width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; background: rgba(16,36,59,.06); color: #10243b; font-size: 1.1rem; }
         .workspace-card--action .workspace-body { display: grid; gap: 8px; }
-        .workspace-card--action .workspace-body h3 { font-size: 1.16rem; }
+        .workspace-card--action .workspace-body h3 { font-size: 1.1rem; margin: 0; }
         .workspace-card--action .workspace-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; }
-        .workspace-card--action .workspace-hint { color: #6b7a8d; font-size: 0.92rem; font-weight: 600; }
+        .workspace-card--action .workspace-hint { color: #7a8998; font-size: 0.88rem; font-weight: 600; }
         .workspace-action-button { background: #10243b; color: #fff; }
-        .workspace-action-button.btn-outline-style { background: transparent; color: #10243b; border-color: rgba(16, 36, 59, 0.14); }
-        .issue-callout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 20px; border-radius: 22px; background: linear-gradient(135deg, rgba(255, 244, 220, 0.96), rgba(255, 250, 235, 0.98)); border: 1px solid rgba(211, 154, 40, 0.2); box-shadow: 0 18px 40px rgba(211, 154, 40, 0.08); }
-        .issue-copy { display: grid; gap: 6px; }
-        .status-row { display: grid; gap: 12px; }
-        .status-pill { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-radius: 18px; background: #f9fbfc; border: 1px solid rgba(16, 36, 59, 0.08); }
-        @media (max-width: 991px) { .dashboard-hero { background-position: right -10px top 24px; background-size: 130px; min-height: auto; } .dashboard-hero-grid { grid-template-columns: 1fr; } }
-        @media (max-width: 768px) { .dashboard-shell { padding: 24px 0 38px; } .dashboard-hero, .metric-card, .workspace-card, .profile-card, .quick-action-card { border-radius: 24px; } .dashboard-hero { padding: 28px; } .profile-top { grid-template-columns: 1fr; } .section-header { flex-direction: column; align-items: flex-start; } .quick-action-card, .workspace-card--action { padding: 22px; } }
+        .workspace-action-button.btn-outline-style { background: transparent; color: #10243b; border-color: rgba(16, 36, 59, 0.12); }
+        .issue-callout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border-radius: 22px; background: linear-gradient(180deg, rgba(255,249,234,0.96), rgba(255,254,249,0.98)); border: 1px solid rgba(211,154,40,0.18); box-shadow: 0 12px 26px rgba(211,154,40,0.06); }
+        .issue-copy { display: grid; gap: 4px; }
+        .status-row { display: grid; gap: 10px; }
+        .status-pill { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 15px; border-radius: 16px; background: #fbfdff; border: 1px solid rgba(16, 36, 59, 0.07); }
+        @media (max-width: 991px) { .dashboard-hero-grid { grid-template-columns: 1fr; } .dashboard-hero { min-height: auto; } }
+        @media (max-width: 768px) {
+            .dashboard-shell { padding: 20px 0 36px; }
+            .dashboard-hero, .metric-card, .workspace-card, .profile-card, .quick-action-card { border-radius: 22px; }
+            .dashboard-hero { padding: 26px; }
+            .profile-top { grid-template-columns: 1fr; }
+            .section-header { flex-direction: column; align-items: flex-start; }
+            .quick-action-card, .workspace-card--action { padding: 20px; }
+        }
     </style>
 </head>
 <body class="app-ui">
@@ -274,8 +345,8 @@ if (app_can('can_manage_database')) {
             <div class="dashboard-hero-grid">
                 <div class="hero-copy">
                     <span class="hero-badge"><i class="bi bi-stars"></i>ศูนย์กลางการทำงานประจำวัน</span>
-                    <h1>สวัสดี <?= htmlspecialchars($displayName) ?> วันนี้คุณกำลังใช้งานในบทบาท <?= htmlspecialchars($roleLabel) ?></h1>
-                    <p>เข้าถึงการลงเวลาเวร รายงาน ตารางเวรประจำวัน และพื้นที่งานตามสิทธิ์ได้จากหน้าเดียว โดยจัดลำดับข้อมูลให้เห็นสิ่งสำคัญก่อนและใช้งานง่ายบนหน้าจอจริง</p>
+                    <h1>สวัสดี <?= htmlspecialchars($displayName) ?> พร้อมเริ่มงานวันนี้</h1>
+                    <p>ดูภาพรวมสั้น ๆ แล้วกดไปยังหน้าที่ต้องใช้ต่อได้ทันทีจากหน้าเดียว</p>
                     <div class="hero-meta">
                         <span><i class="bi bi-building"></i><?= htmlspecialchars($user['department_name'] ?? 'ยังไม่ได้ระบุแผนก') ?></span>
                         <span><i class="bi bi-person-badge"></i><?= htmlspecialchars($roleLabel) ?></span>
@@ -292,17 +363,17 @@ if (app_can('can_manage_database')) {
         </section>
 
         <section class="row g-4 mb-4">
-            <div class="col-md-4"><div class="metric-card"><div class="label">ชั่วโมงเดือนนี้</div><div class="value"><?= number_format($monthHours, 2) ?></div><div class="text-muted">รวมเวลาปฏิบัติงานของเดือนปัจจุบัน</div></div></div>
-            <div class="col-md-4"><div class="metric-card"><div class="label">ชั่วโมงปีนี้</div><div class="value"><?= number_format($yearHours, 2) ?></div><div class="text-muted">สรุปชั่วโมงสะสมทั้งปีของบัญชีนี้</div></div></div>
-            <div class="col-md-4"><div class="metric-card"><div class="label">รายการเวรวันนี้</div><div class="value"><?= number_format($todayScheduleCount) ?></div><div class="text-muted">จำนวนรายการลงเวลาในภาพรวมของวันนี้</div></div></div>
+            <div class="col-md-4"><div class="metric-card"><div class="label">ชั่วโมงเดือนนี้</div><div class="value"><?= number_format($monthHours, 2) ?></div><div class="text-muted">เวลาสะสมของเดือนนี้</div></div></div>
+            <div class="col-md-4"><div class="metric-card"><div class="label">ชั่วโมงปีนี้</div><div class="value"><?= number_format($yearHours, 2) ?></div><div class="text-muted">เวลาสะสมของปีนี้</div></div></div>
+            <div class="col-md-4"><div class="metric-card"><div class="label">รายการเวรวันนี้</div><div class="value"><?= number_format($todayScheduleCount) ?></div><div class="text-muted">รายการเวรทั้งหมดของวันนี้</div></div></div>
         </section>
 
         <section class="mb-4">
             <div class="section-header">
                 <div>
                     <span class="section-kicker"><i class="bi bi-lightning-charge"></i>ทางลัดการใช้งาน</span>
-                    <h2 class="section-title">เริ่มงานจากปุ่มที่กดได้ชัดเจน</h2>
-                    <p>รวมเมนูที่ใช้บ่อยไว้บนหน้าเดียวและทำให้แต่ละรายการดูเป็นปุ่มใช้งานจริง เพื่อให้ผู้ใช้เห็นทันทีว่ากดแล้วจะพาไปทำงานต่อที่หน้าไหน</p>
+                    <h2 class="section-title">ทางลัดที่ใช้บ่อยที่สุด</h2>
+                    <p>กดเปิดงานต่อได้ทันทีจากปุ่มลัดที่ชัดเจนและสแกนง่าย</p>
                 </div>
             </div>
             <div class="row g-4">
@@ -328,7 +399,7 @@ if (app_can('can_manage_database')) {
             <section class="mb-4">
                 <div class="issue-callout">
                     <div class="issue-copy">
-                        <div class="fw-semibold">วันนี้พบรายการที่ควรตรวจสอบ <?= number_format($todayIssueCount) ?> รายการ</div>
+                        <div class="fw-semibold">วันนี้มี <?= number_format($todayIssueCount) ?> รายการที่ควรตรวจสอบ</div>
                         <div class="text-muted"><?php if ($todayOverlapCount > 0): ?>ช่วงเวลาชนกัน <?= number_format($todayOverlapCount) ?> รายการ<?php endif; ?><?php if ($todayIncompleteCount > 0): ?><?= $todayOverlapCount > 0 ? ' และ ' : '' ?>ข้อมูลเวลาไม่ครบ <?= number_format($todayIncompleteCount) ?> รายการ<?php endif; ?></div>
                     </div>
                     <a class="btn btn-outline-dark rounded-pill px-4" href="time.php"><i class="bi bi-clock-history me-1"></i>เปิดหน้าลงเวลาเวร</a>
@@ -370,7 +441,7 @@ if (app_can('can_manage_database')) {
                         <div class="workspace-card workspace-card--action">
                             <div class="workspace-header">
                                 <div class="workspace-header-top"><div class="section-kicker mb-0"><i class="bi bi-clock-history"></i>งานส่วนตัว</div><span class="workspace-icon"><i class="bi bi-clock-history"></i></span></div>
-                                <div class="workspace-body"><h3>ลงเวลาและจัดการประวัติของฉัน</h3><p>บันทึกเวลาเข้าออก ค้นประวัติย้อนหลัง และเปิดรายงานส่วนตัวได้จากบล็อกเดียวโดยไม่ต้องเดาว่าลิงก์อยู่ตรงไหน</p></div>
+                                <div class="workspace-body"><h3>ลงเวลาและประวัติของฉัน</h3><p>บันทึกเวลา ดูประวัติ และเปิดงานต่อจากจุดเดียว</p></div>
                             </div>
                             <div class="workspace-actions"><span class="workspace-hint">ใช้บ่อยที่สุดในการเริ่มงานแต่ละวัน</span><a class="workspace-action-button" href="time.php"><span>ไปหน้าลงเวลาเวร</span><i class="bi bi-arrow-right"></i></a></div>
                         </div>
@@ -379,7 +450,7 @@ if (app_can('can_manage_database')) {
                         <div class="workspace-card workspace-card--action">
                             <div class="workspace-header">
                                 <div class="workspace-header-top"><div class="section-kicker mb-0"><i class="bi bi-calendar-week"></i>ประสานงาน</div><span class="workspace-icon"><i class="bi bi-calendar-week"></i></span></div>
-                                <div class="workspace-body"><h3>ดูว่าใครลงเวรวันนี้</h3><p>เปิดตารางเวรประจำวันเพื่อดูรายชื่อ แผนก และช่วงเวลาของผู้ที่ปฏิบัติงานในวันนี้ได้อย่างรวดเร็ว</p></div>
+                                <div class="workspace-body"><h3>เวรวันนี้</h3><p>ดูรายชื่อ แผนก และช่วงเวลาของทีมที่ปฏิบัติงานวันนี้</p></div>
                             </div>
                             <div class="workspace-actions"><span class="workspace-hint">เหมาะสำหรับดูทีมที่กำลังปฏิบัติงานอยู่</span><a class="workspace-action-button" href="daily_schedule.php"><span>เปิดตารางเวรวันนี้</span><i class="bi bi-arrow-right"></i></a></div>
                         </div>
@@ -388,7 +459,7 @@ if (app_can('can_manage_database')) {
                         <div class="workspace-card workspace-card--action">
                             <div class="workspace-header">
                                 <div class="workspace-header-top"><div class="section-kicker mb-0"><i class="bi bi-bar-chart-line"></i>สรุปข้อมูล</div><span class="workspace-icon"><i class="bi bi-bar-chart-line"></i></span></div>
-                                <div class="workspace-body"><h3>รายงานของฉัน</h3><p>ดูรายสัปดาห์ รายเดือน รายปี หรือพิมพ์และส่งออกรายงานส่วนตัวได้ทันทีจากหน้ารายงานนี้</p></div>
+                                <div class="workspace-body"><h3>รายงานของฉัน</h3><p>ดูสรุปส่วนตัวและพิมพ์รายงานได้จากหน้าเดียว</p></div>
                             </div>
                             <div class="workspace-actions"><span class="workspace-hint">เปิดสรุปข้อมูลของตัวเองได้ทันที</span><a class="workspace-action-button" href="my_reports.php"><span>เปิดรายงานของฉัน</span><i class="bi bi-arrow-right"></i></a></div>
                         </div>
@@ -398,7 +469,7 @@ if (app_can('can_manage_database')) {
                             <div class="workspace-card workspace-card--action">
                                 <div class="workspace-header">
                                     <div class="workspace-header-top"><div class="section-kicker mb-0"><i class="bi bi-building"></i>รายงานหน่วยงาน</div><span class="workspace-icon"><i class="bi bi-building"></i></span></div>
-                                    <div class="workspace-body"><h3>รายงานแผนก</h3><p>สรุปชั่วโมงรวม เวร และสถานะตรวจสอบของเจ้าหน้าที่ตามขอบเขตแผนกที่คุณเข้าถึงได้</p></div>
+                                    <div class="workspace-body"><h3>รายงานแผนก</h3><p>ดูภาพรวมเวร ชั่วโมง และสถานะตามขอบเขตที่เข้าถึงได้</p></div>
                                 </div>
                                 <div class="workspace-actions"><span class="workspace-hint">แสดงเฉพาะผู้ที่มีสิทธิ์เข้าถึงรายงานแผนก</span><a class="workspace-action-button" href="department_reports.php"><span>เปิดรายงานแผนก</span><i class="bi bi-arrow-right"></i></a></div>
                             </div>
@@ -429,7 +500,7 @@ if (app_can('can_manage_database')) {
                             <div class="status-pill"><span>เวลา</span><strong><?= !empty($latestLog['time_in']) ? date('H:i', strtotime((string) $latestLog['time_in'])) : '-' ?> - <?= !empty($latestLog['time_out']) ? date('H:i', strtotime((string) $latestLog['time_out'])) : '-' ?></strong></div>
                             <div class="status-pill"><span>สถานะ</span><strong><?= !empty($latestLog['checked_at']) ? 'ตรวจแล้ว' : 'รอตรวจ' ?></strong></div>
                         </div>
-                        <div class="workspace-actions"><span class="workspace-hint">ใช้ต่อยอดเพื่อเปิดดูรายการและแก้ไขข้อมูลของตัวเอง</span><a class="workspace-action-button btn-outline-style" href="time.php"><span>เปิดหน้าลงเวลาเวร</span><i class="bi bi-arrow-right"></i></a></div>
+                        <div class="workspace-actions"><span class="workspace-hint">กลับไปดูรายการล่าสุดของตัวเองได้ทันที</span><a class="workspace-action-button btn-outline-style" href="time.php"><span>เปิดหน้าลงเวลาเวร</span><i class="bi bi-arrow-right"></i></a></div>
                     </div>
                 </div>
             <?php endif; ?>
@@ -438,7 +509,7 @@ if (app_can('can_manage_database')) {
                 <div class="col-lg-6">
                     <div class="workspace-card workspace-card--action h-100">
                         <h3 class="section-title">คิวตรวจสอบ</h3>
-                        <p>คุณมีสิทธิ์อนุมัติรายการลงเวลา และตอนนี้มีรายการที่ยังรอตรวจอยู่ในระบบ</p>
+                        <p>รายการที่ยังรอตรวจอยู่ตอนนี้สำหรับบทบาทของคุณ</p>
                         <div class="d-flex align-items-center justify-content-between mt-2 gap-3 flex-wrap"><span class="fs-2 fw-bold"><?= number_format($pendingCount) ?></span><span class="workspace-hint">แสดงเฉพาะผู้มีสิทธิ์อนุมัติรายการ</span></div>
                         <div class="workspace-actions"><span class="workspace-hint">เปิดคิวเพื่อตรวจสอบรายการที่รออยู่ตอนนี้</span><a class="workspace-action-button" href="approval_queue.php"><span>เปิดหน้าตรวจสอบเวร</span><i class="bi bi-arrow-right"></i></a></div>
                     </div>

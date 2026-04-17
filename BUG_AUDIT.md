@@ -1,25 +1,25 @@
 ﻿## Checks completed
 
-- Dashboard button visibility reviewed in [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
-- Permission-based action visibility reviewed for:
-  - `can_approve_logs`
-  - `can_view_department_reports`
-  - admin / management shortcuts
-- CTA clickability styling added and inspected in the dashboard inline stylesheet.
+- Verified the main refresh was applied to [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
+- Confirmed [index.php](C:/xampp/htdocs/staff-main/index.php) remains only a redirect for logged-in users.
 - PHP syntax check passed for [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
+- Permission-based quick actions still use the existing `app_can(...)` checks.
 
-## What was checked
+## What was reviewed
 
-- `ลงเวลาเวร` quick action exists and is visually prominent.
-- `ตรวจสอบเวร` shortcut is wrapped in `app_can('can_approve_logs')`.
-- `รายงานแผนก` shortcut is wrapped in `app_can('can_view_department_reports')`.
-- Admin/back-office shortcut is shown only when the user has an eligible management permission.
-- Profile management now uses a visible CTA button instead of a small inline text link.
-- Latest activity and review queue cards now include clearer follow-up actions.
+- Hero section hierarchy and reduced copy.
+- Quick-action card visibility and CTA clarity.
+- Permission-gated actions for:
+  - ตรวจสอบเวร
+  - รายงานแผนก
+  - admin / management shortcuts
+- Profile action visibility.
+- Lower card CTA clarity for latest activity and review queue.
 
 ## Manual follow-up still recommended
 
-- Open the dashboard in a browser at common laptop width and confirm the quick-action grid spacing feels balanced.
-- Verify hover and focus states visually on the CTA buttons and quick-action cards.
-- Test with a normal staff user, checker, finance user, and admin user to confirm each permission-gated shortcut appears correctly.
-- Confirm no visual overlap occurs when the dashboard hero wraps on narrower screens.
+- Open the dashboard in a browser and confirm the lighter palette feels balanced on the actual monitor used in the hospital.
+- Check laptop-width layout so the hero and quick-action grid still feel open and not crowded.
+- Verify hover/focus states visually on action cards and buttons.
+- Test with staff, checker, finance, and admin accounts to confirm permission-specific shortcuts appear correctly.
+- Confirm no old small-link-only affordances remain visually dominant over the new CTAs.
