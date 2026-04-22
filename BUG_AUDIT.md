@@ -1,26 +1,37 @@
-## Homepage checks completed
+## Logic and data checks
 
-- Homepage layout updated in [index.php](C:/xampp/htdocs/staff-main/index.php).
-- Landing-page styling separated into [landing-page.css](C:/xampp/htdocs/staff-main/assets/css/landing-page.css).
-- Login redirect for authenticated users preserved.
-- CTA visibility reviewed for:
-  - `เข้าสู่ระบบ`
-  - `สมัครใช้งาน`
-  - `ดูคุณสมบัติระบบ`
+- No backend query logic was intentionally changed.
+- Permission-driven visibility remains in the original PHP conditions.
+- Existing links, routes, and bindings were preserved on redesigned pages.
 
-## What was reviewed
+## Layout and UI checks
 
-- Hero hierarchy and headline clarity.
-- Reduced text density across the page.
-- Soft-card treatment and button hierarchy.
-- Feature-card spacing and visual balance.
-- Thai copy readability in the main landing sections.
-- Responsive stacking rules in the landing-page stylesheet.
+- Major shared pages now use the same glass/prism design language through [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
+- No major layout overlap was introduced in the modified PHP templates by syntax inspection.
+- Helper copy was shortened on major table/filter pages to reduce visual noise.
+- Oversized card/media issue was addressed by constraining shared preview/signature media surfaces.
+
+## PHP warning / notice checks
+
+- Syntax checks passed for:
+  - [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php)
+  - [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php)
+  - [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
+  - [my_reports.php](C:/xampp/htdocs/staff-main/pages/my_reports.php)
+  - [department_reports.php](C:/xampp/htdocs/staff-main/pages/department_reports.php)
+  - [manage_time_logs.php](C:/xampp/htdocs/staff-main/pages/manage_time_logs.php)
+  - [manage_users.php](C:/xampp/htdocs/staff-main/pages/manage_users.php)
+  - [db_change_logs.php](C:/xampp/htdocs/staff-main/pages/db_change_logs.php)
+  - [db_table_browser.php](C:/xampp/htdocs/staff-main/pages/db_table_browser.php)
+
+## JS regression status
+
+- No major JavaScript behavior was intentionally changed in this redesign round.
+- Existing page scripts remain in place.
 
 ## Manual follow-up still recommended
 
-- Open the homepage in a browser and verify the color palette on real laptop and hospital desktop screens.
-- Check the hero and feature cards at mobile, tablet, and laptop widths.
-- Verify that CTA buttons feel visually obvious and still balanced.
-- Confirm the page feels like a hospital operations system, not a consumer wellness app.
-- Confirm no unrelated global styling is affected by the new landing-page stylesheet.
+- Check dashboard, approval queue, daily schedule, and reports in the browser at desktop, tablet, and mobile widths.
+- Confirm toolbar wrapping still feels clear on narrower laptop screens.
+- Verify glass surfaces maintain readable contrast on the real deployment environment.
+- Check shared card classes on pages not manually restyled in this round for any visual side effects.

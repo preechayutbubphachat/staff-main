@@ -127,7 +127,7 @@ $csvQuery = app_approval_query($filters, ['type' => 'approval']);
         <div class="table-toolbar table-toolbar--filters">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองคิวตรวจสอบ</div>
-                <div class="table-toolbar-help">ตัวกรองในส่วนนี้มีผลกับตารางด้านล่าง ปุ่มส่งออก และการเปลี่ยนจำนวนรายการต่อหน้าทันที</div>
+                <div class="table-toolbar-help">เปลี่ยนตัวกรองแล้วผลลัพธ์ด้านล่างจะอัปเดตทันที</div>
                 <form method="get" id="approvalFilterForm" class="table-toolbar-form" data-page-state-key="approval_queue">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">

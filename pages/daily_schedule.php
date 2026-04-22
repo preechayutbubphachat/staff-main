@@ -98,7 +98,7 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
         <div class="table-toolbar table-toolbar--filters">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองตารางเวรประจำวัน</div>
-                <div class="table-toolbar-help">ตัวกรองจะรีเฟรชผลลัพธ์อัตโนมัติ สามารถคลิกชื่อเจ้าหน้าที่เพื่อเปิดข้อมูลโปรไฟล์ และเลือกสถานะการตรวจสอบเพื่อดูเฉพาะรายการที่ต้องการได้ทันที</div>
+                <div class="table-toolbar-help">เปลี่ยนตัวกรองแล้วตารางจะอัปเดตทันที และคลิกชื่อเพื่อดูโปรไฟล์ได้</div>
                 <form method="get" id="dailyScheduleFilterForm" class="table-toolbar-form" data-page-state-key="daily_schedule">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">

@@ -73,7 +73,7 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'department']);
         <div class="table-toolbar table-toolbar--filters">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองรายงานแผนก</div>
-                <div class="table-toolbar-help">แยกตัวกรองเดือนและปีให้ชัดเจน พร้อมรีเฟรชผลลัพธ์ทันทีเมื่อเปลี่ยนค่า</div>
+                <div class="table-toolbar-help">เลือกแผนก เดือน และปี แล้วผลลัพธ์จะอัปเดตทันที</div>
                 <form method="get" id="departmentReportsFilterForm" class="table-toolbar-form" data-page-state-key="department_reports">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">

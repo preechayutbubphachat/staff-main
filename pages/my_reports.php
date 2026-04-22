@@ -81,7 +81,7 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'my']);
         <div class="table-toolbar table-toolbar--filters">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองรายงาน</div>
-                <div class="table-toolbar-help">เปลี่ยนตัวกรองแล้วตารางจะรีเฟรชอัตโนมัติ และปุ่มส่งออกจะอ้างอิงขอบเขตเดียวกับข้อมูลในตารางนี้</div>
+                <div class="table-toolbar-help">ตารางและปุ่มส่งออกจะอ้างอิงตัวกรองชุดเดียวกัน</div>
                 <form method="get" id="myReportsFilterForm" class="table-toolbar-form" data-page-state-key="my_reports">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <div class="toolbar-col-3">

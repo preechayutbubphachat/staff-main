@@ -101,7 +101,7 @@ $csvQuery = app_build_table_query($baseQuery, ['type' => 'db_change_logs']);
         <div class="table-toolbar">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองบันทึกการเปลี่ยนแปลง</div>
-                <div class="table-toolbar-help">ค้นหาจากชื่อตาราง การกระทำ ผู้ดำเนินการ หรือหมายเหตุ แล้วตารางจะรีเฟรชทันทีโดยไม่ต้องโหลดทั้งหน้าใหม่</div>
+                <div class="table-toolbar-help">ค้นหาแล้วตารางจะอัปเดตทันทีโดยไม่ต้องโหลดหน้าใหม่</div>
                 <form method="get" id="dbAuditFilterForm" class="table-toolbar-form" data-page-state-key="db_change_logs">
                     <input type="hidden" name="page" value="<?= (int) $page ?>">
                     <div class="toolbar-col-6">

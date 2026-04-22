@@ -72,7 +72,7 @@ $csvQuery = app_manage_users_query($filters, ['type' => 'manage_users']);
         <div class="table-toolbar">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองรายชื่อผู้ใช้งาน</div>
-                <div class="table-toolbar-help">เปลี่ยนตัวกรองแล้วตารางจะรีเฟรชทันที สามารถคลิกชื่อเพื่อดูข้อมูลเจ้าหน้าที่ และกดแก้ไขข้อมูลจากแถวเดียวกันได้</div>
+                <div class="table-toolbar-help">ค้นหาและกรองรายชื่อได้ทันที พร้อมเปิดดูหรือแก้ไขจากแถวเดียวกัน</div>
                 <form method="get" id="manageUsersFilterForm" class="table-toolbar-form" data-page-state-key="manage_users">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <div class="toolbar-col-3">

@@ -140,7 +140,7 @@ $csvQuery = http_build_query(array_filter([
         <div class="table-toolbar table-toolbar--filters">
             <div class="table-toolbar-main">
                 <div class="table-toolbar-title">ตัวกรองรายการลงเวลาเวร</div>
-                <div class="table-toolbar-help">วางตัวกรองไว้ก่อนตารางเพื่อให้เห็นชัดว่ากำลังควบคุมข้อมูลด้านล่าง และยังคงใช้ชุดข้อมูลเดียวกันกับปุ่มส่งออก</div>
+                <div class="table-toolbar-help">ตัวกรองและปุ่มส่งออกอ้างอิงข้อมูลชุดเดียวกัน</div>
                 <form method="get" id="manageTimeLogsFilterForm" class="table-toolbar-form" data-page-state-key="manage_time_logs">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <div class="toolbar-col-3">

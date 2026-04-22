@@ -1,36 +1,53 @@
-## Homepage redesign completed
-
-- Refreshed the first page at [index.php](C:/xampp/htdocs/staff-main/index.php) into a softer, calmer, more premium landing page for the hospital attendance system.
-- Kept the real project flow unchanged: authenticated users still redirect to [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
-- Moved the landing-page styling into [landing-page.css](C:/xampp/htdocs/staff-main/assets/css/landing-page.css) so the homepage design is easier to maintain.
-
-## What changed on the homepage
-
-- Rebuilt the top area into a lighter brand bar with only the essential actions:
-  - `สมัครใช้งาน`
-  - `เข้าสู่ระบบ`
-- Reworked the hero into a cleaner two-column layout with:
-  - one strong Thai headline
-  - one short support line
-  - two clear CTA buttons
-  - one supporting operational summary panel
-- Reduced text density across the page by replacing long explanations with short labels and single-line support copy.
-- Replaced heavier descriptive sections with:
-  - 4 concise feature cards
-  - 1 short system-strength section
-  - 1 final CTA block
-
-## How the reference style was adapted
-
-- Used a soft healthcare-inspired palette instead of a consumer wellness look.
-- Applied restrained soft-elevated cards, rounded corners, and gentle shadows.
-- Kept the tone operational and trustworthy rather than promotional or app-store-like.
-- Preserved real system actions and links only; no fake marketing sections were introduced.
-
 ## Files changed
 
-- [index.php](C:/xampp/htdocs/staff-main/index.php)
-- [landing-page.css](C:/xampp/htdocs/staff-main/assets/css/landing-page.css)
+- [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css)
+- [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php)
+- [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php)
+- [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
+- [my_reports.php](C:/xampp/htdocs/staff-main/pages/my_reports.php)
+- [department_reports.php](C:/xampp/htdocs/staff-main/pages/department_reports.php)
+- [manage_time_logs.php](C:/xampp/htdocs/staff-main/pages/manage_time_logs.php)
+- [manage_users.php](C:/xampp/htdocs/staff-main/pages/manage_users.php)
+- [db_change_logs.php](C:/xampp/htdocs/staff-main/pages/db_change_logs.php)
 - [IMPLEMENTATION_SUMMARY.md](C:/xampp/htdocs/staff-main/IMPLEMENTATION_SUMMARY.md)
-- [HOMEPAGE_REDESIGN_NOTES.md](C:/xampp/htdocs/staff-main/HOMEPAGE_REDESIGN_NOTES.md)
+- [DESIGN_SYSTEM_GLASS_PRISM_NOTES.md](C:/xampp/htdocs/staff-main/DESIGN_SYSTEM_GLASS_PRISM_NOTES.md)
+- [RESPONSIVE_UI_AUDIT.md](C:/xampp/htdocs/staff-main/RESPONSIVE_UI_AUDIT.md)
 - [BUG_AUDIT.md](C:/xampp/htdocs/staff-main/BUG_AUDIT.md)
+
+## Pages redesigned
+
+- Dashboard / homepage after login
+- Approval queue
+- Daily schedule
+- My reports
+- Department reports
+- Manage time logs
+- Manage users
+- Database change logs
+
+## Root causes found
+
+- Shared media surfaces such as `signature-box` had no shared max-height guard, so tall uploaded images could stretch cards vertically.
+- Shared toolbar help copy on major pages was too long, making filter sections feel denser than necessary.
+- Dashboard styling was still partly page-specific, which made hierarchy improvements harder to reuse consistently.
+
+## What was simplified
+
+- Reduced long helper text in key filter/toolbars to shorter operational copy.
+- Shortened quick-action descriptions on the dashboard.
+- Reduced explanatory wording inside summary and action cards.
+- Quieted secondary metadata and support copy through smaller muted styles.
+
+## Hierarchy changes made
+
+- Hero headings and KPI values now carry the strongest visual weight.
+- Filter toolbar descriptions are visually smaller and lighter than titles.
+- Action cards use short titles, one short line, and a clear affordance.
+- Table and modal containers use a lighter glass surface so data stands out more clearly than the chrome around it.
+
+## Responsive improvements made
+
+- Standardized softer stacked spacing for hero, toolbar, and card surfaces on smaller screens.
+- KPI grids and mini summary grids now collapse more predictably.
+- Shared toolbar and glass-card padding/radius scales down on tablet/mobile.
+- Table wrappers and modal surfaces keep scroll-safe behavior while preserving the new design system.
