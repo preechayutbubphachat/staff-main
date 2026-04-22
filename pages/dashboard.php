@@ -340,9 +340,9 @@ if (app_can('can_manage_database')) {
             </section>
         <?php endif; ?>
 
-        <section class="row g-4 align-items-stretch">
-            <div class="col-xl-4">
-                <article class="glass-card glass-card--profile prism-profile-card h-100">
+        <section class="row g-4 align-items-start dashboard-profile-row">
+            <div class="col-xl-4 dashboard-profile-col">
+                <article class="glass-card glass-card--profile prism-profile-card dashboard-profile-card">
                     <div class="prism-profile-top">
                         <div class="avatar-frame">
                             <?php if ($profileImageSrc): ?>

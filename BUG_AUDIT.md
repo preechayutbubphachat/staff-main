@@ -1,37 +1,26 @@
-## Logic and data checks
+## Dashboard tall-card issue checked
 
-- No backend query logic was intentionally changed.
-- Permission-driven visibility remains in the original PHP conditions.
-- Existing links, routes, and bindings were preserved on redesigned pages.
+- Reviewed the left profile/media block in [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
+- Confirmed the stretching came from row/column height behavior, not from backend data logic.
 
-## Layout and UI checks
+## Image / media constraint checked
 
-- Major shared pages now use the same glass/prism design language through [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
-- No major layout overlap was introduced in the modified PHP templates by syntax inspection.
-- Helper copy was shortened on major table/filter pages to reduce visual noise.
-- Oversized card/media issue was addressed by constraining shared preview/signature media surfaces.
+- Added bounded shared avatar sizing in [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
+- The dashboard profile image now renders inside a fixed frame with `object-fit: cover`.
+- Existing signature/media constraint rules remain in place and are not removed.
 
-## PHP warning / notice checks
+## Grid alignment checked
 
-- Syntax checks passed for:
-  - [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php)
-  - [approval_queue.php](C:/xampp/htdocs/staff-main/pages/approval_queue.php)
-  - [daily_schedule.php](C:/xampp/htdocs/staff-main/pages/daily_schedule.php)
-  - [my_reports.php](C:/xampp/htdocs/staff-main/pages/my_reports.php)
-  - [department_reports.php](C:/xampp/htdocs/staff-main/pages/department_reports.php)
-  - [manage_time_logs.php](C:/xampp/htdocs/staff-main/pages/manage_time_logs.php)
-  - [manage_users.php](C:/xampp/htdocs/staff-main/pages/manage_users.php)
-  - [db_change_logs.php](C:/xampp/htdocs/staff-main/pages/db_change_logs.php)
-  - [db_table_browser.php](C:/xampp/htdocs/staff-main/pages/db_table_browser.php)
+- The outer dashboard profile row now start-aligns instead of stretching the left card to match the taller right column.
+- The left profile card now uses natural content height instead of full-height stretching.
 
-## JS regression status
+## Responsive quick check completed
 
-- No major JavaScript behavior was intentionally changed in this redesign round.
-- Existing page scripts remain in place.
+- Tablet/mobile stack rules remain intact because the fix only changes the problematic dashboard row and profile card sizing behavior.
+- The new avatar frame uses fixed bounded dimensions that collapse safely with the existing responsive dashboard layout.
 
 ## Manual follow-up still recommended
 
-- Check dashboard, approval queue, daily schedule, and reports in the browser at desktop, tablet, and mobile widths.
-- Confirm toolbar wrapping still feels clear on narrower laptop screens.
-- Verify glass surfaces maintain readable contrast on the real deployment environment.
-- Check shared card classes on pages not manually restyled in this round for any visual side effects.
+- Open the dashboard in the browser and confirm the left profile card no longer stretches to the height of the right column.
+- Check desktop, tablet, and mobile widths once with real profile image and signature data.
+- Confirm there is no excessive empty vertical space below the profile card after the fix.
