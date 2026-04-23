@@ -1,9 +1,9 @@
 <?php
 
-$host = "localhost";
-$dbname = "staff";     
-$username = "root";    
-$password = "";        
+$host = "localhost:3306";
+$dbname = "obgate_staff";     
+$username = "obgate_staff";    
+$password = "fk26u2DRotlYz~d^";        
 
 try {
 
