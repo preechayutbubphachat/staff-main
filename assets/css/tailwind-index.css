@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .home-shell {
+    @apply min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_10%_6%,rgba(112,213,226,0.36),transparent_23%),radial-gradient(circle_at_88%_4%,rgba(204,246,232,0.82),transparent_29%),radial-gradient(circle_at_50%_92%,rgba(125,211,252,0.22),transparent_28%),linear-gradient(180deg,#fbfdff_0%,#f3fbfc_50%,#eef8f5_100%)] text-hospital-ink antialiased;
+  }
+
+  .home-shell::before {
+    content: '';
+    @apply pointer-events-none fixed inset-0 opacity-40;
+    background-image:
+      linear-gradient(rgba(18, 56, 90, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(18, 56, 90, 0.035) 1px, transparent 1px);
+    background-size: 84px 84px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 78%);
+  }
+
+  .home-frame {
+    @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass-nav {
+    @apply rounded-full border border-white/70 bg-white/75 shadow-soft backdrop-blur-2xl;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 18px 44px rgba(16, 36, 59, 0.08);
+  }
+
+  .dashboard-canvas {
+    @apply grid gap-4 bg-transparent p-0 lg:grid-cols-12 lg:items-stretch;
+  }
+
+  .dashboard-subgrid {
+    @apply grid gap-4 md:grid-cols-2 lg:grid-cols-12;
+  }
+
+  .dashboard-card {
+    @apply relative rounded-[1.8rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl sm:p-6;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 20px 52px rgba(16, 36, 59, 0.09);
+  }
+
+  .intro-action-card {
+    @apply flex flex-col justify-between overflow-hidden bg-white/70;
+  }
+
+  .live-overview-card {
+    @apply overflow-hidden bg-hospital-navy p-5 text-white shadow-glass sm:p-6;
+    background:
+      radial-gradient(circle at 24% 18%, rgba(111, 215, 232, 0.34), transparent 26%),
+      radial-gradient(circle at 72% 64%, rgba(34, 211, 238, 0.14), transparent 28%),
+      radial-gradient(circle at 86% 0%, rgba(223, 247, 239, 0.16), transparent 30%),
+      linear-gradient(135deg, #12385a 0%, #0f2f4f 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 28px 74px rgba(18, 56, 90, 0.2);
+  }
+
+  .live-sub-card {
+    @apply rounded-[1.5rem] border border-white/10 bg-white/10 p-4 shadow-soft backdrop-blur-xl;
+  }
+
+  .weather-sub-card {
+    @apply rounded-[1.5rem] border border-white/80 bg-white p-4 text-hospital-ink shadow-soft;
+  }
+
+  .mini-stat-card {
+    @apply relative flex min-h-[118px] flex-1 flex-col justify-between rounded-[1.65rem] border border-white/75 bg-white/75 p-4 shadow-soft backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/90;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 16px 40px rgba(16, 36, 59, 0.075);
+  }
+
+  .section-board {
+    @apply grid gap-4 bg-transparent p-0 lg:grid-cols-12;
+  }
+
+  .workflow-intro-card {
+    @apply relative rounded-[1.8rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl sm:p-6;
+  }
+
+  .workflow-card {
+    @apply relative min-h-[132px] overflow-hidden rounded-[1.65rem] border border-white/75 bg-white/75 p-4 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/90;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 16px 40px rgba(16, 36, 59, 0.075);
+  }
+
+  .metric-tile {
+    @apply relative min-h-[142px] rounded-[1.65rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/90;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 16px 40px rgba(16, 36, 59, 0.075);
+  }
+
+  .compact-cta-board {
+    @apply rounded-[2rem] bg-hospital-navy p-5 text-white shadow-glass sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8;
+    background:
+      radial-gradient(circle at 14% 20%, rgba(111, 215, 232, 0.32), transparent 26%),
+      linear-gradient(135deg, #12385a 0%, #10243b 100%);
+  }
+
+  .hero-kicker {
+    @apply inline-flex w-fit items-center gap-2 rounded-full border border-white/75 bg-white/80 px-3.5 py-2 text-xs font-bold text-hospital-navy shadow-soft backdrop-blur-xl;
+  }
+
+  .overview-cta-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-hospital-navy px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-hospital-ink focus:outline-none focus:ring-4 focus:ring-hospital-aqua/30;
+  }
+
+  .overview-cta-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-hospital-navy/10 bg-white/90 px-5 py-2.5 text-sm font-bold text-hospital-navy shadow-soft transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-hospital-aqua/25;
+  }
+
+  .intro-chip {
+    @apply rounded-full border border-white/75 bg-white/80 px-3 py-1.5 text-xs font-bold text-hospital-muted shadow-soft;
+  }
+
+  .home-label {
+    @apply text-xs font-bold text-hospital-muted;
+  }
+
+  .home-value {
+    @apply font-prompt text-3xl font-bold tracking-[-0.04em] text-hospital-ink;
+  }
+
+  .icon-badge {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hospital-mint text-lg text-hospital-teal;
+  }
+
+  .workflow-check {
+    @apply flex items-center gap-2 rounded-2xl bg-white/80 px-3.5 py-3 text-sm font-bold text-hospital-muted shadow-[inset_0_0_0_1px_rgba(16,36,59,0.04)];
+  }
+
+  .workflow-check i {
+    @apply grid h-6 w-6 shrink-0 place-items-center rounded-full bg-hospital-mint text-xs text-hospital-teal;
+  }
+
+  .live-dot {
+    @apply relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400;
+  }
+
+  .live-dot::after {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-emerald-400/60;
+    animation: live-pulse 1.8s ease-out infinite;
+  }
+
+  .clock-icon {
+    animation: clock-breathe 2.8s ease-in-out infinite;
+  }
+
+  .weather-icon {
+    animation: weather-float 3.2s ease-in-out infinite;
+  }
+
+  .ambient-orb {
+    @apply pointer-events-none absolute rounded-full blur-3xl;
+  }
+
+  .entrance-soft {
+    animation: entrance-soft 700ms ease both;
+  }
+}
+
+@keyframes entrance-soft {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes live-pulse {
+  0% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes clock-breathe {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.06) rotate(3deg);
+  }
+}
+
+@keyframes weather-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
