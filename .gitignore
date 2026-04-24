@@ -8,3 +8,4 @@ Thumbs.db
 .vscode
 /uploads/*
 !/uploads/.gitkeep
+/config/db.php
