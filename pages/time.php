@@ -11,17 +11,25 @@ date_default_timezone_set('Asia/Bangkok');
 app_require_login();
 
 $userId = (int) $_SESSION['id'];
-$fullName = $_SESSION['fullname'];
+$role = app_current_role();
+$roleLabel = app_role_label($role);
+$fullName = (string) ($_SESSION['fullname'] ?? '');
 $canViewDepartmentReports = app_can('can_view_department_reports');
 
 $userStmt = $conn->prepare("
-    SELECT u.department_id, d.department_name
+    SELECT u.*, d.department_name
     FROM users u
     LEFT JOIN departments d ON u.department_id = d.id
     WHERE u.id = ?
 ");
 $userStmt->execute([$userId]);
 $userMeta = $userStmt->fetch(PDO::FETCH_ASSOC) ?: ['department_id' => 1, 'department_name' => '-'];
+$hasProfileImageColumn = app_column_exists($conn, 'users', 'profile_image_path');
+$profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
+$displayName = app_user_display_name($userMeta);
+if ($displayName !== '-') {
+    $fullName = $displayName;
+}
 
 $departmentId = (int) ($_SESSION['department_id'] ?? $userMeta['department_id']);
 if (!$canViewDepartmentReports) {
@@ -35,17 +43,40 @@ $messageType = (string) ($_SESSION['time_page_flash_type'] ?? 'success');
 unset($_SESSION['time_page_flash'], $_SESSION['time_page_flash_type']);
 $historyStateInput = array_merge($_GET, $_POST);
 $historyDateState = trim((string) ($_POST['history_date'] ?? ($historyStateInput['date'] ?? '')));
+$historyDateFromState = trim((string) ($_POST['history_date_from'] ?? ($historyStateInput['date_from'] ?? '')));
+$historyDateToState = trim((string) ($_POST['history_date_to'] ?? ($historyStateInput['date_to'] ?? '')));
+$historyStatusState = trim((string) ($_POST['history_status'] ?? ($historyStateInput['status'] ?? 'all')));
+$historyQueryState = trim((string) ($_POST['history_query'] ?? ($historyStateInput['query'] ?? '')));
 $historyLimitState = app_parse_table_page_size([
     'per_page' => $_POST['history_per_page'] ?? ($historyStateInput['per_page'] ?? 20),
 ], 20);
 $historyPageState = app_parse_table_page([
     'p' => $_POST['history_page'] ?? ($historyStateInput['p'] ?? 1),
 ]);
+$historyFilters = app_normalize_user_time_history_filters([
+    'date' => $historyDateState,
+    'date_from' => $historyDateFromState,
+    'date_to' => $historyDateToState,
+    'status' => $historyStatusState,
+    'query' => $historyQueryState,
+]);
 $historyRedirectBase = [
     'per_page' => $historyLimitState,
 ];
-if ($historyDateState !== '') {
-    $historyRedirectBase['date'] = $historyDateState;
+if ($historyFilters['date'] !== '') {
+    $historyRedirectBase['date'] = $historyFilters['date'];
+}
+if ($historyFilters['date_from'] !== '') {
+    $historyRedirectBase['date_from'] = $historyFilters['date_from'];
+}
+if ($historyFilters['date_to'] !== '') {
+    $historyRedirectBase['date_to'] = $historyFilters['date_to'];
+}
+if ($historyFilters['status'] !== 'all') {
+    $historyRedirectBase['status'] = $historyFilters['status'];
+}
+if ($historyFilters['query'] !== '') {
+    $historyRedirectBase['query'] = $historyFilters['query'];
 }
 $shiftPresets = [
     'morning' => ['label' => 'เวรเช้า', 'time_in' => '08:30', 'time_out' => '16:30'],
@@ -246,25 +277,28 @@ if (isset($_POST['delete_time_log']) && $editLog) {
     }
 }
 
-$searchDate = $historyDateState;
+$searchDate = $historyFilters['date'];
+$dateFrom = $historyFilters['date_from'];
+$dateTo = $historyFilters['date_to'];
+$historyStatus = $historyFilters['status'];
+$historyQuery = $historyFilters['query'];
 $limit = $historyLimitState;
 $page = $historyPageState;
 $offset = ($page - 1) * $limit;
 
-$params = [$userId];
-$whereClause = "WHERE t.user_id = ?";
-if ($searchDate !== '') {
-    $whereClause .= " AND t.work_date = ?";
-    $params[] = $searchDate;
-}
-
-$totalRows = app_get_user_time_history_count($conn, $userId, $searchDate);
+$historyScope = app_build_user_time_history_scope($historyFilters, $userId);
+$totalRows = app_get_user_time_history_count($conn, $userId, $historyFilters);
 $totalPages = max(1, (int) ceil($totalRows / $limit));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $limit;
 
-$totalStmt = $conn->prepare("SELECT COALESCE(SUM(work_hours), 0) FROM time_logs t $whereClause");
-$totalStmt->execute($params);
+$totalStmt = $conn->prepare("
+    SELECT COALESCE(SUM(t.work_hours), 0)
+    FROM time_logs t
+    LEFT JOIN departments d ON t.department_id = d.id
+    {$historyScope['where_sql']}
+");
+$totalStmt->execute($historyScope['params']);
 $totalHours = (float) $totalStmt->fetchColumn();
 
 $monthHoursStmt = $conn->prepare("
@@ -275,7 +309,43 @@ $monthHoursStmt = $conn->prepare("
 $monthHoursStmt->execute([$userId]);
 $monthHours = (float) $monthHoursStmt->fetchColumn();
 
-$historyLogs = app_get_user_time_history_rows($conn, $userId, $searchDate, $limit, $offset);
+$approvedMonthHoursStmt = $conn->prepare("
+    SELECT COALESCE(SUM(work_hours), 0)
+    FROM time_logs
+    WHERE user_id = ? AND YEAR(work_date) = YEAR(CURDATE()) AND MONTH(work_date) = MONTH(CURDATE()) AND checked_at IS NOT NULL
+");
+$approvedMonthHoursStmt->execute([$userId]);
+$approvedMonthHours = (float) $approvedMonthHoursStmt->fetchColumn();
+
+$todayShiftCountStmt = $conn->prepare("
+    SELECT COUNT(*)
+    FROM time_logs
+    WHERE user_id = ? AND work_date = CURDATE()
+");
+$todayShiftCountStmt->execute([$userId]);
+$todayShiftCount = (int) $todayShiftCountStmt->fetchColumn();
+
+$todayHoursStmt = $conn->prepare("
+    SELECT COALESCE(SUM(work_hours), 0)
+    FROM time_logs
+    WHERE user_id = ? AND work_date = CURDATE()
+");
+$todayHoursStmt->execute([$userId]);
+$todayHours = (float) $todayHoursStmt->fetchColumn();
+
+$latestLogStmt = $conn->prepare("
+    SELECT t.*, d.department_name
+    FROM time_logs t
+    LEFT JOIN departments d ON t.department_id = d.id
+    WHERE t.user_id = ?
+    ORDER BY t.work_date DESC, t.id DESC
+    LIMIT 1
+");
+$latestLogStmt->execute([$userId]);
+$latestLog = $latestLogStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+$latestStatusMeta = $latestLog ? app_time_log_status_meta($latestLog) : ['label' => 'ยังไม่มีรายการ', 'class' => 'info'];
+
+$historyLogs = app_get_user_time_history_rows($conn, $userId, $historyFilters, $limit, $offset);
 $historyFlags = app_get_user_time_history_flags($conn, $userId, $historyLogs);
 
 if ($canViewDepartmentReports) {
@@ -296,6 +366,19 @@ $canEditModal = $editLog ? (!$editModalLocked || $canPrivilegedLockedEdit) : fal
 $canDeleteModal = $canEditModal;
 $modalErrorMessage = $editLog && $messageType === 'danger' ? $message : '';
 $modalErrorType = $messageType;
+$todayLabel = app_format_thai_date($today, true);
+$departmentLabel = trim((string) ($userMeta['department_name'] ?? '-')) ?: '-';
+$notificationCount = app_get_unread_notification_count($conn, $userId);
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
+$monthlyTargetHours = 160.0;
+$monthlyProgressPercent = $monthlyTargetHours > 0 ? min(100, (int) round(($monthHours / $monthlyTargetHours) * 100)) : 0;
+$monthlyRemainingHours = max(0, $monthlyTargetHours - $monthHours);
+$latestWorkDateLabel = $latestLog ? app_format_thai_date((string) $latestLog['work_date'], true) : 'ยังไม่มีรายการ';
+$latestTimeRangeLabel = $latestLog && !empty($latestLog['time_in']) && !empty($latestLog['time_out'])
+    ? date('H:i', strtotime((string) $latestLog['time_in'])) . ' - ' . date('H:i', strtotime((string) $latestLog['time_out']))
+    : 'ยังไม่ระบุเวลา';
+$latestLogHours = $latestLog ? number_format((float) ($latestLog['work_hours'] ?? 0), 2) : '0.00';
+$todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' รายการ' : 'ยังไม่มีรายการวันนี้';
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -306,56 +389,148 @@ $modalErrorType = $messageType;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/app-ui.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
-<body class="app-ui">
-<?php render_app_navigation('time.php'); ?>
-<main class="container py-4 py-lg-5">
-    <section class="ops-hero mb-4">
-        <div class="ops-hero-grid">
-            <div>
-                <div class="eyebrow mb-2">Time Workspace</div>
-                <h1 class="mb-2">ลงเวลาเวร</h1>
-                <p class="mb-4 text-white-50">บันทึกเวลาเข้าออกของวันนี้ ตรวจสอบชั่วโมงเวร และย้อนดูรายการย้อนหลังได้จากพื้นที่เดียว ระบบจะเตือนทันทีหากช่วงเวลาที่กรอกชนกับรายการเดิมของบุคคลเดียวกัน</p>
-                <div class="pill-stack">
-                    <span class="badge rounded-pill text-bg-light border px-3 py-2"><?= htmlspecialchars($fullName) ?></span>
-                    <span class="badge rounded-pill badge-soft px-3 py-2"><?= htmlspecialchars($userMeta['department_name'] ?? '-') ?></span>
-                </div>
-            </div>
-            <aside class="ops-hero-side">
-                <div class="ops-hero-stat">
-                    <span id="dateLabel">-</span>
-                    <strong>วันนี้</strong>
-                </div>
-                <div class="ops-hero-stat">
-                    <span>เวลาปัจจุบัน</span>
-                    <strong id="clock" class="time-clock">00:00:00</strong>
-                </div>
-            </aside>
+<body class="dash-shell time-page-shell">
+<?php render_dashboard_sidebar('time.php', $displayName, $roleLabel, $profileImageSrc); ?>
+
+<main class="dash-main time-page-main">
+    <header class="dash-topbar">
+        <button type="button" class="dash-icon-button lg:hidden" data-dashboard-sidebar-open aria-label="เปิดเมนู">
+            <i class="bi bi-list text-xl"></i>
+        </button>
+
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal">Time Workspace</p>
+            <h1 class="font-prompt text-2xl font-bold tracking-[-0.03em] text-hospital-ink">ลงเวลาเวร</h1>
         </div>
-    </section>
 
-    <div id="timePageMessage"><?php if ($message !== ''): ?><div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-4"><?= htmlspecialchars($message) ?></div><?php endif; ?></div>
+        <label class="dash-search-control">
+            <i class="bi bi-search"></i>
+            <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาประวัติหรือเมนูที่เกี่ยวข้อง">
+        </label>
 
-    <section class="row g-4 mb-4">
-        <div class="col-sm-6 col-xl-4"><div class="report-stat-card"><div class="report-stat-label">ชั่วโมงเดือนนี้</div><div class="report-stat-value"><?= number_format($monthHours, 2) ?></div></div></div>
-        <div class="col-sm-6 col-xl-4"><div class="report-stat-card"><div class="report-stat-label">ชั่วโมงสะสมตามตัวกรอง</div><div class="report-stat-value"><?= number_format($totalHours, 2) ?></div></div></div>
-        <div class="col-sm-6 col-xl-4"><div class="report-stat-card"><div class="report-stat-label">จำนวนประวัติย้อนหลัง</div><div class="report-stat-value"><?= $totalRows ?></div></div></div>
-    </section>
+        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
+            <i class="bi bi-bell"></i>
+            <?php if ($notificationCount > 0): ?>
+                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
+            <?php endif; ?>
+        </a>
 
-    <section class="row g-4 mb-4">
-        <div class="col-lg-5">
-            <div class="panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="section-title h4 mb-0">บันทึกเวรของวันนี้</h2>
-                    <span class="badge rounded-pill text-bg-primary px-3 py-2"><?= htmlspecialchars(app_format_thai_date($today)) ?></span>
+        <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
+            <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
+                <?php if ($profileImageSrc): ?>
+                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์" class="h-full w-full object-cover">
+                <?php else: ?>
+                    <span class="grid h-full w-full place-items-center"><i class="bi bi-person-fill"></i></span>
+                <?php endif; ?>
+            </span>
+            <span class="grid leading-tight">
+                <span class="max-w-[150px] truncate text-sm font-bold"><?= htmlspecialchars($displayName) ?></span>
+                <span class="text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+            </span>
+        </a>
+    </header>
+
+    <div class="time-dashboard-frame">
+        <section class="time-hero-stage">
+            <article class="dash-card-strong time-hero-card">
+                <div class="time-hero-grid">
+                    <div class="time-hero-copy-block">
+                        <span class="dash-hero-badge">
+                            <i class="bi bi-clock-history"></i>
+                            Time Workspace
+                        </span>
+                        <h2 class="dash-hero-title">ลงเวลาเวรจากพื้นที่เดียว</h2>
+                        <p class="dash-hero-copy">บันทึกเวลา ตรวจสอบชั่วโมง และดูประวัติย้อนหลังได้จากพื้นที่เดียว โดยคง workflow งานจริงของโรงพยาบาลให้เร็ว ชัด และใช้งานง่ายขึ้น</p>
+
+                        <div class="dash-hero-chip-row">
+                            <span class="dash-hero-chip"><i class="bi bi-person-badge"></i><?= htmlspecialchars($displayName) ?></span>
+                            <span class="dash-hero-chip"><i class="bi bi-building"></i><?= htmlspecialchars($departmentLabel) ?></span>
+                            <span class="dash-hero-chip"><i class="bi bi-calendar3"></i><?= htmlspecialchars($todayLabel) ?></span>
+                        </div>
+                    </div>
+
+                    <div class="time-hero-divider" aria-hidden="true"></div>
+
+                    <aside class="time-hero-realtime" aria-label="เวลาปัจจุบัน">
+                        <span class="time-live-label"><i class="bi bi-clock-history"></i>เวลาปัจจุบัน</span>
+                        <strong id="clock" class="time-clock">00:00:00</strong>
+                        <span id="dateLabel" class="time-hero-date">-</span>
+                    </aside>
+
+                    <div class="time-hero-cta-stack">
+                        <a href="#time-entry-panel" class="dash-btn dash-btn-secondary time-hero-cta-primary">
+                            <i class="bi bi-pencil-square"></i>เริ่มบันทึกเวร
+                        </a>
+                        <a href="#time-history-panel" class="dash-btn dash-btn-on-dark time-hero-cta-secondary">
+                            <i class="bi bi-clock-history"></i>ดูประวัติย้อนหลัง
+                        </a>
+                    </div>
                 </div>
+            </article>
+        </section>
 
-                <?php if ($canViewDepartmentReports): ?>
-                    <form method="post" class="mb-4">
-                        <label class="form-label fw-semibold small text-muted">แผนกที่ใช้บันทึก</label>
-                        <div class="row g-2">
-                            <div class="col-8">
+        <section class="time-kpi-row" aria-label="สรุปตัวชี้วัด">
+            <article class="dash-kpi-card time-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon"><i class="bi bi-clock-history"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">ชั่วโมงเดือนนี้</p>
+                    <strong class="time-kpi-value"><?= number_format($monthHours, 2) ?> <span>ชั่วโมง</span></strong>
+                    <p class="time-kpi-subtitle">รวมทุกเวรในเดือนปัจจุบัน</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card time-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon is-blue"><i class="bi bi-clock"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">ชั่วโมงสะสมของเดือน</p>
+                    <strong class="time-kpi-value"><?= number_format($approvedMonthHours, 2) ?> <span>ชั่วโมง</span></strong>
+                    <p class="time-kpi-subtitle">เฉพาะรายการที่อนุมัติแล้ว</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card time-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon"><i class="bi bi-calendar2-week"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">จำนวนเวรวันนี้</p>
+                    <strong class="time-kpi-value"><?= number_format($todayShiftCount) ?> <span>เวร</span></strong>
+                    <p class="time-kpi-subtitle">รายการที่บันทึกของวันนี้</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card time-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon is-lilac"><i class="bi bi-file-earmark-text"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">รายการล่าสุด</p>
+                    <div class="time-kpi-inline">
+                        <strong class="time-kpi-value time-kpi-value-compact"><?= htmlspecialchars($latestLogHours) ?> ชม.</strong>
+                        <span class="status-chip <?= htmlspecialchars($latestStatusMeta['class']) ?>"><?= htmlspecialchars($latestStatusMeta['label']) ?></span>
+                    </div>
+                    <p class="time-kpi-subtitle"><?= htmlspecialchars($latestWorkDateLabel) ?></p>
+                </div>
+            </article>
+        </section>
+
+        <div id="timePageMessage" class="time-message-stack">
+            <?php if ($message !== ''): ?>
+                <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-0"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
+        </div>
+
+        <section class="time-workspace-grid">
+            <div class="min-w-0">
+                <article class="dash-card time-surface time-entry-surface" id="time-entry-panel">
+                    <div class="time-surface-header">
+                        <div>
+                            <span class="time-surface-eyebrow">Today Entry</span>
+                            <h2 class="time-surface-title">บันทึกเวรของวันนี้</h2>
+                            <p class="time-surface-copy">เริ่มจากเลือกแผนกและช่วงเวลาเวร จากนั้นตรวจสรุปก่อนบันทึกจริง</p>
+                        </div>
+                        <span class="time-date-pill"><?= htmlspecialchars(app_format_thai_date($today)) ?></span>
+                    </div>
+
+                    <?php if ($canViewDepartmentReports): ?>
+                        <form method="post" class="time-inline-form">
+                            <div class="time-inline-field">
+                                <label class="form-label fw-semibold small text-muted">สถานที่/แผนกที่ใช้บันทึก</label>
                                 <select name="department_id" class="form-select">
                                     <?php foreach ($departments as $department): ?>
                                         <option value="<?= $department['id'] ?>" <?= (int) $departmentId === (int) $department['id'] ? 'selected' : '' ?>>
@@ -364,144 +539,227 @@ $modalErrorType = $messageType;
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-4 d-grid">
-                                <button name="change_department" class="btn btn-outline-dark btn-pill">เปลี่ยน</button>
+                            <button name="change_department" class="dash-btn dash-btn-secondary time-inline-submit">เปลี่ยนแผนก</button>
+                        </form>
+                    <?php else: ?>
+                        <div class="time-department-card">
+                            <div>
+                                <div class="small text-muted">แผนกที่ใช้งาน</div>
+                                <div class="fw-bold"><?= htmlspecialchars($departmentLabel) ?></div>
                             </div>
+                            <span class="time-chip-muted">สิทธิ์ส่วนตัว</span>
                         </div>
-                    </form>
-                <?php else: ?>
-                    <div class="rounded-4 border bg-light px-4 py-3 mb-4 d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="small text-muted">แผนกที่ใช้งาน</div>
-                            <div class="fw-bold"><?= htmlspecialchars($userMeta['department_name'] ?? '-') ?></div>
-                        </div>
-                        <span class="badge rounded-pill text-bg-dark px-3 py-2">สิทธิ์ส่วนตัว</span>
-                    </div>
-                <?php endif; ?>
+                    <?php endif; ?>
 
                     <form method="post" class="row g-3" id="createLogForm" data-global-loading-form data-loading-message="กำลังบันทึกข้อมูล...">
-                    <input type="hidden" name="create_time_log" value="1">
-                    <input type="hidden" name="history_date" value="<?= htmlspecialchars($searchDate) ?>">
-                    <input type="hidden" name="history_per_page" value="<?= (int) $limit ?>">
-                    <input type="hidden" name="history_page" value="<?= (int) $page ?>">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold small text-muted">ปุ่มลัดตามเวร</label>
-                        <div class="preset-wrap mb-1">
-                            <?php foreach ($shiftPresets as $presetKey => $preset): ?>
-                                <button type="button" class="preset-btn" data-shift-target="create" data-shift-key="<?= htmlspecialchars($presetKey) ?>" data-time-in="<?= htmlspecialchars($preset['time_in']) ?>" data-time-out="<?= htmlspecialchars($preset['time_out']) ?>">
-                                    <strong><?= htmlspecialchars($preset['label']) ?></strong>
-                                    <span><?= htmlspecialchars($preset['time_in']) ?> - <?= htmlspecialchars($preset['time_out']) ?></span>
+                        <input type="hidden" name="create_time_log" value="1">
+                        <input type="hidden" name="history_date" value="<?= htmlspecialchars($searchDate) ?>">
+                        <input type="hidden" name="history_date_from" value="<?= htmlspecialchars($dateFrom) ?>">
+                        <input type="hidden" name="history_date_to" value="<?= htmlspecialchars($dateTo) ?>">
+                        <input type="hidden" name="history_status" value="<?= htmlspecialchars($historyStatus) ?>">
+                        <input type="hidden" name="history_query" value="<?= htmlspecialchars($historyQuery) ?>">
+                        <input type="hidden" name="history_per_page" value="<?= (int) $limit ?>">
+                        <input type="hidden" name="history_page" value="<?= (int) $page ?>">
+
+                        <div class="col-12">
+                            <div class="time-section-label">Preset Shift</div>
+                            <div class="preset-wrap time-preset-wrap">
+                                <?php foreach ($shiftPresets as $presetKey => $preset): ?>
+                                    <button type="button" class="preset-btn" data-shift-target="create" data-shift-key="<?= htmlspecialchars($presetKey) ?>" data-time-in="<?= htmlspecialchars($preset['time_in']) ?>" data-time-out="<?= htmlspecialchars($preset['time_out']) ?>">
+                                        <strong><?= htmlspecialchars($preset['label']) ?></strong>
+                                        <span><?= htmlspecialchars($preset['time_in']) ?> - <?= htmlspecialchars($preset['time_out']) ?></span>
+                                    </button>
+                                <?php endforeach; ?>
+                                <button type="button" class="preset-btn preset-btn-custom" data-shift-custom="1">
+                                    <strong>อื่นๆ</strong>
+                                    <span>กำหนดเอง</span>
                                 </button>
-                            <?php endforeach; ?>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="rounded-4 border bg-light px-4 py-3">
-                            <div class="small text-muted">รูปแบบเวลา</div>
-                            <div class="fw-semibold">ใช้รูปแบบ 24 ชั่วโมงเท่านั้น เพื่อลดความสับสนในการลงเวลาเวร</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-semibold small text-muted">เวลาเข้า</label>
-                        <div class="time-select-grid">
-                            <select name="manual_time_in_hour" id="manual_time_in_hour" class="form-select">
-                                <?php foreach ($hourOptions as $hourOption): ?>
-                                    <option value="<?= $hourOption ?>" <?= $newForm['time_in_hour'] === $hourOption ? 'selected' : '' ?>><?= $hourOption ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="time-colon">:</div>
-                            <select name="manual_time_in_minute" id="manual_time_in_minute" class="form-select">
-                                <?php foreach ($minuteOptions as $minuteOption): ?>
-                                    <option value="<?= $minuteOption ?>" <?= $newForm['time_in_minute'] === $minuteOption ? 'selected' : '' ?>><?= $minuteOption ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fw-semibold small text-muted">เวลาออก</label>
-                        <div class="time-select-grid">
-                            <select name="manual_time_out_hour" id="manual_time_out_hour" class="form-select">
-                                <?php foreach ($hourOptions as $hourOption): ?>
-                                    <option value="<?= $hourOption ?>" <?= $newForm['time_out_hour'] === $hourOption ? 'selected' : '' ?>><?= $hourOption ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="time-colon">:</div>
-                            <select name="manual_time_out_minute" id="manual_time_out_minute" class="form-select">
-                                <?php foreach ($minuteOptions as $minuteOption): ?>
-                                    <option value="<?= $minuteOption ?>" <?= $newForm['time_out_minute'] === $minuteOption ? 'selected' : '' ?>><?= $minuteOption ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="selection-preview">
-                            <div class="small text-muted">เวลาที่จะบันทึก</div>
-                            <strong id="createTimePreview"></strong>
-                            <div class="small text-muted mt-2">ชั่วโมงรวมโดยประมาณ <span id="createHoursPreview" class="fw-semibold text-dark">0.00 ชม.</span></div>
-                            <div class="shift-summary-grid">
-                                <div class="shift-summary-card">
-                                    <span class="label">เวรที่เลือก</span>
-                                    <span class="value" id="createShiftLabel">เวรเช้า</span>
+
+                        <div class="col-12">
+                            <div class="time-input-focus-card">
+                                <div class="time-section-label">เวลาปฏิบัติงาน</div>
+                                <div class="row g-3">
+                                    <div class="col-sm-6">
+                                        <label class="form-label fw-semibold small text-muted">เวลาเริ่มต้น</label>
+                                        <div class="time-select-grid">
+                                            <select name="manual_time_in_hour" id="manual_time_in_hour" class="form-select">
+                                                <?php foreach ($hourOptions as $hourOption): ?>
+                                                    <option value="<?= $hourOption ?>" <?= $newForm['time_in_hour'] === $hourOption ? 'selected' : '' ?>><?= $hourOption ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="time-colon">:</div>
+                                            <select name="manual_time_in_minute" id="manual_time_in_minute" class="form-select">
+                                                <?php foreach ($minuteOptions as $minuteOption): ?>
+                                                    <option value="<?= $minuteOption ?>" <?= $newForm['time_in_minute'] === $minuteOption ? 'selected' : '' ?>><?= $minuteOption ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-6">
+                                        <label class="form-label fw-semibold small text-muted">เวลาสิ้นสุด</label>
+                                        <div class="time-select-grid">
+                                            <select name="manual_time_out_hour" id="manual_time_out_hour" class="form-select">
+                                                <?php foreach ($hourOptions as $hourOption): ?>
+                                                    <option value="<?= $hourOption ?>" <?= $newForm['time_out_hour'] === $hourOption ? 'selected' : '' ?>><?= $hourOption ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="time-colon">:</div>
+                                            <select name="manual_time_out_minute" id="manual_time_out_minute" class="form-select">
+                                                <?php foreach ($minuteOptions as $minuteOption): ?>
+                                                    <option value="<?= $minuteOption ?>" <?= $newForm['time_out_minute'] === $minuteOption ? 'selected' : '' ?>><?= $minuteOption ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="shift-summary-card">
-                                    <span class="label">ชั่วโมงรวม</span>
-                                    <span class="value" id="createShiftHours">8.00 ชม.</span>
+                                <div class="time-input-caption">ใช้รูปแบบ 24 ชั่วโมงเท่านั้น เพื่อลดความสับสนในการลงเวลาเวร</div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="selection-preview">
+                                <div class="small text-muted">ช่วงเวลาที่จะบันทึก</div>
+                                <strong id="createTimePreview"></strong>
+                                <div class="time-mini-metrics">
+                                    <div class="shift-summary-card">
+                                        <span class="label">ชั่วโมงโดยประมาณ</span>
+                                        <span class="value" id="createEstimatedHours">8.00 ชม.</span>
+                                    </div>
+                                    <div class="shift-summary-card">
+                                        <span class="label">พัก</span>
+                                        <span class="value">0.00 ชม.</span>
+                                    </div>
+                                    <div class="shift-summary-card">
+                                        <span class="label">ชั่วโมงสุทธิ</span>
+                                        <span class="value" id="createNetHours">8.00 ชม.</span>
+                                    </div>
                                 </div>
-                                <div class="shift-summary-card">
-                                    <span class="label">ข้ามวัน</span>
-                                    <span class="value" id="createShiftOvernight">ไม่ข้ามวัน</span>
+                                <div class="time-selection-footnote">
+                                    ช่วงเวร <span id="createShiftLabel" class="fw-semibold text-dark">เวรเช้า</span>
+                                    <span class="time-chip-muted">ชั่วโมงรวมโดยประมาณ <span id="createHoursPreview" class="fw-semibold text-dark">0.00 ชม.</span></span>
+                                    <span id="createOvernightFlag" class="time-chip-muted">ไม่ข้ามวัน</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold small text-muted">หมายเหตุ / ภารกิจ</label>
-                        <textarea name="note" class="form-control" rows="3" placeholder="ระบุรายละเอียดงานหรือหมายเหตุเพิ่มเติม"><?= htmlspecialchars($newForm['note']) ?></textarea>
-                    </div>
-                    <div class="col-12 d-grid">
-                        <button name="save_all_time" value="1" class="btn btn-dark btn-pill">บันทึกการปฏิบัติงาน</button>
-                    </div>
-                </form>
-            </div>
-        </div>
 
-        <div class="col-lg-7">
-            <div class="panel h-100">
-                    <div class="history-toolbar mb-3">
-                        <h2 class="section-title h4 mb-0">ประวัติย้อนหลัง</h2>
-                        <div class="action-stack">
-                            <a href="daily_schedule.php" class="btn btn-outline-dark btn-pill btn-sm">ดูเวรวันนี้</a>
-                            <a href="my_reports.php" class="btn btn-outline-dark btn-pill btn-sm">เปิดรายงานของฉัน</a>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-muted">หมายเหตุ / ภารกิจ</label>
+                            <textarea name="note" class="form-control" rows="4" placeholder="ระบุรายละเอียดงาน ภารกิจ หรือหมายเหตุเพิ่มเติม"><?= htmlspecialchars($newForm['note']) ?></textarea>
                         </div>
-                </div>
-                <form method="get" class="row g-3 align-items-end mb-4" id="timeHistoryFilterForm" data-page-state-key="time_history">
-                    <input type="hidden" name="p" value="<?= (int) $page ?>">
-                    <div class="col-md-8">
-                        <label class="form-label fw-semibold small text-muted">วันที่</label>
-                        <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($searchDate) ?>">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small text-muted">แสดง</label>
-                        <select name="per_page" class="form-select">
-                            <?php foreach ([10, 20, 50, 100] as $size): ?>
-                                <option value="<?= $size ?>" <?= $limit === $size ? 'selected' : '' ?>><?= $size ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-grid">
-                        <button class="btn btn-outline-dark btn-pill">ค้นหา</button>
-                    </div>
-                </form>
 
-                <div id="timeHistoryList"><?php require __DIR__ . '/../partials/time/history_list.php'; ?></div>
+                        <div class="col-12 d-grid">
+                            <button name="save_all_time" value="1" class="dash-btn dash-btn-primary w-full">บันทึกการปฏิบัติงาน</button>
+                        </div>
+                    </form>
+                </article>
             </div>
-        </div>
-    </section>
+
+            <div class="min-w-0">
+                <article class="dash-card time-surface time-history-surface" id="time-history-panel">
+                    <div class="time-surface-header time-surface-header-wide">
+                        <div>
+                            <span class="time-surface-eyebrow">History & Review</span>
+                            <h2 class="time-surface-title">ประวัติย้อนหลัง</h2>
+                            <p class="time-surface-copy">ค้นหารายการย้อนหลังตามช่วงวันที่ สถานะ หรือคำที่เกี่ยวข้อง แล้วเปิดดูรายละเอียดหรือแก้ไขได้ทันที</p>
+                        </div>
+                        <div class="time-action-stack">
+                            <a href="daily_schedule.php" class="dash-btn dash-btn-ghost">ดูเวรวันนี้ <i class="bi bi-arrow-right"></i></a>
+                            <a href="my_reports.php" class="dash-btn dash-btn-ghost">เปิดรายงานของฉัน <i class="bi bi-arrow-right"></i></a>
+                        </div>
+                    </div>
+
+                    <form method="get" class="time-filter-grid" id="timeHistoryFilterForm" data-page-state-key="time_history">
+                        <input type="hidden" name="p" value="<?= (int) $page ?>">
+                        <div class="time-filter-field">
+                            <label class="form-label fw-semibold small text-muted">ตั้งแต่วันที่</label>
+                            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($dateFrom) ?>">
+                        </div>
+                        <div class="time-filter-field">
+                            <label class="form-label fw-semibold small text-muted">ถึงวันที่</label>
+                            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($dateTo) ?>">
+                        </div>
+                        <div class="time-filter-field">
+                            <label class="form-label fw-semibold small text-muted">สถานะ</label>
+                            <select name="status" class="form-select">
+                                <option value="all" <?= $historyStatus === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
+                                <option value="pending" <?= $historyStatus === 'pending' ? 'selected' : '' ?>>รอตรวจ</option>
+                                <option value="approved" <?= $historyStatus === 'approved' ? 'selected' : '' ?>>อนุมัติแล้ว</option>
+                                <option value="issue" <?= $historyStatus === 'issue' ? 'selected' : '' ?>>ต้องตรวจทาน</option>
+                            </select>
+                        </div>
+                        <div class="time-filter-field time-filter-field-wide">
+                            <label class="form-label fw-semibold small text-muted">ค้นหา</label>
+                            <input type="search" name="query" class="form-control" value="<?= htmlspecialchars($historyQuery) ?>" placeholder="ค้นหาแผนกหรือหมายเหตุ">
+                        </div>
+                        <div class="time-filter-field">
+                            <label class="form-label fw-semibold small text-muted">แสดง</label>
+                            <select name="per_page" class="form-select">
+                                <?php foreach ([10, 20, 50, 100] as $size): ?>
+                                    <option value="<?= $size ?>" <?= $limit === $size ? 'selected' : '' ?>><?= $size ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="time-filter-submit">
+                            <button class="dash-btn dash-btn-secondary w-full">ค้นหา</button>
+                        </div>
+                    </form>
+
+                    <div class="time-history-header-row">
+                        <div class="time-history-caption">ทั้งหมด <?= number_format($totalRows) ?> รายการ<?= $historyQuery !== '' ? ' • คำค้นหา "' . htmlspecialchars($historyQuery) . '"' : '' ?></div>
+                        <?php if ($historyStatus !== 'all' || $dateFrom !== '' || $dateTo !== '' || $historyQuery !== ''): ?>
+                            <a href="time.php" class="dash-btn dash-btn-ghost">ล้างตัวกรอง <i class="bi bi-arrow-counterclockwise"></i></a>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="timeHistoryList" class="time-history-list"><?php require __DIR__ . '/../partials/time/history_list.php'; ?></div>
+                </article>
+            </div>
+        </section>
+
+        <section class="dash-card time-bottom-strip" aria-label="สรุปข้อมูลวันนี้">
+            <div class="time-bottom-heading">
+                <h3>สรุปข้อมูลวันนี้</h3>
+            </div>
+            <article class="time-bottom-item">
+                <span class="time-bottom-label">เวรที่บันทึกแล้ว</span>
+                <strong class="time-bottom-value"><?= number_format($todayShiftCount) ?> เวร</strong>
+                <span class="time-bottom-meta">อัปเดตจากรายการของวันปัจจุบัน</span>
+            </article>
+            <article class="time-bottom-item">
+                <span class="time-bottom-label">ชั่วโมงรวมวันนี้</span>
+                <strong class="time-bottom-value"><?= number_format($todayHours, 2) ?> ชม.</strong>
+                <span class="time-bottom-meta">รวมทุกเวรที่บันทึกของวันนี้</span>
+            </article>
+            <article class="time-bottom-item">
+                <span class="time-bottom-label">สถานะล่าสุด</span>
+                <strong class="time-bottom-value"><?= htmlspecialchars($latestStatusMeta['label']) ?></strong>
+                <span class="time-bottom-meta"><?= htmlspecialchars($latestWorkDateLabel) ?></span>
+            </article>
+            <article class="time-bottom-item">
+                <span class="time-bottom-label">คงเหลือเป้าหมายเดือนนี้</span>
+                <strong class="time-bottom-value"><?= number_format($monthlyRemainingHours, 2) ?> ชม. / <?= number_format($monthlyTargetHours, 2) ?> ชม.</strong>
+                <span class="time-bottom-meta">เป้าหมายเดือนนี้ <?= $monthlyProgressPercent ?>%</span>
+            </article>
+            <article class="time-bottom-progress">
+                <div class="time-bottom-progress-head">
+                    <span class="time-bottom-label">เป้าหมายเดือนนี้</span>
+                    <strong><?= $monthlyProgressPercent ?>%</strong>
+                </div>
+                <div class="time-progress-bar" role="progressbar" aria-valuenow="<?= $monthlyProgressPercent ?>" aria-valuemin="0" aria-valuemax="100">
+                    <span style="width: <?= $monthlyProgressPercent ?>%;"></span>
+                </div>
+                <span class="time-bottom-meta"><?= number_format($monthHours, 2) ?> / <?= number_format($monthlyTargetHours, 2) ?> ชม.</span>
+            </article>
+        </section>
+    </div>
 </main>
 <?php if ($editLog): ?>
     <div class="modal fade" id="editTimeLogModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-content time-modal-surface border-0 rounded-4 shadow">
                 <?php require __DIR__ . '/../partials/time/edit_modal_body.php'; ?>
             </div>
         </div>
@@ -509,7 +767,7 @@ $modalErrorType = $messageType;
 <?php endif; ?>
 <div class="modal fade" id="ajaxEditTimeLogModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow" id="ajaxEditTimeLogModalContent">
+        <div class="modal-content time-modal-surface border-0 rounded-4 shadow" id="ajaxEditTimeLogModalContent">
             <div class="modal-body text-center py-5 text-muted">กำลังโหลดข้อมูล...</div>
         </div>
     </div>
@@ -543,18 +801,35 @@ $modalErrorType = $messageType;
         return 'กำหนดเอง';
     }
 
+    function setActivePreset(start, end) {
+        document.querySelectorAll('[data-shift-target="create"]').forEach((button) => {
+            const isActive = button.dataset.timeIn === start && button.dataset.timeOut === end;
+            button.classList.toggle('is-active', isActive);
+        });
+        document.querySelectorAll('[data-shift-custom="1"]').forEach((button) => {
+            button.classList.remove('is-active');
+        });
+    }
+
     function updateCreatePreview() {
         const preview = document.getElementById('createTimePreview');
         const hoursPreview = document.getElementById('createHoursPreview');
         const shiftLabel = document.getElementById('createShiftLabel');
-        const shiftHours = document.getElementById('createShiftHours');
-        const shiftOvernight = document.getElementById('createShiftOvernight');
+        const estimatedHours = document.getElementById('createEstimatedHours');
+        const netHours = document.getElementById('createNetHours');
+        const overnightFlag = document.getElementById('createOvernightFlag');
         if (!preview) return;
-        preview.textContent = `${document.getElementById('manual_time_in_hour').value}:${document.getElementById('manual_time_in_minute').value} - ${document.getElementById('manual_time_out_hour').value}:${document.getElementById('manual_time_out_minute').value}`;
-        const startHour = parseInt(document.getElementById('manual_time_in_hour').value, 10);
-        const startMinute = parseInt(document.getElementById('manual_time_in_minute').value, 10);
-        const endHour = parseInt(document.getElementById('manual_time_out_hour').value, 10);
-        const endMinute = parseInt(document.getElementById('manual_time_out_minute').value, 10);
+        const startHourField = document.getElementById('manual_time_in_hour');
+        const startMinuteField = document.getElementById('manual_time_in_minute');
+        const endHourField = document.getElementById('manual_time_out_hour');
+        const endMinuteField = document.getElementById('manual_time_out_minute');
+        const start = `${startHourField.value}:${startMinuteField.value}`;
+        const end = `${endHourField.value}:${endMinuteField.value}`;
+        preview.textContent = `${start} - ${end}`;
+        const startHour = parseInt(startHourField.value, 10);
+        const startMinute = parseInt(startMinuteField.value, 10);
+        const endHour = parseInt(endHourField.value, 10);
+        const endMinute = parseInt(endMinuteField.value, 10);
         let startTotal = (startHour * 60) + startMinute;
         let endTotal = (endHour * 60) + endMinute;
         const isOvernight = endTotal < startTotal;
@@ -565,15 +840,19 @@ $modalErrorType = $messageType;
         if (hoursPreview) {
             hoursPreview.textContent = `${totalHours} ชม.`;
         }
-        if (shiftHours) {
-            shiftHours.textContent = `${totalHours} ชม.`;
+        if (estimatedHours) {
+            estimatedHours.textContent = `${totalHours} ชม.`;
         }
-        if (shiftOvernight) {
-            shiftOvernight.textContent = isOvernight ? 'ข้ามวัน' : 'ไม่ข้ามวัน';
+        if (netHours) {
+            netHours.textContent = `${totalHours} ชม.`;
+        }
+        if (overnightFlag) {
+            overnightFlag.textContent = isOvernight ? 'ข้ามวัน' : 'ไม่ข้ามวัน';
         }
         if (shiftLabel) {
             shiftLabel.textContent = resolveShiftLabel(startHour, startMinute, endHour, endMinute);
         }
+        setActivePreset(start, end);
     }
 
     document.querySelectorAll('[data-shift-target=\"create\"]').forEach((button) => {
@@ -585,6 +864,17 @@ $modalErrorType = $messageType;
             document.getElementById('manual_time_out_hour').value = outHour;
             document.getElementById('manual_time_out_minute').value = outMinute;
             updateCreatePreview();
+        });
+    });
+
+    document.querySelectorAll('[data-shift-custom=\"1\"]').forEach((button) => {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('[data-shift-target=\"create\"]').forEach((item) => {
+                item.classList.remove('is-active');
+            });
+            this.classList.add('is-active');
+            document.getElementById('manual_time_in_hour').focus();
+            document.getElementById('createShiftLabel').textContent = 'กำหนดเอง';
         });
     });
 
@@ -601,7 +891,32 @@ $modalErrorType = $messageType;
         new bootstrap.Modal(editModalElement).show();
     }
     <?php endif; ?>
-TimePageAsync.init({ historyId: 'timeHistoryList', filterFormId: 'timeHistoryFilterForm', modalId: 'ajaxEditTimeLogModal', modalContentId: 'ajaxEditTimeLogModalContent', messageId: 'timePageMessage' });
+    TimePageAsync.init({ historyId: 'timeHistoryList', filterFormId: 'timeHistoryFilterForm', modalId: 'ajaxEditTimeLogModal', modalContentId: 'ajaxEditTimeLogModalContent', messageId: 'timePageMessage' });
+
+    (function () {
+        const openButton = document.querySelector('[data-dashboard-sidebar-open]');
+        const closeButton = document.querySelector('[data-dashboard-sidebar-close]');
+        const drawer = document.querySelector('[data-dashboard-sidebar-drawer]');
+        const backdrop = document.querySelector('[data-dashboard-sidebar-backdrop]');
+
+        function setOpen(open) {
+            if (!drawer || !backdrop) {
+                return;
+            }
+            drawer.classList.toggle('is-open', open);
+            backdrop.classList.toggle('is-open', open);
+            document.body.classList.toggle('overflow-hidden', open);
+        }
+
+        openButton && openButton.addEventListener('click', function () { setOpen(true); });
+        closeButton && closeButton.addEventListener('click', function () { setOpen(false); });
+        backdrop && backdrop.addEventListener('click', function () { setOpen(false); });
+        window.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                setOpen(false);
+            }
+        });
+    })();
 </script>
 </body>
 </html>

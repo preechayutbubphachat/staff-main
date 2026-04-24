@@ -834,8 +834,12 @@ function app_get_notifications_page_data(PDO $conn, int $userId, string $status,
         return ['rows' => [], 'total' => 0];
     }
 
-    $where = 'WHERE user_id = ?';
-    $params = [$userId];
+    $status = in_array($status, ['all', 'unread', 'read'], true) ? $status : 'all';
+    $limit = max(1, (int) $limit);
+    $offset = max(0, (int) $offset);
+
+    $where = 'WHERE user_id = :user_id';
+    $params = [':user_id' => $userId];
 
     if ($status === 'unread') {
         $where .= ' AND is_read = 0';
@@ -852,10 +856,14 @@ function app_get_notifications_page_data(PDO $conn, int $userId, string $status,
         FROM notifications
         {$where}
         ORDER BY created_at DESC, id DESC
-        LIMIT ? OFFSET ?
+        LIMIT :limit OFFSET :offset
     ");
-    $executeParams = array_merge($params, [$limit, $offset]);
-    $stmt->execute($executeParams);
+    foreach ($params as $name => $value) {
+        $stmt->bindValue($name, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     return [

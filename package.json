@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "build:tailwind": "npm run build:tailwind:index && npm run build:tailwind:dashboard",
+    "build:tailwind:index": "tailwindcss -i ./assets/css/tailwind-index.css -o ./assets/css/index-tailwind.css --minify",
+    "build:tailwind:dashboard": "tailwindcss -i ./assets/css/dashboard-tailwind.css -o ./assets/css/dashboard-tailwind.output.css --minify",
+    "watch:tailwind": "tailwindcss -i ./assets/css/tailwind-index.css -o ./assets/css/index-tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

@@ -155,7 +155,11 @@
             const response = await fetch(
                 '../ajax/time/get_time_log.php?id=' + encodeURIComponent(id) +
                 '&p=' + encodeURIComponent(url.searchParams.get('p') || '1') +
-                '&date=' + encodeURIComponent(url.searchParams.get('date') || ''),
+                '&date=' + encodeURIComponent(url.searchParams.get('date') || '') +
+                '&date_from=' + encodeURIComponent(url.searchParams.get('date_from') || '') +
+                '&date_to=' + encodeURIComponent(url.searchParams.get('date_to') || '') +
+                '&status=' + encodeURIComponent(url.searchParams.get('status') || 'all') +
+                '&query=' + encodeURIComponent(url.searchParams.get('query') || ''),
                 { headers: { 'X-Requested-With': 'XMLHttpRequest' } }
             );
 

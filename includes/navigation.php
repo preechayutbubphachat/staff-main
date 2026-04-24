@@ -236,6 +236,141 @@ function app_nav_resolve_href(string $href): string
     return $href;
 }
 
+function app_dashboard_sidebar_sections(): array
+{
+    $items = [];
+    foreach (app_nav_items() as $item) {
+        $items[$item['href']] = $item;
+    }
+
+    $sectionItems = static function (array $hrefs) use ($items): array {
+        $result = [];
+        foreach ($hrefs as $href) {
+            if (isset($items[$href])) {
+                $result[] = $items[$href];
+            }
+        }
+        return $result;
+    };
+
+    $sections = [
+        [
+            'label' => 'เมนูหลัก',
+            'items' => $sectionItems(['dashboard.php', 'time.php', 'approval_queue.php', 'daily_schedule.php']),
+        ],
+        [
+            'label' => 'รายงาน',
+            'items' => $sectionItems(['my_reports.php', 'department_reports.php']),
+        ],
+        [
+            'label' => 'และอื่นๆ',
+            'items' => $sectionItems(['profile.php', 'manage_time_logs.php', 'manage_users.php']),
+        ],
+    ];
+
+    $adminItems = app_nav_admin_group_items();
+    if ($adminItems) {
+        $sections[] = [
+            'label' => 'ผู้ดูแล',
+            'items' => $adminItems,
+        ];
+    }
+
+    return array_values(array_filter($sections, static fn($section) => !empty($section['items'])));
+}
+
+function render_dashboard_sidebar_links(string $currentPage): void
+{
+    foreach (app_dashboard_sidebar_sections() as $section) {
+        ?>
+        <div class="mt-5 first:mt-0">
+            <div class="dash-section-label"><?= htmlspecialchars($section['label']) ?></div>
+            <div class="grid gap-1.5">
+                <?php foreach ($section['items'] as $item): ?>
+                    <?php $isActive = $currentPage === $item['href']; ?>
+                    <a class="dash-nav-link <?= $isActive ? 'active' : '' ?>" href="<?= htmlspecialchars(app_nav_resolve_href($item['href'])) ?>">
+                        <span class="dash-nav-icon"><i class="bi <?= htmlspecialchars($item['icon']) ?>"></i></span>
+                        <span><?= htmlspecialchars($item['label']) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    }
+}
+
+function render_dashboard_sidebar(string $currentPage, string $displayName, string $roleLabel, ?string $profileImageSrc = null): void
+{
+    ?>
+    <aside class="dash-sidebar" aria-label="เมนูหลัก">
+        <div class="dash-sidebar-panel">
+            <a href="dashboard.php" class="mb-6 flex cursor-pointer items-center gap-3 rounded-3xl text-hospital-ink no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2">
+                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-hospital-mist p-2">
+                    <img src="../LOGO/nongphok_logo.png" alt="Logo" class="h-full w-full object-contain">
+                </span>
+                <span class="grid leading-tight">
+                    <span class="font-prompt text-lg font-bold">ระบบลงเวลา</span>
+                    <span class="text-xs font-semibold text-hospital-muted">โรงพยาบาลหนองพอก</span>
+                </span>
+            </a>
+
+            <nav class="min-h-0 flex-1 overflow-y-auto pr-1">
+                <?php render_dashboard_sidebar_links($currentPage); ?>
+            </nav>
+
+            <div class="mt-5 rounded-[1.35rem] bg-hospital-mist p-3">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white text-hospital-teal">
+                        <?php if ($profileImageSrc): ?>
+                            <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์" class="h-full w-full object-cover">
+                        <?php else: ?>
+                            <i class="bi bi-person-fill text-xl"></i>
+                        <?php endif; ?>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block truncate text-sm font-bold text-hospital-ink"><?= htmlspecialchars($displayName) ?></span>
+                        <span class="block truncate text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+                    </span>
+                </div>
+                <a href="../auth/logout.php" class="dash-btn dash-btn-secondary mt-3 w-full">
+                    <i class="bi bi-box-arrow-right"></i>
+                    ออกจากระบบ
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <div class="dash-mobile-backdrop" data-dashboard-sidebar-backdrop></div>
+    <aside class="dash-mobile-drawer" data-dashboard-sidebar-drawer aria-label="เมนูมือถือ">
+        <div class="dash-sidebar-panel">
+            <div class="mb-5 flex items-center justify-between gap-3">
+                <a href="dashboard.php" class="flex min-w-0 cursor-pointer items-center gap-3 rounded-3xl text-hospital-ink no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hospital-mist p-2">
+                        <img src="../LOGO/nongphok_logo.png" alt="Logo" class="h-full w-full object-contain">
+                    </span>
+                    <span class="grid leading-tight">
+                        <span class="font-prompt text-base font-bold">ระบบลงเวลา</span>
+                        <span class="text-xs font-semibold text-hospital-muted">โรงพยาบาลหนองพอก</span>
+                    </span>
+                </a>
+                <button type="button" class="dash-icon-button !h-10 !w-10 bg-hospital-mist" data-dashboard-sidebar-close aria-label="ปิดเมนู">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <nav class="min-h-0 flex-1 overflow-y-auto pr-1">
+                <?php render_dashboard_sidebar_links($currentPage); ?>
+            </nav>
+
+            <a href="../auth/logout.php" class="dash-btn dash-btn-primary mt-5 w-full">
+                <i class="bi bi-box-arrow-right"></i>
+                ออกจากระบบ
+            </a>
+        </div>
+    </aside>
+    <?php
+}
+
 function render_app_navigation(string $currentPage = ''): void
 {
     $roleLabel = app_role_label(app_current_role());

@@ -36,11 +36,11 @@ if (!empty($departments)) {
 </div>
 <div class="modal-body pt-3">
     <div class="d-flex flex-wrap gap-2 mb-3">
-        <span class="badge rounded-pill text-bg-<?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span>
+        <span class="status-chip <?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span>
         <?php if ($editModalLocked): ?>
-            <span class="badge rounded-pill text-bg-dark">ล็อกแล้ว</span>
+            <span class="status-chip ink">ล็อกแล้ว</span>
         <?php endif; ?>
-        <span class="badge rounded-pill text-bg-light border"><?= htmlspecialchars(app_format_thai_date((string) ($editLog['work_date'] ?? ''), true)) ?></span>
+        <span class="time-badge-pill"><?= htmlspecialchars(app_format_thai_date((string) ($editLog['work_date'] ?? ''), true)) ?></span>
     </div>
 
     <div class="alert alert-<?= htmlspecialchars($helperType) ?> rounded-4 mb-3">
@@ -58,6 +58,10 @@ if (!empty($departments)) {
         <input type="hidden" name="edit_id" value="<?= (int) ($editLog['id'] ?? 0) ?>">
         <input type="hidden" name="page" value="<?= (int) $page ?>">
         <input type="hidden" name="date" value="<?= htmlspecialchars($searchDate) ?>">
+        <input type="hidden" name="date_from" value="<?= htmlspecialchars((string) ($dateFrom ?? '')) ?>">
+        <input type="hidden" name="date_to" value="<?= htmlspecialchars((string) ($dateTo ?? '')) ?>">
+        <input type="hidden" name="status" value="<?= htmlspecialchars((string) ($historyStatus ?? 'all')) ?>">
+        <input type="hidden" name="query" value="<?= htmlspecialchars((string) ($historyQuery ?? '')) ?>">
 
         <?php if ($canEditModal): ?>
             <div class="row g-3">
@@ -117,25 +121,25 @@ if (!empty($departments)) {
         <?php else: ?>
             <div class="row g-3">
                 <div class="col-md-4">
-                    <div class="rounded-4 border bg-light px-4 py-3 h-100">
+                    <div class="time-modal-info-card h-100">
                         <div class="small text-muted mb-1">แผนก</div>
                         <div class="fw-semibold"><?= htmlspecialchars($departmentName) ?></div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="rounded-4 border bg-light px-4 py-3 h-100">
+                    <div class="time-modal-info-card h-100">
                         <div class="small text-muted mb-1">เวลาเข้า</div>
                         <div class="fw-semibold"><?= htmlspecialchars($editModalTimeIn24) ?></div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="rounded-4 border bg-light px-4 py-3 h-100">
+                    <div class="time-modal-info-card h-100">
                         <div class="small text-muted mb-1">เวลาออก</div>
                         <div class="fw-semibold"><?= htmlspecialchars($editModalTimeOut24) ?></div>
                     </div>
                 </div>
                 <div class="col-12">
-                    <div class="rounded-4 border bg-light px-4 py-3">
+                    <div class="time-modal-info-card">
                         <div class="small text-muted mb-1">หมายเหตุ / ภารกิจ</div>
                         <div class="fw-semibold"><?= nl2br(htmlspecialchars((string) ($editLog['note'] ?? 'ไม่มีหมายเหตุเพิ่มเติม'))) ?></div>
                     </div>
@@ -148,19 +152,19 @@ if (!empty($departments)) {
                 <?php if ($canDeleteModal): ?>
                     <button
                         type="button"
-                        class="btn btn-outline-danger btn-pill"
+                        class="dash-btn dash-btn-ghost time-modal-danger"
                         data-delete-submit
                         data-confirm-message="ยืนยันการลบรายการลงเวลาเวรนี้ใช่หรือไม่?"
                     >
-                        <i class="bi bi-trash3 me-1"></i>ลบรายการ
+                        <i class="bi bi-trash3"></i>ลบรายการ
                     </button>
                 <?php endif; ?>
             </div>
             <div class="d-flex flex-wrap gap-2 justify-content-end">
-                <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal"><?= $canEditModal ? 'ยกเลิก' : 'ปิด' ?></button>
+                <button type="button" class="dash-btn dash-btn-ghost" data-bs-dismiss="modal"><?= $canEditModal ? 'ยกเลิก' : 'ปิด' ?></button>
                 <?php if ($canEditModal): ?>
-                    <button type="submit" name="update_time_log" value="1" class="btn btn-dark btn-pill">
-                        <i class="bi bi-check2-circle me-1"></i>บันทึกการแก้ไข
+                    <button type="submit" name="update_time_log" value="1" class="dash-btn dash-btn-primary">
+                        <i class="bi bi-check2-circle"></i>บันทึกการแก้ไข
                     </button>
                 <?php endif; ?>
             </div>

@@ -1,0 +1,829 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .dash-shell {
+    @apply min-h-screen bg-[radial-gradient(circle_at_12%_8%,rgba(111,215,232,0.20),transparent_24%),radial-gradient(circle_at_88%_0%,rgba(223,247,239,0.72),transparent_26%),linear-gradient(180deg,#f8fbfd_0%,#eef6f9_100%)] text-hospital-ink antialiased xl:h-screen xl:overflow-hidden;
+  }
+
+  .dash-sidebar {
+    @apply fixed inset-y-0 left-0 z-40 hidden w-[276px] p-4 lg:block;
+  }
+
+  .dash-sidebar-panel {
+    @apply flex h-full flex-col rounded-[2rem] border border-white/70 bg-white/85 p-4 shadow-soft backdrop-blur-xl;
+  }
+
+  .dash-main {
+    @apply min-h-screen px-4 py-4 sm:px-6 lg:ml-[276px] lg:px-6 lg:py-3 xl:flex xl:h-screen xl:flex-col xl:overflow-hidden;
+  }
+
+  .dash-topbar {
+    @apply sticky top-0 z-30 mb-4 flex shrink-0 items-center gap-3 rounded-[1.75rem] border border-white/70 bg-white/85 px-4 py-3 shadow-soft backdrop-blur-xl;
+  }
+
+  .dash-dashboard-frame {
+    @apply mx-auto grid w-full max-w-[1560px] gap-4 xl:min-h-0 xl:flex-1 xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:overflow-hidden;
+  }
+
+  .dash-card {
+    @apply relative pointer-events-auto rounded-[1.75rem] border border-white/75 bg-white/80 p-3 shadow-soft backdrop-blur-xl xl:p-4;
+  }
+
+  .dash-card-strong {
+    @apply relative isolate pointer-events-auto rounded-[1.9rem] bg-hospital-navy p-5 text-white shadow-glass xl:p-6;
+    background:
+      radial-gradient(circle at 18% 16%, rgba(111, 215, 232, 0.25), transparent 28%),
+      radial-gradient(circle at 72% 74%, rgba(111, 215, 232, 0.12), transparent 26%),
+      linear-gradient(135deg, #12385a 0%, #10243b 100%);
+  }
+
+  .dash-nav-link {
+    @apply relative flex cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-bold text-hospital-muted no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist hover:text-hospital-navy hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0;
+  }
+
+  .dash-nav-link.active {
+    @apply bg-hospital-navy text-white shadow-soft;
+  }
+
+  .dash-nav-icon {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-hospital-mist text-base text-hospital-teal;
+  }
+
+  .dash-nav-link.active .dash-nav-icon {
+    @apply bg-white/20 text-white;
+  }
+
+  .dash-section-label {
+    @apply mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-muted;
+  }
+
+  .dash-kpi-card {
+    @apply relative flex h-full min-h-[134px] rounded-[1.55rem] border border-white/75 bg-white/90 p-4 shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:border-hospital-teal/25 hover:bg-white xl:min-h-[138px];
+  }
+
+  .dash-icon-badge {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-hospital-mint text-sm text-hospital-teal;
+  }
+
+  .dash-action-card {
+    @apply relative flex h-full min-h-[154px] cursor-pointer flex-col justify-between rounded-[1.45rem] border border-white/75 bg-white/90 p-4 text-hospital-ink no-underline shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-hospital-teal/30 hover:bg-white hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
+  }
+
+  .dash-action-link {
+    @apply mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-hospital-navy px-3 py-1.5 text-xs font-bold text-white shadow-soft transition-all duration-200 ease-out;
+  }
+
+  .dash-action-card:hover .dash-action-link {
+    @apply translate-x-0.5 shadow-glass;
+  }
+
+  .dash-action-card:hover .dash-action-link i {
+    @apply translate-x-0.5 -translate-y-0.5;
+  }
+
+  .dash-btn {
+    @apply relative z-10 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold no-underline transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
+  }
+
+  .dash-btn-primary {
+    @apply bg-hospital-navy text-white shadow-soft hover:-translate-y-0.5 hover:bg-[#0f3150] hover:shadow-glass;
+  }
+
+  .dash-btn-secondary {
+    @apply border border-white/70 bg-white text-hospital-navy shadow-soft hover:-translate-y-0.5 hover:border-hospital-teal/40 hover:bg-white hover:shadow-glass;
+  }
+
+  .dash-btn-on-dark {
+    @apply border border-white/25 bg-white/10 text-white shadow-none hover:-translate-y-0.5 hover:border-white/45 hover:bg-white/15 hover:shadow-soft;
+  }
+
+  .dash-btn-ghost {
+    @apply inline-flex cursor-pointer items-center gap-2 rounded-full border border-hospital-teal/15 bg-hospital-mist px-3 py-1.5 text-xs font-bold text-hospital-navy no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-hospital-teal/35 hover:bg-white hover:text-hospital-ink hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
+  }
+
+  .dash-btn-ghost:hover i {
+    @apply translate-x-0.5;
+  }
+
+  .dash-icon-button {
+    @apply relative z-10 grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-2xl bg-white text-hospital-navy no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98];
+  }
+
+  .dash-search-control {
+    @apply hidden min-w-[320px] items-center gap-2 rounded-2xl border border-transparent bg-hospital-mist px-4 py-3 text-sm font-semibold text-hospital-muted transition-all duration-200 ease-out focus-within:border-hospital-teal/35 focus-within:bg-white focus-within:shadow-soft lg:flex;
+  }
+
+  .dash-profile-mini {
+    @apply rounded-[1.55rem] border border-white/15 bg-white/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl;
+  }
+
+  .dash-detail-card {
+    @apply rounded-[1.45rem] border border-white/75 bg-white/90 p-4 shadow-soft backdrop-blur-xl;
+  }
+
+  .dash-mobile-backdrop {
+    @apply fixed inset-0 z-40 hidden bg-hospital-ink/35 backdrop-blur-sm;
+  }
+
+  .dash-mobile-backdrop.is-open {
+    @apply block;
+  }
+
+  .dash-mobile-drawer {
+    @apply fixed inset-y-0 left-0 z-50 w-[84vw] max-w-[320px] -translate-x-full p-3 transition-transform duration-200 lg:hidden;
+  }
+
+  .dash-mobile-drawer.is-open {
+    @apply translate-x-0;
+  }
+
+  .dash-hero-layout {
+    @apply grid gap-3;
+  }
+
+  .dash-hero-content-grid {
+    @apply relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(240px,0.78fr)] lg:items-start;
+  }
+
+  .dash-hero-badge {
+    @apply inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/75;
+  }
+
+  .dash-hero-title {
+    @apply mt-3 font-prompt text-[2.05rem] font-bold tracking-[-0.045em] text-white sm:text-[2.3rem] xl:max-w-[13ch];
+  }
+
+  .dash-hero-copy {
+    @apply mt-3 max-w-[34rem] text-sm leading-6 text-white/70;
+  }
+
+  .dash-hero-chip-row {
+    @apply mt-4 flex flex-wrap gap-2;
+  }
+
+  .dash-hero-chip {
+    @apply inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[0.68rem] font-bold text-white/75;
+  }
+
+  .dash-hero-actions {
+    @apply mt-5 flex flex-wrap gap-3;
+  }
+
+  .dash-signature-box {
+    @apply mt-1 grid min-h-[78px] place-items-center rounded-xl bg-white/10 px-3 py-2 text-[0.68rem] font-semibold text-white/65;
+  }
+
+  .dash-kpi-grid {
+    @apply grid gap-3 sm:grid-cols-2 xl:auto-rows-fr;
+  }
+
+  .dash-section-heading {
+    @apply flex items-end justify-between gap-4;
+  }
+
+  .dash-summary-grid {
+    @apply grid gap-3;
+  }
+
+  .dash-summary-grid > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .dash-detail-card-wide,
+  .dash-detail-card-side {
+    @apply h-full;
+  }
+
+  .time-dashboard-frame {
+    @apply mx-auto grid w-full max-w-[1560px] gap-4 pb-6 xl:flex-none xl:overflow-visible;
+  }
+
+  .time-page-shell {
+    @apply xl:h-auto xl:overflow-visible;
+  }
+
+  .time-hero-stage {
+    @apply relative;
+  }
+
+  .time-hero-card {
+    @apply min-h-[222px] overflow-hidden px-5 py-4 xl:px-6 xl:py-5;
+    background:
+      radial-gradient(circle at 82% 20%, rgba(17, 198, 229, 0.18), transparent 16%),
+      radial-gradient(circle at 90% 18%, rgba(17, 198, 229, 0.14), transparent 24%),
+      linear-gradient(135deg, #0f4d79 0%, #0c3c63 30%, #0d2f53 100%);
+  }
+
+  .time-hero-grid {
+    @apply relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1.22fr)_1px_minmax(216px,0.42fr)_minmax(236px,0.48fr)] lg:items-center;
+  }
+
+  .time-hero-copy-block {
+    @apply max-w-[36rem];
+  }
+
+  .time-hero-realtime {
+    @apply grid content-center gap-2 lg:w-full lg:max-w-[250px];
+  }
+
+  .time-hero-divider {
+    @apply hidden h-[126px] w-px bg-white/20 lg:block;
+  }
+
+  .time-hero-date {
+    @apply text-[1.15rem] font-semibold text-white;
+  }
+
+  .time-hero-cta-stack {
+    @apply grid gap-2.5 lg:w-full lg:max-w-[282px] lg:justify-self-end;
+  }
+
+  .time-hero-cta-primary {
+    @apply min-h-[52px] text-[0.96rem];
+  }
+
+  .time-hero-cta-secondary {
+    @apply min-h-[52px] border-white/45 bg-transparent text-[0.96rem] hover:bg-white/10;
+  }
+
+  .time-live-panel {
+    @apply grid gap-3;
+  }
+
+  .time-live-card {
+    @apply flex min-h-[84px] flex-col justify-between rounded-[1.25rem] border border-white/15 bg-white/10 p-3 backdrop-blur-xl;
+  }
+
+  .time-live-card.emphasis {
+    @apply bg-white text-hospital-navy shadow-soft;
+  }
+
+  .time-live-label {
+    @apply flex items-center gap-2 text-sm font-bold text-white/80;
+  }
+
+  .time-clock {
+    @apply font-prompt text-[2.7rem] font-bold leading-none tracking-[-0.05em] sm:text-[3.15rem];
+  }
+
+  .time-kpi-grid {
+    @apply grid gap-3 sm:grid-cols-3 xl:grid-cols-1;
+  }
+
+  .time-kpi-row {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .time-kpi-card {
+    @apply min-h-[118px] items-center gap-4 rounded-[1.5rem] p-5;
+  }
+
+  .time-kpi-copy {
+    @apply flex min-w-0 flex-1 flex-col gap-1;
+  }
+
+  .time-kpi-icon {
+    @apply h-12 w-12 rounded-[1.15rem] text-lg;
+  }
+
+  .time-kpi-icon.is-blue {
+    @apply bg-cyan-100/75 text-blue-500;
+  }
+
+  .time-kpi-icon.is-lilac {
+    @apply bg-purple-100/70 text-purple-500;
+  }
+
+  .time-kpi-label {
+    @apply text-[0.72rem] font-bold uppercase tracking-[0.16em] text-hospital-muted;
+  }
+
+  .time-kpi-value {
+    @apply font-prompt text-[1.78rem] font-bold tracking-[-0.045em] text-hospital-navy;
+  }
+
+  .time-kpi-value span {
+    @apply ml-1 text-base font-semibold text-hospital-muted;
+  }
+
+  .time-kpi-value-compact {
+    @apply text-[1.2rem] leading-tight;
+  }
+
+  .time-kpi-subtitle {
+    @apply text-[0.84rem] leading-5 text-hospital-muted;
+  }
+
+  .time-kpi-inline {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .time-message-stack .alert {
+    @apply rounded-[1.35rem] border-0 px-4 py-3 shadow-soft;
+  }
+
+  .time-workspace-grid {
+    @apply grid gap-4 xl:min-h-0 xl:grid-cols-[minmax(344px,0.76fr)_minmax(0,1.24fr)] xl:items-start xl:overflow-visible;
+  }
+
+  .time-surface {
+    @apply flex flex-col gap-3.5 p-4 xl:p-4;
+  }
+
+  .time-page-main {
+    @apply xl:h-auto xl:min-h-screen xl:flex-none xl:overflow-visible;
+  }
+
+  .time-page-main .dash-topbar {
+    @apply mb-3;
+  }
+
+  .time-surface-header {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .time-surface-header-wide {
+    @apply items-end;
+  }
+
+  .time-surface-eyebrow {
+    @apply text-[0.68rem] font-bold uppercase tracking-[0.18em] text-hospital-teal;
+  }
+
+  .time-surface-title {
+    @apply mt-1 font-prompt text-[1.55rem] font-bold tracking-[-0.04em] text-hospital-ink;
+  }
+
+  .time-surface-copy {
+    @apply mt-1 text-[0.88rem] text-hospital-muted;
+  }
+
+  .time-section-label {
+    @apply mb-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-teal;
+  }
+
+  .time-date-pill,
+  .time-chip-muted {
+    @apply inline-flex items-center gap-2 rounded-full border border-hospital-teal/15 bg-hospital-mist px-3 py-1.5 text-xs font-bold text-hospital-navy;
+  }
+
+  .time-inline-form {
+    @apply grid gap-3 rounded-[1.25rem] border border-hospital-teal/10 bg-hospital-mist/75 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end;
+  }
+
+  .time-inline-field {
+    @apply min-w-0;
+  }
+
+  .time-inline-submit {
+    @apply w-full sm:w-auto;
+  }
+
+  .time-department-card,
+  .time-tip-card {
+    @apply flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-hospital-teal/10 bg-hospital-mist/75 px-4 py-3;
+  }
+
+  .time-tip-card {
+    @apply block;
+  }
+
+  .time-surface .form-control,
+  .time-surface .form-select,
+  .time-modal-surface .form-control,
+  .time-modal-surface .form-select {
+    @apply min-h-11 rounded-2xl border border-hospital-teal/10 bg-white px-4 py-2.5 text-sm font-semibold text-hospital-ink shadow-none transition-all duration-200 ease-out;
+  }
+
+  .time-surface .form-control:focus,
+  .time-surface .form-select:focus,
+  .time-modal-surface .form-control:focus,
+  .time-modal-surface .form-select:focus {
+    @apply border-hospital-teal/35 ring-4 ring-hospital-teal/10;
+    box-shadow: none;
+  }
+
+  .time-surface textarea.form-control,
+  .time-modal-surface textarea.form-control {
+    @apply min-h-[88px] resize-y;
+  }
+
+  .time-preset-wrap {
+    @apply grid gap-2 sm:grid-cols-3;
+  }
+
+  .preset-btn {
+    @apply flex min-h-[60px] cursor-pointer flex-col items-start justify-between rounded-[1.05rem] border border-hospital-teal/10 bg-hospital-mist/55 px-3 py-2.5 text-left text-hospital-ink transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-hospital-teal/25 hover:bg-white hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
+  }
+
+  .preset-btn strong {
+    @apply text-[0.78rem] font-bold;
+  }
+
+  .preset-btn span {
+    @apply text-[0.66rem] font-semibold text-hospital-muted;
+  }
+
+  .preset-btn.is-active {
+    @apply border-hospital-navy/20 bg-hospital-navy text-white shadow-soft;
+  }
+
+  .preset-btn.is-active span {
+    @apply text-white/75;
+  }
+
+  .time-input-focus-card {
+    @apply rounded-[1.25rem] border border-hospital-teal/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,248,251,0.94))] p-3.5 shadow-soft;
+  }
+
+  .time-input-caption {
+    @apply mt-3 text-xs font-semibold text-hospital-muted;
+  }
+
+  .time-select-grid {
+    @apply grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)] items-center gap-2;
+  }
+
+  .time-select-grid .form-select {
+    @apply min-h-[3.65rem] rounded-[1.15rem] border-hospital-navy/10 bg-white text-center font-prompt text-[1.12rem] font-bold tracking-[-0.03em] text-hospital-navy shadow-soft;
+  }
+
+  .time-colon {
+    @apply text-center font-prompt text-[1.4rem] font-bold text-hospital-navy;
+  }
+
+  .selection-preview {
+    @apply rounded-[1.25rem] border border-hospital-teal/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(235,246,249,0.98))] p-4 shadow-soft;
+  }
+
+  .selection-preview strong {
+    @apply mt-1 block font-prompt text-[1.34rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  }
+
+  .shift-summary-grid {
+    @apply mt-3 grid gap-2 sm:grid-cols-3;
+  }
+
+  .time-mini-metrics {
+    @apply mt-3 grid gap-2 sm:grid-cols-3;
+  }
+
+  .shift-summary-card {
+    @apply rounded-[1rem] border border-white/90 bg-white/90 px-3 py-2 shadow-soft;
+  }
+
+  .shift-summary-card .label {
+    @apply block text-[0.68rem] font-bold uppercase tracking-[0.12em] text-hospital-muted;
+  }
+
+  .shift-summary-card .value {
+    @apply mt-1 block text-sm font-bold text-hospital-ink;
+  }
+
+  .time-action-stack {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .time-selection-footnote {
+    @apply mt-2.5 flex flex-wrap items-center gap-2 text-[0.84rem] text-hospital-muted;
+  }
+
+  .time-filter-grid {
+    @apply grid gap-2 rounded-[1.1rem] border border-hospital-teal/10 bg-hospital-mist/70 px-3 py-2.5 md:grid-cols-2 xl:grid-cols-[142px_142px_124px_minmax(0,1fr)_84px_104px] xl:items-end;
+  }
+
+  .time-filter-field {
+    @apply min-w-0;
+  }
+
+  .time-filter-field-wide {
+    @apply md:col-span-2 xl:col-span-1;
+  }
+
+  .time-filter-submit {
+    @apply flex items-end;
+  }
+
+  .time-history-list {
+    @apply min-h-0;
+  }
+
+  .time-history-header-row {
+    @apply flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .time-history-caption {
+    @apply text-[0.84rem] font-semibold text-hospital-muted;
+  }
+
+  .timeline-stack {
+    @apply grid gap-2.5;
+  }
+
+  .timeline-row {
+    @apply grid items-center gap-3 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-4 py-3.5 shadow-soft transition-all duration-200 ease-out md:grid-cols-[76px_minmax(0,1.36fr)_136px_116px];
+  }
+
+  .timeline-row.is-warning {
+    @apply border-amber-200 bg-amber-50/70;
+  }
+
+  .timeline-row.is-caution {
+    @apply border-sky-200 bg-sky-50/70;
+  }
+
+  .timeline-date-col {
+    @apply grid justify-items-start gap-0.5 border-b border-hospital-teal/10 pb-2 md:border-b-0 md:border-r md:pb-0 md:pr-4;
+  }
+
+  .timeline-date-number {
+    @apply font-prompt text-[2.15rem] font-bold leading-none tracking-[-0.06em] text-hospital-navy;
+  }
+
+  .timeline-date-meta {
+    @apply text-[0.7rem] font-semibold tracking-[0.04em] text-hospital-muted;
+  }
+
+  .timeline-date-weekday {
+    @apply text-[0.68rem] font-semibold text-hospital-muted;
+  }
+
+  .timeline-main-col {
+    @apply grid gap-1;
+  }
+
+  .timeline-main-head {
+    @apply grid gap-0.5;
+  }
+
+  .timeline-main-department {
+    @apply text-base font-bold text-hospital-ink;
+  }
+
+  .timeline-main-time {
+    @apply text-sm font-semibold text-hospital-navy;
+  }
+
+  .timeline-main-note {
+    @apply rounded-[0.95rem] bg-hospital-mist/60 px-3 py-2 text-[0.8rem] leading-5 text-hospital-muted;
+  }
+
+  .timeline-status-col {
+    @apply flex flex-col items-start gap-1.5 md:items-end md:text-right;
+  }
+
+  .timeline-action-col {
+    @apply flex justify-start md:justify-end;
+  }
+
+  .timeline-card.warning {
+    @apply border-amber-200 bg-amber-50/70;
+  }
+
+  .timeline-card.caution {
+    @apply border-sky-200 bg-sky-50/70;
+  }
+
+  .timeline-order {
+    @apply text-[0.68rem] font-bold uppercase tracking-[0.14em] text-hospital-muted;
+  }
+
+  .timeline-title {
+    @apply mt-1 font-prompt text-[1.02rem] font-bold tracking-[-0.03em] text-hospital-ink;
+  }
+
+  .timeline-head {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .timeline-head-copy {
+    @apply min-w-0;
+  }
+
+  .timeline-subtitle {
+    @apply mt-1 text-[0.82rem] font-semibold text-hospital-muted;
+  }
+
+  .timeline-status-box {
+    @apply flex flex-col items-start gap-1.5 text-left sm:items-end sm:text-right;
+  }
+
+  .timeline-meta-row {
+    @apply mt-2.5 flex flex-wrap gap-1.5;
+  }
+
+  .timeline-hours {
+    @apply font-prompt text-[0.95rem] font-bold text-hospital-teal;
+  }
+
+  .timeline-note {
+    @apply mt-2 rounded-[0.95rem] bg-hospital-mist/65 px-3 py-2.5 text-[0.82rem] leading-5 text-hospital-muted;
+  }
+
+  .timeline-footer {
+    @apply mt-2.5 flex flex-wrap items-end justify-between gap-2.5;
+  }
+
+  .timeline-support {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+
+  .timeline-support-label {
+    @apply text-[0.68rem] font-bold uppercase tracking-[0.14em] text-hospital-muted;
+  }
+
+  .timeline-support-text {
+    @apply text-[0.8rem] font-semibold text-hospital-ink;
+  }
+
+  .timeline-helper {
+    @apply mt-2 rounded-[1rem] px-3 py-2 text-[0.78rem] font-semibold;
+  }
+
+  .timeline-helper.warning {
+    @apply bg-amber-50 text-amber-700;
+  }
+
+  .timeline-helper.danger {
+    @apply bg-rose-50 text-rose-600;
+  }
+
+  .timeline-action-btn {
+    @apply min-h-[40px] px-4 py-2 text-[0.76rem];
+  }
+
+  .timeline-action-btn.is-disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .time-badge-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-hospital-teal/10 bg-hospital-mist px-2.5 py-1.5 text-[0.68rem] font-bold text-hospital-navy;
+  }
+
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[0.68rem] font-bold;
+  }
+
+  .status-chip.success {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .status-chip.warning {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .status-chip.caution {
+    @apply bg-sky-100 text-sky-700;
+  }
+
+  .status-chip.info {
+    @apply bg-cyan-100 text-cyan-700;
+  }
+
+  .status-chip.ink {
+    @apply bg-slate-800 text-white;
+  }
+
+  .ops-empty {
+    @apply rounded-[1.35rem] border border-dashed border-hospital-teal/20 bg-hospital-mist/70 px-4 py-8 text-center text-sm font-semibold text-hospital-muted;
+  }
+
+  .time-pagination .page-link {
+    @apply mx-1 grid h-10 min-w-10 place-items-center rounded-2xl border border-hospital-teal/10 bg-white px-3 text-sm font-bold text-hospital-navy shadow-soft transition-all duration-200 ease-out;
+  }
+
+  .time-pagination .page-item.active .page-link {
+    @apply border-hospital-navy bg-hospital-navy text-white;
+  }
+
+  .time-pagination .page-item.disabled .page-link,
+  .time-pagination .page-link:focus {
+    box-shadow: none;
+  }
+
+  .time-pagination .page-link:hover {
+    @apply border-hospital-teal/30 bg-hospital-mist;
+  }
+
+  .time-modal-surface {
+    @apply rounded-[1.75rem] border border-white/80 bg-white/95 shadow-glass backdrop-blur-xl;
+  }
+
+  .time-modal-info-card {
+    @apply rounded-[1.2rem] border border-hospital-teal/10 bg-hospital-mist/75 px-4 py-3;
+  }
+
+  .time-modal-danger {
+    @apply border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:bg-rose-100 hover:text-rose-700;
+  }
+
+  .time-bottom-strip {
+    @apply grid items-center gap-4 overflow-hidden xl:grid-cols-[190px_repeat(4,minmax(0,1fr))_250px];
+  }
+
+  .time-bottom-heading {
+    @apply pr-3 xl:border-r xl:border-hospital-teal/10;
+  }
+
+  .time-bottom-heading h3 {
+    @apply font-prompt text-[1.4rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  }
+
+  .time-bottom-item {
+    @apply grid gap-1 border-t border-hospital-teal/10 pt-3 sm:border-t-0 sm:pt-0 xl:border-r xl:border-hospital-teal/10 xl:px-2;
+  }
+
+  .time-bottom-label {
+    @apply text-[0.72rem] font-bold uppercase tracking-[0.16em] text-hospital-muted;
+  }
+
+  .time-bottom-value {
+    @apply mt-2 font-prompt text-[1.32rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  }
+
+  .time-bottom-meta {
+    @apply mt-2 text-[0.84rem] text-hospital-muted;
+  }
+
+  .time-bottom-progress {
+    @apply grid gap-3 border-t border-hospital-teal/10 pt-3 sm:border-t-0 sm:pt-0 xl:pl-3;
+  }
+
+  .time-bottom-progress-head {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .time-bottom-progress-head strong {
+    @apply text-sm font-bold text-hospital-navy;
+  }
+
+  .time-progress-bar {
+    @apply h-2.5 overflow-hidden rounded-full bg-hospital-mist;
+  }
+
+  .time-progress-bar span {
+    @apply block h-full rounded-full bg-[linear-gradient(90deg,#0f7bb0_0%,#16b6cc_100%)];
+  }
+
+  @media (min-width: 1280px) {
+    .dash-hero-layout {
+      grid-template-columns: minmax(0, 1.62fr) minmax(360px, 1fr);
+      align-items: stretch;
+    }
+
+    .dash-summary-grid {
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr);
+    }
+
+    .dash-summary-grid.has-approval.has-issue {
+      grid-template-columns: minmax(0, 1.28fr) repeat(2, minmax(0, 0.72fr));
+    }
+
+    .dash-summary-grid.has-issue:not(.has-approval) {
+      grid-template-columns: minmax(0, 1.24fr) minmax(0, 0.84fr);
+    }
+
+    .time-kpi-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+    }
+
+    .time-hero-grid {
+      grid-template-columns: minmax(0, 1.18fr) 1px minmax(210px, 0.4fr) minmax(236px, 0.46fr);
+    }
+
+    .time-entry-surface {
+      position: sticky;
+      top: 5.15rem;
+    }
+
+    .time-history-list {
+      max-height: min(70vh, 60rem);
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+  }
+}

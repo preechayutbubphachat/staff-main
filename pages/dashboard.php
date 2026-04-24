@@ -215,6 +215,36 @@ if (app_can('can_manage_database')) {
         'button_label' => 'เปิดหน้า',
     ];
 }
+
+$uiStateContext = app_ui_state_context();
+if (app_can('can_approve_logs')) {
+    app_sync_reviewer_queue_notifications($conn);
+}
+$notificationCount = app_get_unread_notification_count($conn, (int) $uiStateContext['user_id']);
+$bottomCardCount = ($latestLog ? 1 : 0) + (app_can('can_approve_logs') ? 1 : 0) + ($todayIssueCount > 0 ? 1 : 0);
+$quickActionCount = count($quickActions);
+$primaryActions = array_slice($quickActions, 0, min(3, $quickActionCount));
+$secondaryActions = array_slice($quickActions, count($primaryActions));
+$actionSpanClass = static function (int $count): string {
+    if ($count <= 1) {
+        return 'xl:col-span-12';
+    }
+    if ($count === 2) {
+        return 'xl:col-span-6';
+    }
+    if ($count === 4) {
+        return 'xl:col-span-3';
+    }
+    return 'xl:col-span-4';
+};
+$heroPrimaryAction = [
+    'href' => 'time.php',
+    'label' => 'ลงเวลาเวร',
+    'icon' => 'bi-clock-history',
+];
+$heroSecondaryAction = app_can('can_approve_logs')
+    ? ['href' => 'approval_queue.php', 'label' => 'ตรวจสอบเวร', 'icon' => 'bi-patch-check']
+    : ['href' => 'profile.php', 'label' => 'โปรไฟล์ของฉัน', 'icon' => 'bi-person-circle'];
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -222,261 +252,255 @@ if (app_can('can_manage_database')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>แดชบอร์ด | ระบบลงเวลาเวร</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/app-ui.css">
+    <link rel="stylesheet" href="../assets/css/dashboard-tailwind.output.css">
 </head>
-<body class="app-ui">
-<?php render_app_navigation('dashboard.php'); ?>
+<body class="dash-shell">
+<?php render_dashboard_sidebar('dashboard.php', $displayName, $roleLabel, $profileImageSrc); ?>
 
-<main class="dashboard-shell prism-dashboard-shell">
-    <div class="container">
-        <section class="prism-hero glass-card glass-card--hero mb-4">
-            <div class="prism-hero-grid">
-                <div class="prism-hero-copy">
-                    <span class="prism-chip prism-chip--soft">
-                        <i class="bi bi-stars"></i>
-                        ศูนย์กลางการทำงานประจำวัน
-                    </span>
-                    <h1 class="prism-hero-title">สวัสดี <?= htmlspecialchars($displayName) ?></h1>
-                    <p class="prism-hero-subtitle"><?= htmlspecialchars($heroSupportText) ?></p>
+<main class="dash-main">
+    <header class="dash-topbar">
+        <button type="button" class="dash-icon-button lg:hidden" data-dashboard-sidebar-open aria-label="เปิดเมนู">
+            <i class="bi bi-list text-xl"></i>
+        </button>
 
-                    <div class="prism-chip-row">
-                        <span class="prism-chip"><i class="bi bi-building"></i><?= htmlspecialchars($departmentLabel) ?></span>
-                        <span class="prism-chip"><i class="bi bi-person-badge"></i><?= htmlspecialchars($roleLabel) ?></span>
-                        <span class="prism-chip"><i class="bi bi-calendar3"></i><?= htmlspecialchars($todayLabel) ?></span>
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal">Dashboard</p>
+            <h1 class="font-prompt text-2xl font-bold tracking-[-0.03em] text-hospital-ink">แดชบอร์ด</h1>
+        </div>
+
+        <label class="dash-search-control">
+            <i class="bi bi-search"></i>
+            <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาเมนูหรือรายงาน">
+        </label>
+
+        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
+            <i class="bi bi-bell"></i>
+            <?php if ($notificationCount > 0): ?>
+                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
+            <?php endif; ?>
+        </a>
+
+        <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
+            <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
+                <?php if ($profileImageSrc): ?>
+                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์" class="h-full w-full object-cover">
+                <?php else: ?>
+                    <span class="grid h-full w-full place-items-center"><i class="bi bi-person-fill"></i></span>
+                <?php endif; ?>
+            </span>
+            <span class="grid leading-tight">
+                <span class="max-w-[150px] truncate text-sm font-bold"><?= htmlspecialchars($displayName) ?></span>
+                <span class="text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+            </span>
+        </a>
+    </header>
+
+    <div class="dash-dashboard-frame">
+        <section class="dash-hero-layout">
+            <article class="dash-card-strong">
+                <div class="dash-hero-content-grid">
+                    <div class="max-w-2xl">
+                        <span class="dash-hero-badge">
+                            <i class="bi bi-stars"></i>
+                            Dashboard Overview
+                        </span>
+                        <h2 class="dash-hero-title">สวัสดี <?= htmlspecialchars($displayName) ?></h2>
+                        <p class="dash-hero-copy"><?= htmlspecialchars($heroSupportText) ?></p>
+
+                        <div class="dash-hero-chip-row">
+                            <span class="dash-hero-chip"><i class="bi bi-building"></i><?= htmlspecialchars($departmentLabel) ?></span>
+                            <span class="dash-hero-chip"><i class="bi bi-calendar3"></i><?= htmlspecialchars($todayLabel) ?></span>
+                            <span class="dash-hero-chip"><i class="bi bi-activity"></i><?= number_format($todayScheduleCount) ?> เวรวันนี้</span>
+                        </div>
+
+                        <div class="dash-hero-actions">
+                            <a href="<?= htmlspecialchars($heroPrimaryAction['href']) ?>" class="dash-btn dash-btn-secondary"><i class="bi <?= htmlspecialchars($heroPrimaryAction['icon']) ?>"></i><?= htmlspecialchars($heroPrimaryAction['label']) ?></a>
+                            <a href="<?= htmlspecialchars($heroSecondaryAction['href']) ?>" class="dash-btn dash-btn-on-dark"><i class="bi <?= htmlspecialchars($heroSecondaryAction['icon']) ?>"></i><?= htmlspecialchars($heroSecondaryAction['label']) ?></a>
+                        </div>
+                    </div>
+
+                    <div class="dash-profile-mini">
+                        <div class="flex items-center gap-3">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/15 text-white">
+                                <?php if ($profileImageSrc): ?>
+                                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์" class="h-full w-full object-cover">
+                                <?php else: ?>
+                                    <i class="bi bi-person-fill text-2xl"></i>
+                                <?php endif; ?>
+                            </span>
+                            <div class="min-w-0">
+                                <div class="truncate font-prompt text-base font-bold text-white"><?= htmlspecialchars($displayName) ?></div>
+                                <div class="truncate text-xs font-semibold text-white/65"><?= htmlspecialchars($departmentLabel) ?></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-2 grid gap-1 text-xs font-semibold text-white/80">
+                            <span class="inline-flex items-center gap-2"><i class="bi bi-person-badge"></i><?= htmlspecialchars($roleLabel) ?></span>
+                            <span class="inline-flex items-center gap-2"><i class="bi bi-calendar3"></i><?= htmlspecialchars($todayLabel) ?></span>
+                        </div>
+
+                        <div class="mt-2 rounded-2xl bg-white/10 p-2">
+                            <p class="text-[0.68rem] font-bold text-white/55">ลายเซ็น</p>
+                            <div class="dash-signature-box">
+                                <?php if (!empty($user['signature_path'])): ?>
+                                    <img src="../uploads/signatures/<?= htmlspecialchars($user['signature_path']) ?>" alt="ลายเซ็น" class="max-h-7 object-contain brightness-0 invert">
+                                <?php else: ?>
+                                    ยังไม่ได้เพิ่มลายเซ็น
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </article>
 
-                <aside class="glass-card glass-card--inner prism-summary-panel">
-                    <div class="section-header section-header--compact mb-0">
-                        <div>
-                            <span class="section-kicker"><i class="bi bi-activity"></i>ภาพรวมตอนนี้</span>
-                            <h2 class="section-title section-title--medium">ตัวเลขสำคัญ</h2>
-                        </div>
-                    </div>
-
-                    <div class="prism-summary-list">
-                        <div class="prism-summary-item">
-                            <span class="prism-summary-label">เวรทั้งหมดวันนี้</span>
-                            <strong class="prism-summary-value"><?= number_format($todayScheduleCount) ?></strong>
-                        </div>
-                        <div class="prism-summary-item">
-                            <span class="prism-summary-label">ชั่วโมงเดือนนี้</span>
-                            <strong class="prism-summary-value"><?= number_format($monthHours, 2) ?></strong>
-                        </div>
-                        <div class="prism-summary-item">
-                            <span class="prism-summary-label"><?= htmlspecialchars($priorityReviewLabel) ?></span>
-                            <strong class="prism-summary-value"><?= number_format($priorityReviewValue) ?></strong>
-                        </div>
-                    </div>
-                </aside>
-            </div>
-        </section>
-
-        <section class="mb-4">
-            <div class="prism-kpi-grid">
+            <aside class="dash-kpi-grid" aria-label="สรุปค่าสำคัญ">
                 <?php foreach ($kpiCards as $card): ?>
-                    <article class="glass-card glass-card--kpi prism-kpi-card prism-kpi-card--<?= htmlspecialchars($card['tone']) ?>">
-                        <div class="prism-kpi-top">
-                            <span class="prism-kpi-label"><?= htmlspecialchars($card['label']) ?></span>
-                            <span class="prism-kpi-icon"><i class="<?= htmlspecialchars($card['icon']) ?>"></i></span>
+                    <article class="dash-kpi-card bg-gradient-to-br from-white to-hospital-mist/40">
+                        <div class="flex w-full items-center justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="truncate text-xs font-bold text-hospital-muted"><?= htmlspecialchars($card['label']) ?></p>
+                                <div class="mt-1 font-prompt text-2xl font-bold tracking-[-0.04em]"><?= htmlspecialchars($card['value']) ?></div>
+                                <p class="mt-0.5 truncate text-[0.68rem] font-semibold text-hospital-muted"><?= htmlspecialchars($card['subtext']) ?></p>
+                            </div>
+                            <span class="dash-icon-badge"><i class="<?= htmlspecialchars($card['icon']) ?>"></i></span>
                         </div>
-                        <div class="prism-kpi-value"><?= htmlspecialchars($card['value']) ?></div>
-                        <div class="prism-helper-text"><?= htmlspecialchars($card['subtext']) ?></div>
                     </article>
                 <?php endforeach; ?>
-            </div>
+            </aside>
         </section>
 
-        <section class="mb-4">
-            <div class="section-header">
+        <section class="grid min-h-0 gap-3">
+            <div class="dash-section-heading">
                 <div>
-                    <span class="section-kicker"><i class="bi bi-lightning-charge"></i>ทางลัดการใช้งาน</span>
-                    <h2 class="section-title">เปิดงานต่อได้ทันที</h2>
-                    <p class="section-subtitle">แสดงเฉพาะงานที่ใช้จริงและกดต่อได้เร็ว</p>
+                    <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-teal">Primary Actions</p>
+                    <h2 class="mt-1 font-prompt text-xl font-bold text-hospital-ink">งานหลักในระบบ</h2>
                 </div>
+                <p class="hidden max-w-md text-sm font-semibold text-hospital-muted xl:block">เลือกงานที่ใช้บ่อยที่สุด แล้วต่อไปยังรายงานหรือข้อมูลส่วนตัวได้ทันที</p>
             </div>
 
-            <div class="row g-4">
-                <?php foreach ($quickActions as $action): ?>
-                    <div class="col-md-6 col-xl-4">
-                        <article class="glass-card glass-card--action prism-action-card prism-action-card--<?= htmlspecialchars($action['tone']) ?>">
-                            <div class="prism-action-head">
-                                <div>
-                                    <div class="prism-action-eyebrow"><?= htmlspecialchars($action['eyebrow']) ?></div>
-                                    <h3 class="prism-action-title"><?= htmlspecialchars($action['title']) ?></h3>
-                                </div>
-                                <div class="prism-action-icon">
-                                    <i class="bi <?= htmlspecialchars($action['icon']) ?>"></i>
-                                </div>
+            <div class="grid min-h-0 gap-3 sm:grid-cols-2 xl:grid-cols-12 xl:auto-rows-fr">
+                <?php foreach ($primaryActions as $index => $action): ?>
+                    <a href="<?= htmlspecialchars($action['href']) ?>" class="dash-action-card group <?= $index === 0 ? 'sm:col-span-2' : '' ?> <?= htmlspecialchars($actionSpanClass(count($primaryActions))) ?> bg-gradient-to-br from-white to-hospital-mist/35">
+                        <div>
+                            <div class="flex items-start justify-between gap-3">
+                                <span class="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-hospital-teal"><?= htmlspecialchars($action['eyebrow']) ?></span>
+                                <span class="dash-icon-badge"><i class="bi <?= htmlspecialchars($action['icon']) ?>"></i></span>
                             </div>
-                            <p class="prism-action-copy"><?= htmlspecialchars($action['description']) ?></p>
-                            <a href="<?= htmlspecialchars($action['href']) ?>" class="prism-action-link">
-                                <span><?= htmlspecialchars($action['button_label']) ?></span>
-                                <i class="bi bi-arrow-up-right"></i>
-                            </a>
-                        </article>
-                    </div>
+                            <h3 class="mt-2 font-prompt text-lg font-bold"><?= htmlspecialchars($action['title']) ?></h3>
+                            <p class="mt-1 text-xs leading-5 text-hospital-muted line-clamp-2"><?= htmlspecialchars($action['description']) ?></p>
+                        </div>
+                        <span class="dash-action-link">
+                            <span><?= htmlspecialchars($action['button_label']) ?></span>
+                            <i class="bi bi-arrow-up-right transition duration-200 ease-out"></i>
+                        </span>
+                    </a>
                 <?php endforeach; ?>
             </div>
+
+            <?php if ($secondaryActions): ?>
+                <div class="grid min-h-0 gap-3 sm:grid-cols-2 xl:grid-cols-12 xl:auto-rows-fr">
+                    <?php foreach ($secondaryActions as $action): ?>
+                        <a href="<?= htmlspecialchars($action['href']) ?>" class="dash-action-card group <?= htmlspecialchars($actionSpanClass(count($secondaryActions))) ?>">
+                            <div>
+                                <div class="flex items-start justify-between gap-3">
+                                    <span class="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-hospital-teal"><?= htmlspecialchars($action['eyebrow']) ?></span>
+                                    <span class="dash-icon-badge"><i class="bi <?= htmlspecialchars($action['icon']) ?>"></i></span>
+                                </div>
+                                <h3 class="mt-2 font-prompt text-lg font-bold"><?= htmlspecialchars($action['title']) ?></h3>
+                                <p class="mt-1 text-xs leading-5 text-hospital-muted line-clamp-2"><?= htmlspecialchars($action['description']) ?></p>
+                            </div>
+                            <span class="dash-action-link">
+                                <span><?= htmlspecialchars($action['button_label']) ?></span>
+                                <i class="bi bi-arrow-up-right transition duration-200 ease-out"></i>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </section>
 
-        <?php if ($todayIssueCount > 0): ?>
-            <section class="mb-4">
-                <div class="glass-card glass-card--alert prism-alert-card">
-                    <div>
-                        <div class="prism-alert-title">วันนี้มี <?= number_format($todayIssueCount) ?> รายการที่ควรตรวจสอบ</div>
-                        <div class="prism-helper-text">
-                            <?php if ($todayOverlapCount > 0): ?>ช่วงเวลาซ้อน <?= number_format($todayOverlapCount) ?> รายการ<?php endif; ?>
-                            <?php if ($todayIncompleteCount > 0): ?><?= $todayOverlapCount > 0 ? ' และ ' : '' ?>ข้อมูลเวลาไม่ครบ <?= number_format($todayIncompleteCount) ?> รายการ<?php endif; ?>
-                        </div>
-                    </div>
-                    <a class="btn btn-outline-dark rounded-pill px-4" href="time.php">
-                        <i class="bi bi-clock-history me-1"></i>เปิดหน้าเวลาเวร
-                    </a>
-                </div>
-            </section>
-        <?php endif; ?>
-
-        <section class="row g-4 align-items-start dashboard-profile-row">
-            <div class="col-xl-4 dashboard-profile-col">
-                <article class="glass-card glass-card--profile prism-profile-card dashboard-profile-card">
-                    <div class="prism-profile-top">
-                        <div class="avatar-frame">
-                            <?php if ($profileImageSrc): ?>
-                                <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์">
-                            <?php else: ?>
-                                <div class="avatar-fallback" aria-hidden="true">
-                                    <i class="bi bi-person-fill person"></i>
-                                    <span class="hospital-mark"></span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
+        <?php if ($bottomCardCount > 0): ?>
+        <section class="dash-summary-grid<?= app_can('can_approve_logs') ? ' has-approval' : '' ?><?= $todayIssueCount > 0 ? ' has-issue' : '' ?>">
+            <?php if ($latestLog): ?>
+                <article class="dash-detail-card dash-detail-card-wide">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
-                            <div class="prism-profile-name"><?= htmlspecialchars($displayName) ?></div>
-                            <div class="prism-profile-meta"><?= htmlspecialchars($departmentLabel) ?></div>
-                            <span class="prism-chip prism-chip--role"><i class="bi bi-shield-check"></i><?= htmlspecialchars($roleLabel) ?></span>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-teal">รายการล่าสุด</p>
+                            <h2 class="mt-1 font-prompt text-lg font-bold">ข้อมูลของฉัน</h2>
                         </div>
+                        <a href="time.php" class="dash-btn-ghost">เปิดหน้า <i class="bi bi-arrow-right transition duration-200 ease-out"></i></a>
                     </div>
-
-                    <div class="signature-box">
-                        <div class="small text-muted mb-2">ลายเซ็นที่บันทึกในระบบ</div>
-                        <?php if (!empty($user['signature_path'])): ?>
-                            <img src="../uploads/signatures/<?= htmlspecialchars($user['signature_path']) ?>" alt="ลายเซ็น">
-                        <?php else: ?>
-                            <div class="text-muted">ยังไม่ได้เพิ่มลายเซ็น</div>
-                        <?php endif; ?>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                        <div class="rounded-2xl bg-hospital-mist px-3 py-1.5 text-sm"><span class="block text-[0.68rem] font-semibold text-hospital-muted">วันที่</span><strong><?= htmlspecialchars($latestLogDateLabel) ?></strong></div>
+                        <div class="rounded-2xl bg-hospital-mist px-3 py-1.5 text-sm"><span class="block text-[0.68rem] font-semibold text-hospital-muted">เวลา</span><strong><?= !empty($latestLog['time_in']) ? date('H:i', strtotime((string) $latestLog['time_in'])) : '-' ?> - <?= !empty($latestLog['time_out']) ? date('H:i', strtotime((string) $latestLog['time_out'])) : '-' ?></strong></div>
+                        <div class="rounded-2xl bg-hospital-mist px-3 py-1.5 text-sm"><span class="block text-[0.68rem] font-semibold text-hospital-muted">สถานะ</span><strong><?= !empty($latestLog['checked_at']) ? 'ตรวจแล้ว' : 'รอตรวจ' ?></strong></div>
                     </div>
-
-                    <a href="profile.php" class="prism-secondary-link">
-                        <span>จัดการโปรไฟล์และรูปภาพ</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
                 </article>
-            </div>
+            <?php endif; ?>
 
-            <div class="col-xl-8">
-                <div class="row g-4">
-                    <?php if ($latestLog): ?>
-                        <div class="col-md-6">
-                            <article class="glass-card glass-card--panel prism-panel-card h-100">
-                                <div class="section-header section-header--compact">
-                                    <div>
-                                        <span class="section-kicker"><i class="bi bi-clock-history"></i>รายการล่าสุด</span>
-                                        <h3 class="section-title section-title--medium">ข้อมูลของฉัน</h3>
-                                    </div>
-                                </div>
-
-                                <div class="prism-status-stack">
-                                    <div class="prism-status-row"><span>วันที่</span><strong><?= htmlspecialchars($latestLogDateLabel) ?></strong></div>
-                                    <div class="prism-status-row"><span>เวลา</span><strong><?= !empty($latestLog['time_in']) ? date('H:i', strtotime((string) $latestLog['time_in'])) : '-' ?> - <?= !empty($latestLog['time_out']) ? date('H:i', strtotime((string) $latestLog['time_out'])) : '-' ?></strong></div>
-                                    <div class="prism-status-row"><span>สถานะ</span><strong><?= !empty($latestLog['checked_at']) ? 'ตรวจแล้ว' : 'รอตรวจ' ?></strong></div>
-                                </div>
-
-                                <a class="prism-secondary-link" href="time.php">
-                                    <span>เปิดหน้าลงเวลาเวร</span>
-                                    <i class="bi bi-arrow-right"></i>
-                                </a>
-                            </article>
+            <?php if (app_can('can_approve_logs')): ?>
+                <article class="dash-detail-card dash-detail-card-side">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-teal">คิวตรวจสอบ</p>
+                            <h2 class="mt-1 font-prompt text-lg font-bold">งานอนุมัติ</h2>
+                            <p class="mt-1 text-sm font-semibold text-hospital-muted">รายการที่ยังรอการตรวจสอบ</p>
                         </div>
-                    <?php endif; ?>
-
-                    <div class="col-md-6">
-                        <article class="glass-card glass-card--panel prism-panel-card h-100">
-                            <div class="section-header section-header--compact">
-                                <div>
-                                    <span class="section-kicker"><i class="bi bi-calendar-week"></i>ภาพรวมวันนี้</span>
-                                    <h3 class="section-title section-title--medium">งานที่เห็นเร็ว</h3>
-                                </div>
-                            </div>
-
-                            <div class="prism-mini-grid">
-                                <div class="prism-mini-card">
-                                    <span>เวรวันนี้</span>
-                                    <strong><?= number_format($todayScheduleCount) ?></strong>
-                                </div>
-                                <div class="prism-mini-card">
-                                    <span>ชั่วโมงเดือนนี้</span>
-                                    <strong><?= number_format($monthHours, 2) ?></strong>
-                                </div>
-                            </div>
-
-                            <a class="prism-secondary-link" href="daily_schedule.php">
-                                <span>เปิดตารางเวรวันนี้</span>
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-                        </article>
+                        <div class="text-right">
+                            <div class="font-prompt text-4xl font-bold tracking-[-0.05em]"><?= number_format($pendingCount) ?></div>
+                            <a href="approval_queue.php" class="dash-btn-ghost mt-2"><span>เปิดหน้า</span><i class="bi bi-arrow-right transition duration-200 ease-out"></i></a>
+                        </div>
                     </div>
+                </article>
+            <?php endif; ?>
 
-                    <?php if (app_can('can_approve_logs')): ?>
-                        <div class="col-md-6">
-                            <article class="glass-card glass-card--panel prism-panel-card h-100">
-                                <div class="section-header section-header--compact">
-                                    <div>
-                                        <span class="section-kicker"><i class="bi bi-patch-check"></i>คิวตรวจสอบ</span>
-                                        <h3 class="section-title section-title--medium">งานอนุมัติ</h3>
-                                    </div>
-                                </div>
-
-                                <div class="prism-panel-stat"><?= number_format($pendingCount) ?></div>
-                                <div class="prism-helper-text">รายการที่ยังรอการตรวจสอบ</div>
-
-                                <a class="prism-secondary-link" href="approval_queue.php">
-                                    <span>เปิดหน้าตรวจสอบเวร</span>
-                                    <i class="bi bi-arrow-right"></i>
-                                </a>
-                            </article>
+            <?php if ($todayIssueCount > 0): ?>
+                <article class="dash-detail-card dash-detail-card-side border-amber-200 bg-amber-50/90">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-amber-700">ต้องตรวจสอบ</p>
+                            <h2 class="mt-1 font-prompt text-lg font-bold text-hospital-ink"><?= number_format($todayIssueCount) ?> รายการวันนี้</h2>
+                            <p class="mt-1 text-xs font-semibold text-hospital-muted line-clamp-1">
+                                <?php if ($todayOverlapCount > 0): ?>เวลาซ้อน <?= number_format($todayOverlapCount) ?><?php endif; ?>
+                                <?php if ($todayIncompleteCount > 0): ?><?= $todayOverlapCount > 0 ? ' / ' : '' ?>เวลาไม่ครบ <?= number_format($todayIncompleteCount) ?><?php endif; ?>
+                            </p>
                         </div>
-                    <?php endif; ?>
-
-                    <?php if ($adminShortcut): ?>
-                        <div class="col-md-6">
-                            <article class="glass-card glass-card--panel prism-panel-card h-100">
-                                <div class="section-header section-header--compact">
-                                    <div>
-                                        <span class="section-kicker"><i class="bi <?= htmlspecialchars($adminShortcut['icon']) ?>"></i><?= htmlspecialchars($adminShortcut['eyebrow']) ?></span>
-                                        <h3 class="section-title section-title--medium"><?= htmlspecialchars($adminShortcut['title']) ?></h3>
-                                    </div>
-                                </div>
-
-                                <div class="prism-helper-text prism-helper-text--panel"><?= htmlspecialchars($adminShortcut['description']) ?></div>
-
-                                <a class="prism-secondary-link" href="<?= htmlspecialchars($adminShortcut['href']) ?>">
-                                    <span><?= htmlspecialchars($adminShortcut['button_label']) ?></span>
-                                    <i class="bi bi-arrow-right"></i>
-                                </a>
-                            </article>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+                        <a href="time.php" class="dash-btn-ghost bg-white">เปิดหน้า <i class="bi bi-arrow-right transition duration-200 ease-out"></i></a>
+                    </div>
+                </article>
+            <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function () {
+        const openButton = document.querySelector('[data-dashboard-sidebar-open]');
+        const closeButton = document.querySelector('[data-dashboard-sidebar-close]');
+        const drawer = document.querySelector('[data-dashboard-sidebar-drawer]');
+        const backdrop = document.querySelector('[data-dashboard-sidebar-backdrop]');
+
+        function setOpen(open) {
+            if (!drawer || !backdrop) {
+                return;
+            }
+            drawer.classList.toggle('is-open', open);
+            backdrop.classList.toggle('is-open', open);
+            document.body.classList.toggle('overflow-hidden', open);
+        }
+
+        openButton && openButton.addEventListener('click', function () { setOpen(true); });
+        closeButton && closeButton.addEventListener('click', function () { setOpen(false); });
+        backdrop && backdrop.addEventListener('click', function () { setOpen(false); });
+        window.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                setOpen(false);
+            }
+        });
+    })();
+</script>
 </body>
 </html>

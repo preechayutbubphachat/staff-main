@@ -1895,40 +1895,102 @@ function app_can_edit_time_log_record(array $timeLog): bool
     return app_can('can_edit_locked_time_logs');
 }
 
-function app_get_user_time_history_count(PDO $conn, int $userId, string $searchDate = ''): int
+function app_normalize_user_time_history_filters(array|string $filters = []): array
 {
-    $params = [$userId];
-    $whereClause = 'WHERE t.user_id = ?';
-    if ($searchDate !== '') {
-        $whereClause .= ' AND t.work_date = ?';
-        $params[] = $searchDate;
+    if (is_string($filters)) {
+        $filters = ['date' => $filters];
     }
 
-    $countStmt = $conn->prepare("SELECT COUNT(*) FROM time_logs t {$whereClause}");
-    $countStmt->execute($params);
+    $date = trim((string) ($filters['date'] ?? ''));
+    $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+    $dateTo = trim((string) ($filters['date_to'] ?? ''));
+    $query = trim((string) ($filters['query'] ?? ''));
+    $status = trim((string) ($filters['status'] ?? 'all'));
+    $allowedStatuses = ['all', 'pending', 'approved', 'issue'];
+
+    if ($date !== '') {
+        $dateFrom = $date;
+        $dateTo = $date;
+    }
+
+    if ($dateFrom !== '' && $dateTo !== '' && $dateFrom > $dateTo) {
+        [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+    }
+
+    return [
+        'date' => $date,
+        'date_from' => $dateFrom,
+        'date_to' => $dateTo,
+        'query' => $query,
+        'status' => in_array($status, $allowedStatuses, true) ? $status : 'all',
+    ];
+}
+
+function app_build_user_time_history_scope(array|string $filters, int $userId): array
+{
+    $normalized = app_normalize_user_time_history_filters($filters);
+    $params = [$userId];
+    $where = ['t.user_id = ?'];
+
+    if ($normalized['date_from'] !== '') {
+        $where[] = 't.work_date >= ?';
+        $params[] = $normalized['date_from'];
+    }
+
+    if ($normalized['date_to'] !== '') {
+        $where[] = 't.work_date <= ?';
+        $params[] = $normalized['date_to'];
+    }
+
+    if ($normalized['status'] === 'approved') {
+        $where[] = app_time_log_checked_condition('t');
+    } elseif ($normalized['status'] === 'pending') {
+        $where[] = app_time_log_pending_condition('t');
+    } elseif ($normalized['status'] === 'issue') {
+        $where[] = '(t.time_in IS NULL OR t.time_out IS NULL OR COALESCE(t.work_hours, 0) <= 0)';
+    }
+
+    if ($normalized['query'] !== '') {
+        $where[] = '(COALESCE(d.department_name, \'\') LIKE ? OR COALESCE(t.note, \'\') LIKE ?)';
+        $params[] = '%' . $normalized['query'] . '%';
+        $params[] = '%' . $normalized['query'] . '%';
+    }
+
+    return [
+        'filters' => $normalized,
+        'where_sql' => 'WHERE ' . implode(' AND ', $where),
+        'params' => $params,
+    ];
+}
+
+function app_get_user_time_history_count(PDO $conn, int $userId, array|string $filters = []): int
+{
+    $scope = app_build_user_time_history_scope($filters, $userId);
+    $countStmt = $conn->prepare("
+        SELECT COUNT(*)
+        FROM time_logs t
+        LEFT JOIN departments d ON t.department_id = d.id
+        {$scope['where_sql']}
+    ");
+    $countStmt->execute($scope['params']);
 
     return (int) $countStmt->fetchColumn();
 }
 
-function app_get_user_time_history_rows(PDO $conn, int $userId, string $searchDate, int $limit, int $offset): array
+function app_get_user_time_history_rows(PDO $conn, int $userId, array|string $filters, int $limit, int $offset): array
 {
-    $params = [$userId];
-    $whereClause = 'WHERE t.user_id = ?';
-    if ($searchDate !== '') {
-        $whereClause .= ' AND t.work_date = ?';
-        $params[] = $searchDate;
-    }
+    $scope = app_build_user_time_history_scope($filters, $userId);
 
     $historyStmt = $conn->prepare("
         SELECT t.*, d.department_name, u.fullname AS checker
         FROM time_logs t
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users u ON t.checked_by = u.id
-        {$whereClause}
-        ORDER BY t.id DESC
+        {$scope['where_sql']}
+        ORDER BY t.work_date DESC, t.id DESC
         LIMIT {$limit} OFFSET {$offset}
     ");
-    $historyStmt->execute($params);
+    $historyStmt->execute($scope['params']);
 
     return $historyStmt->fetchAll(PDO::FETCH_ASSOC);
 }

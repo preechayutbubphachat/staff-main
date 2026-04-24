@@ -44,6 +44,10 @@ $editCsrfToken = app_csrf_token('time_page_edit');
 $deleteCsrfToken = app_csrf_token('time_page_delete');
 $page = max(1, (int) ($_GET['p'] ?? 1));
 $searchDate = trim((string) ($_GET['date'] ?? ''));
+$dateFrom = trim((string) ($_GET['date_from'] ?? ''));
+$dateTo = trim((string) ($_GET['date_to'] ?? ''));
+$historyStatus = trim((string) ($_GET['status'] ?? 'all'));
+$historyQuery = trim((string) ($_GET['query'] ?? ''));
 $modalErrorMessage = '';
 $modalErrorType = 'danger';
 
@@ -58,6 +62,10 @@ $html = ajax_capture(function () use (
     $deleteCsrfToken,
     $page,
     $searchDate,
+    $dateFrom,
+    $dateTo,
+    $historyStatus,
+    $historyQuery,
     $modalErrorMessage,
     $modalErrorType,
     $canEditModal,
