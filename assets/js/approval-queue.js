@@ -176,6 +176,24 @@
             return response.json();
         }
 
+        async function openApproveModalForSelection() {
+            if (selectedIds.size === 0) {
+                setMessage('กรุณาเลือกรายการอย่างน้อย 1 รายการ', 'warning');
+                return;
+            }
+
+            try {
+                const summary = await fetchSummary();
+                document.getElementById('modalSelectedCount').textContent = summary.count || 0;
+                document.getElementById('modalStaffCount').textContent = summary.staff_count || 0;
+                document.getElementById('modalDepartmentCount').textContent = summary.department_count || 0;
+                renderSelectedItemsTable(summary.rows || []);
+                approveModal.show();
+            } catch (error) {
+                setMessage('ไม่สามารถโหลดสรุปรายการที่เลือกได้ กรุณาลองใหม่อีกครั้ง', 'danger');
+            }
+        }
+
         async function refreshResults(queryString, pushState, resetSelection) {
             if (resetSelection !== false) {
                 clearSelection();
@@ -195,7 +213,7 @@
                 updateSelectionUI();
 
                 if (window.TableFilters && typeof window.TableFilters.syncExportLinks === 'function') {
-                    window.TableFilters.syncExportLinks(filterForm, filterForm.closest('.panel') || document);
+                    window.TableFilters.syncExportLinks(filterForm, filterForm.closest('.approval-filter-card') || document);
                 }
 
                 if (pushState) {
@@ -288,6 +306,20 @@
                 return;
             }
 
+            const approveSingleButton = event.target.closest('[data-approve-single]');
+            if (approveSingleButton) {
+                event.preventDefault();
+                const checkbox = row.querySelector('.row-checkbox:not([disabled])');
+                if (!checkbox) {
+                    return;
+                }
+                clearSelection();
+                setCheckboxSelected(checkbox, true);
+                updateSelectionUI();
+                openApproveModalForSelection();
+                return;
+            }
+
             if (event.target.closest(interactiveSelector)) {
                 return;
             }
@@ -313,23 +345,8 @@
         });
 
         if (openApproveModalBtn) {
-            openApproveModalBtn.addEventListener('click', async function () {
-                if (selectedIds.size === 0) {
-                    setMessage('กรุณาเลือกรายการอย่างน้อย 1 รายการ', 'warning');
-                    return;
-                }
-
-                try {
-                    const summary = await fetchSummary();
-                    document.getElementById('modalSelectedCount').textContent = summary.count || 0;
-                    document.getElementById('modalStaffCount').textContent = summary.staff_count || 0;
-                    document.getElementById('modalDepartmentCount').textContent = summary.department_count || 0;
-                    renderSelectedItemsTable(summary.rows || []);
-
-                    approveModal.show();
-                } catch (error) {
-                    setMessage('ไม่สามารถโหลดสรุปรายการที่เลือกได้ กรุณาลองใหม่อีกครั้ง', 'danger');
-                }
+            openApproveModalBtn.addEventListener('click', function () {
+                openApproveModalForSelection();
             });
         }
 
@@ -404,7 +421,7 @@
 
         bindFilterAutoRefresh();
         if (window.TableFilters && typeof window.TableFilters.syncExportLinks === 'function') {
-            window.TableFilters.syncExportLinks(filterForm, filterForm.closest('.panel') || document);
+            window.TableFilters.syncExportLinks(filterForm, filterForm.closest('.approval-filter-card') || document);
         }
         syncSummary();
         updateSelectionUI();

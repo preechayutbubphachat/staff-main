@@ -788,6 +788,451 @@
     @apply block h-full rounded-full bg-[linear-gradient(90deg,#0f7bb0_0%,#16b6cc_100%)];
   }
 
+  .time-kpi-icon.is-amber {
+    @apply bg-amber-100/80 text-amber-500;
+  }
+
+  .approval-page-shell {
+    @apply xl:h-auto xl:overflow-visible;
+  }
+
+  .approval-page-main {
+    @apply xl:h-auto xl:min-h-screen xl:flex-none xl:overflow-visible;
+  }
+
+  .approval-dashboard-frame {
+    @apply mx-auto grid w-full max-w-[1560px] gap-3.5 pb-6 xl:flex-none xl:overflow-visible;
+  }
+
+  .approval-hero-stage {
+    @apply relative;
+  }
+
+  .approval-hero-card {
+    @apply overflow-hidden px-5 py-5 xl:px-7 xl:py-6;
+    background:
+      radial-gradient(circle at 86% 20%, rgba(17, 198, 229, 0.22), transparent 16%),
+      radial-gradient(circle at 96% 18%, rgba(17, 198, 229, 0.16), transparent 26%),
+      linear-gradient(135deg, #0f4d79 0%, #0e416b 30%, #0d3155 100%);
+  }
+
+  .approval-hero-grid {
+    @apply grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-center xl:grid-cols-[minmax(400px,0.96fr)_1px_minmax(540px,1.15fr)_minmax(220px,0.48fr)];
+  }
+
+  .approval-hero-copy {
+    @apply max-w-[39rem];
+  }
+
+  .approval-hero-title {
+    @apply max-w-[18ch] text-[clamp(2rem,2vw,2.65rem)] leading-[1.08] xl:max-w-[16ch];
+  }
+
+  .approval-hero-copy .dash-hero-copy,
+  .approval-hero-copy {
+    @apply text-white;
+  }
+
+  .approval-hero-metrics {
+    @apply grid gap-3 lg:px-2 xl:px-4;
+  }
+
+  .approval-hero-metrics-title {
+    @apply text-sm font-bold text-white/85;
+  }
+
+  .approval-hero-metric-grid {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0;
+  }
+
+  .approval-hero-metric {
+    @apply grid min-h-[58px] grid-cols-[44px_minmax(0,1fr)] items-center gap-3 border-b border-white/10 pb-3 last:border-b-0 last:pb-0 xl:min-h-[64px] xl:border-b-0 xl:border-r xl:border-white/10 xl:pb-0 xl:pr-4 xl:last:border-r-0 xl:last:pr-0;
+  }
+
+  .approval-hero-metric-icon {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base leading-none text-white xl:h-11 xl:w-11;
+  }
+
+  .approval-hero-metric-icon .bi,
+  .approval-hero-metric-icon .bi::before {
+    display: block;
+    line-height: 1;
+  }
+
+  .approval-hero-metric-icon .bi {
+    font-size: 1rem;
+    width: 1em;
+    height: 1em;
+  }
+
+  .approval-hero-metric-icon.is-blue {
+    @apply bg-sky-400/70;
+  }
+
+  .approval-hero-metric-icon.is-green {
+    @apply bg-lime-400/75;
+  }
+
+  .approval-hero-metric-icon.is-amber {
+    @apply bg-amber-400/80;
+  }
+
+  .approval-hero-metric-icon.is-violet {
+    @apply bg-violet-400/70;
+  }
+
+  .approval-hero-metric strong {
+    @apply block font-prompt text-[1.7rem] font-bold tracking-[-0.05em] text-white xl:text-[1.95rem];
+  }
+
+  .approval-hero-metric > div > span {
+    @apply block text-[0.78rem] font-semibold leading-snug text-white/70 xl:max-w-[6.5rem];
+  }
+
+  .approval-hero-divider {
+    @apply hidden h-[128px] w-px bg-white/20 lg:block;
+  }
+
+  .approval-hero-actions {
+    @apply grid gap-3 lg:col-span-3 lg:grid-cols-2 xl:col-span-1 xl:min-w-[220px] xl:grid-cols-1 xl:justify-self-end;
+  }
+
+  .approval-hero-cta-primary,
+  .approval-hero-cta-secondary {
+    @apply min-h-[52px] justify-center rounded-[1.05rem] px-5 text-sm xl:text-base;
+  }
+
+  .approval-kpi-row {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .approval-kpi-card {
+    @apply min-h-[106px] items-center gap-4 rounded-[1.45rem] p-5;
+  }
+
+  .approval-kpi-card .dash-icon-badge {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-[1.1rem] leading-none;
+  }
+
+  .approval-kpi-card .dash-icon-badge .bi,
+  .approval-kpi-card .dash-icon-badge .bi::before {
+    display: block;
+    line-height: 1;
+  }
+
+  .approval-kpi-value {
+    @apply text-[1.7rem];
+  }
+
+  .approval-workspace-grid {
+    @apply grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)] xl:items-start;
+  }
+
+  .approval-filter-card {
+    @apply flex flex-col gap-4 p-4 xl:sticky xl:top-[4.75rem];
+  }
+
+  .approval-card-head {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .approval-section-eyebrow {
+    @apply text-[0.68rem] font-bold uppercase tracking-[0.18em] text-hospital-teal;
+  }
+
+  .approval-card-title {
+    @apply mt-1 font-prompt text-[1.42rem] font-bold tracking-[-0.04em] text-hospital-ink;
+  }
+
+  .approval-card-copy {
+    @apply mt-1 text-[0.88rem] text-hospital-muted;
+  }
+
+  .approval-filter-form {
+    @apply grid gap-3.5;
+  }
+
+  .approval-filter-group {
+    @apply grid gap-2;
+  }
+
+  .approval-field-label {
+    @apply text-[0.74rem] font-bold uppercase tracking-[0.16em] text-hospital-muted;
+  }
+
+  .approval-search-field {
+    @apply flex min-h-[46px] items-center gap-3 rounded-[0.95rem] border border-hospital-teal/10 bg-hospital-mist/75 px-4 py-2.5 text-sm font-semibold text-hospital-muted transition-all duration-200 ease-out focus-within:border-hospital-teal/35 focus-within:bg-white focus-within:shadow-soft;
+  }
+
+  .approval-search-field .form-control {
+    @apply min-h-0 border-0 bg-transparent p-0 shadow-none;
+  }
+
+  .approval-search-field .form-control:focus {
+    @apply ring-0;
+    box-shadow: none;
+  }
+
+  .approval-filter-grid {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-2;
+  }
+
+  .approval-filter-field {
+    @apply grid gap-2;
+  }
+
+  .approval-filter-card .form-control,
+  .approval-filter-card .form-select {
+    @apply min-h-[46px] rounded-[0.95rem] border border-hospital-teal/10 bg-white px-4 py-2.5 text-sm font-semibold text-hospital-ink shadow-none transition-all duration-200 ease-out;
+  }
+
+  .approval-filter-card .form-control:focus,
+  .approval-filter-card .form-select:focus {
+    @apply border-hospital-teal/35 ring-4 ring-hospital-teal/10;
+    box-shadow: none;
+  }
+
+  .approval-filter-actions {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  .approval-bulk-tools {
+    @apply grid gap-3 rounded-[1.25rem] border border-hospital-teal/10 bg-hospital-mist/70 p-3.5 transition-all duration-200 ease-out;
+  }
+
+  .approval-bulk-tools.visible {
+    @apply border-hospital-teal/25 bg-white shadow-soft;
+  }
+
+  .approval-bulk-head {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .approval-bulk-copy {
+    @apply text-sm font-semibold text-hospital-ink;
+  }
+
+  .approval-bulk-action-grid {
+    @apply grid gap-2 sm:grid-cols-2;
+  }
+
+  .approval-tool-btn {
+    @apply min-h-[42px] px-3 text-[0.78rem];
+  }
+
+  .approval-tool-btn.is-disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .approval-review-stage {
+    @apply min-w-0;
+  }
+
+  .approval-review-panel {
+    @apply grid gap-3.5 p-4;
+  }
+
+  .approval-review-header {
+    @apply flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .approval-review-toolbar {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .approval-select-all {
+    @apply flex flex-wrap items-center gap-2 rounded-full border border-hospital-teal/10 bg-hospital-mist/75 px-3 py-2;
+  }
+
+  .approval-select-all-check {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-hospital-ink;
+  }
+
+  .approval-select-all-btn {
+    @apply min-h-[40px] px-4 py-2 text-[0.76rem];
+  }
+
+  .approval-view-switch {
+    @apply hidden items-center gap-2 xl:flex;
+  }
+
+  .approval-list-caption {
+    @apply flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-hospital-muted;
+  }
+
+  .approval-list-shell {
+    @apply rounded-[1.45rem] border border-hospital-teal/10 bg-hospital-mist/50 p-3;
+  }
+
+  .approval-list-head {
+    @apply hidden items-center gap-3 px-3 pb-3 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-hospital-muted xl:grid xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_210px];
+  }
+
+  .approval-review-list {
+    @apply grid gap-2.5 xl:max-h-[58vh] xl:overflow-y-auto xl:pr-1;
+  }
+
+  .approval-review-row {
+    @apply grid gap-3 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-3 py-2.5 shadow-soft transition-all duration-200 ease-out hover:border-hospital-teal/25 xl:min-h-[74px] xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_210px] xl:items-center;
+  }
+
+  .approval-review-row.is-selected {
+    @apply border-hospital-teal/30 bg-cyan-50/80;
+  }
+
+  .approval-review-row.is-approved {
+    @apply border-emerald-100 bg-emerald-50/55;
+  }
+
+  .approval-review-row.is-returned {
+    @apply border-rose-100 bg-rose-50/55;
+  }
+
+  .approval-row-check {
+    @apply flex items-center justify-center;
+  }
+
+  .approval-date-tile {
+    @apply grid min-h-[56px] justify-items-center gap-0.5 rounded-[0.9rem] border border-hospital-teal/10 bg-hospital-mist/70 px-2 py-1.5 text-center;
+  }
+
+  .approval-date-tile strong {
+    @apply font-prompt text-[1.7rem] font-bold leading-none tracking-[-0.05em] text-hospital-navy;
+  }
+
+  .approval-date-tile span {
+    @apply text-[0.66rem] font-semibold leading-tight text-hospital-muted;
+  }
+
+  .approval-date-tile small {
+    @apply text-[0.62rem] font-semibold leading-tight text-hospital-muted;
+  }
+
+  .approval-row-main {
+    @apply grid gap-0.5;
+  }
+
+  .approval-row-name-line {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .approval-staff-link {
+    @apply p-0 text-left text-sm font-bold leading-snug text-hospital-navy no-underline transition-colors duration-200 ease-out hover:text-hospital-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .approval-row-index {
+    @apply inline-flex items-center rounded-full bg-hospital-mist px-2 py-0.5 text-[0.64rem] font-bold text-hospital-muted;
+  }
+
+  .approval-row-subline,
+  .approval-row-department,
+  .approval-row-shift,
+  .approval-row-note {
+    @apply text-[0.82rem] font-semibold leading-snug text-hospital-muted;
+  }
+
+  .approval-row-note {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .approval-row-hours {
+    @apply font-prompt text-[0.92rem] font-bold text-hospital-navy;
+  }
+
+  .approval-row-status {
+    @apply flex items-center xl:justify-start;
+  }
+
+  .approval-row-status .status-chip {
+    @apply inline-flex min-h-[28px] items-center justify-center px-3 leading-none;
+  }
+
+  .approval-row-actions {
+    @apply flex flex-wrap items-center justify-start gap-2 xl:flex-nowrap xl:justify-end;
+  }
+
+  .approval-row-btn {
+    @apply min-h-[38px] rounded-[0.85rem] px-3.5 py-2 text-[0.74rem] leading-none;
+  }
+
+  .approval-row-btn.is-approve {
+    @apply min-w-[88px];
+  }
+
+  .approval-row-btn.is-disabled {
+    @apply cursor-not-allowed opacity-65;
+  }
+
+  .approval-row-menu {
+    @apply !h-[38px] !w-[38px] cursor-default bg-hospital-mist text-hospital-muted shadow-none;
+  }
+
+  .approval-row-menu .bi,
+  .approval-row-menu .bi::before,
+  .approval-tool-btn .bi,
+  .approval-tool-btn .bi::before,
+  .approval-hero-actions .bi,
+  .approval-hero-actions .bi::before {
+    display: block;
+    line-height: 1;
+  }
+
+  .approval-modal-shell {
+    @apply rounded-[1.3rem] border border-hospital-teal/10 bg-hospital-mist/70 p-3;
+  }
+
+  .approval-modal-table thead th {
+    @apply border-0 bg-transparent text-[0.72rem] font-bold uppercase tracking-[0.14em] text-hospital-muted;
+  }
+
+  .approval-modal-table td {
+    @apply border-hospital-teal/10 py-3 text-sm font-semibold text-hospital-ink;
+  }
+
+  .status-chip.danger {
+    @apply bg-rose-100 text-rose-600;
+  }
+
+  .approval-bottom-strip {
+    @apply grid items-center gap-3 overflow-hidden px-5 py-4 xl:grid-cols-[170px_repeat(4,minmax(0,1fr))_280px];
+  }
+
+  .approval-bottom-heading {
+    @apply pr-3 xl:border-r xl:border-hospital-teal/10;
+  }
+
+  .approval-bottom-heading h3 {
+    @apply font-prompt text-[1.28rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  }
+
+  .approval-bottom-item {
+    @apply grid gap-1 border-t border-hospital-teal/10 pt-3 sm:border-t-0 sm:pt-0 xl:border-r xl:border-hospital-teal/10 xl:px-3;
+  }
+
+  .approval-bottom-label {
+    @apply text-[0.72rem] font-bold uppercase tracking-[0.16em] text-hospital-muted;
+  }
+
+  .approval-bottom-value {
+    @apply mt-1 font-prompt text-[1.24rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  }
+
+  .approval-bottom-value span {
+    @apply ml-1 text-base font-semibold text-hospital-muted;
+  }
+
+  .approval-bottom-meta {
+    @apply mt-1 text-[0.82rem] text-hospital-muted;
+  }
+
+  .approval-bottom-progress {
+    @apply grid gap-3 border-t border-hospital-teal/10 pt-3 sm:border-t-0 sm:pt-0 xl:pl-3;
+  }
+
+  .approval-bottom-progress-head {
+    @apply flex items-center justify-between gap-3 text-sm font-bold text-hospital-navy;
+  }
+
   @media (min-width: 1280px) {
     .dash-hero-layout {
       grid-template-columns: minmax(0, 1.62fr) minmax(360px, 1fr);
@@ -824,6 +1269,10 @@
       max-height: min(70vh, 60rem);
       overflow-y: auto;
       padding-right: 0.25rem;
+    }
+
+    .approval-workspace-grid {
+      grid-template-columns: 350px minmax(0, 1fr);
     }
   }
 }

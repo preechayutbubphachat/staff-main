@@ -1,189 +1,200 @@
 <?php
+$rows = is_array($rows ?? null) ? $rows : [];
+$filters = is_array($filters ?? null) ? $filters : [];
+$perPage = (int) ($perPage ?? 20);
+$page = (int) ($page ?? 1);
+$totalPages = (int) ($totalPages ?? 1);
+$totalRows = (int) ($totalRows ?? count($rows));
+$checkerSignature = (string) ($checkerSignature ?? '');
 $cardsQuery = http_build_query(array_filter([
-    'name' => $filters['name'],
-    'position_name' => $filters['position_name'],
-    'department' => $filters['department'],
-    'date_from' => $filters['date_from'],
-    'date_to' => $filters['date_to'],
-    'status' => $filters['status'],
+    'name' => $filters['name'] ?? '',
+    'position_name' => $filters['position_name'] ?? '',
+    'department' => $filters['department'] ?? '',
+    'date_from' => $filters['date_from'] ?? '',
+    'date_to' => $filters['date_to'] ?? '',
+    'status' => $filters['status'] ?? 'pending',
     'per_page' => $perPage,
     'view' => 'cards',
     'p' => 1,
 ], static fn($value) => $value !== '' && $value !== null));
 $tableQuery = http_build_query(array_filter([
-    'name' => $filters['name'],
-    'position_name' => $filters['position_name'],
-    'department' => $filters['department'],
-    'date_from' => $filters['date_from'],
-    'date_to' => $filters['date_to'],
-    'status' => $filters['status'],
+    'name' => $filters['name'] ?? '',
+    'position_name' => $filters['position_name'] ?? '',
+    'department' => $filters['department'] ?? '',
+    'date_from' => $filters['date_from'] ?? '',
+    'date_to' => $filters['date_to'] ?? '',
+    'status' => $filters['status'] ?? 'pending',
     'per_page' => $perPage,
     'view' => 'table',
     'p' => 1,
 ], static fn($value) => $value !== '' && $value !== null));
+$thaiMonthShort = function_exists('app_thai_month_short_names') ? app_thai_month_short_names() : [];
+$thaiWeekdayShort = [
+    0 => 'อา.',
+    1 => 'จ.',
+    2 => 'อ.',
+    3 => 'พ.',
+    4 => 'พฤ.',
+    5 => 'ศ.',
+    6 => 'ส.',
+];
 ?>
-<section class="ops-results-panel" id="approvalRowsSection" data-current-view="<?= htmlspecialchars($view) ?>" data-current-page="<?= (int) $page ?>">
-    <section class="row g-4 mb-4" data-results-summary>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">จำนวนรายการ</div>
-                <div class="report-stat-value"><?= number_format((int) ($summary['total_rows'] ?? $totalRows ?? 0)) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">จำนวนเจ้าหน้าที่</div>
-                <div class="report-stat-value"><?= number_format((int) ($summary['unique_staff_count'] ?? 0)) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">จำนวนแผนก</div>
-                <div class="report-stat-value"><?= number_format((int) ($summary['unique_department_count'] ?? 0)) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">ชั่วโมงรวม</div>
-                <div class="report-stat-value"><?= number_format((float) ($summary['total_hours'] ?? 0), 2) ?></div>
-            </div>
-        </div>
-    </section>
-    <div class="ops-results-header">
+<section class="dash-card approval-review-panel" id="approval-review-panel" data-current-view="<?= htmlspecialchars($view ?? 'table') ?>" data-current-page="<?= (int) $page ?>">
+    <div class="approval-review-header">
         <div>
-            <h2 class="ops-results-title">รายการที่รอการตรวจสอบ</h2>
-            <p class="ops-results-subtitle">เลือกทั้งแถวหรือทั้งการ์ดได้ทันที จากนั้นตรวจสรุปรายการในหน้าต่างยืนยันก่อนอนุมัติจริง</p>
+            <p class="approval-section-eyebrow">Review queue</p>
+            <h2 class="approval-card-title">รายการรอตรวจสอบ</h2>
+            <p class="approval-card-copy">เลือกหลายรายการหรืออนุมัติทีละรายการได้ทันที พร้อมคงตัวกรองและการแบ่งหน้าตามบริบทที่ใช้งานอยู่</p>
         </div>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="approval-review-toolbar">
             <div class="approval-select-all">
                 <label class="approval-select-all-check">
-                    <input type="checkbox" class="form-check-input" id="<?= $view === 'cards' ? 'selectAllCards' : 'selectAllTable' ?>">
+                    <input type="checkbox" class="form-check-input" id="selectAllTable">
                     <span>เลือกทั้งหมด</span>
                 </label>
-                <button type="button" class="btn btn-outline-primary btn-pill approval-select-all-btn" data-select-all-visible>
-                    <i class="bi bi-check2-square me-1"></i>เลือกรายการทั้งหมดในหน้าที่เห็น
+                <button type="button" class="dash-btn dash-btn-ghost approval-select-all-btn" data-select-all-visible>
+                    <i class="bi bi-check2-square"></i>เลือกทั้งหมดในหน้าที่เห็น
                 </button>
             </div>
-            <div class="ops-view-switch">
-                <a class="btn <?= $view === 'cards' ? 'btn-dark' : 'btn-outline-dark' ?>" href="?<?= htmlspecialchars($cardsQuery) ?>" data-approval-view-link="cards"><i class="bi bi-grid-3x2-gap me-1"></i>การ์ด</a>
-                <a class="btn <?= $view === 'table' ? 'btn-dark' : 'btn-outline-dark' ?>" href="?<?= htmlspecialchars($tableQuery) ?>" data-approval-view-link="table"><i class="bi bi-table me-1"></i>ตาราง</a>
+            <div class="approval-view-switch">
+                <a class="dash-btn <?= ($view ?? 'table') === 'cards' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($cardsQuery) ?>" data-approval-view-link="cards">
+                    <i class="bi bi-grid-3x2-gap"></i>การ์ด
+                </a>
+                <a class="dash-btn <?= ($view ?? 'table') === 'table' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($tableQuery) ?>" data-approval-view-link="table">
+                    <i class="bi bi-table"></i>ตาราง
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="ops-selection-hint mb-3">
-        <div class="ops-summary-chip">
-            <i class="bi bi-info-circle"></i>
-            <span>คลิกที่แถวหรือการ์ดเพื่อเลือกได้ทันที</span>
-        </div>
+    <div class="approval-list-caption">
+        <span>ทั้งหมด <?= number_format($totalRows) ?> รายการ</span>
         <?php if ($checkerSignature === ''): ?>
-            <span class="badge text-bg-danger rounded-pill px-3 py-2">ต้องตั้งค่าลายเซ็นผู้ตรวจสอบก่อนอนุมัติรายการ</span>
+            <span class="status-chip warning">ยังไม่สามารถอนุมัติได้จนกว่าจะตั้งค่าลายเซ็น</span>
         <?php endif; ?>
     </div>
 
     <?php if (!$rows): ?>
-        <div class="ops-empty">ไม่พบรายการตามเงื่อนไขที่เลือก</div>
-    <?php elseif ($view === 'cards'): ?>
-        <div class="ops-card-grid">
-            <?php foreach ($rows as $index => $row): ?>
-                <?php
-                $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
-                $status = app_time_log_status_meta($row);
-                $rowId = (int) $row['id'];
-                $rowNumber = app_table_row_number($page, $perPage, $index);
-                ?>
-                <article class="ops-card <?= $isApprovable ? '' : 'is-disabled' ?>" data-select-row>
-                    <div class="ops-card-top">
-                        <label class="d-inline-flex align-items-center gap-2 fw-semibold">
-                            <input type="checkbox" class="form-check-input row-checkbox" name="selected_ids[]" value="<?= $rowId ?>" data-fullname="<?= htmlspecialchars($row['fullname'] ?? '-', ENT_QUOTES) ?>" data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>" data-department="<?= htmlspecialchars($row['department_name'] ?? '-', ENT_QUOTES) ?>" <?= $isApprovable ? '' : 'disabled' ?>>
-                            <span>ลำดับที่ <?= $rowNumber ?></span>
-                        </label>
-                        <span class="status-badge status-<?= $status['class'] ?>"><?= htmlspecialchars($status['label']) ?></span>
-                    </div>
-
-                    <button type="button" class="staff-link btn btn-link p-0 text-start" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
-                        <?= htmlspecialchars($row['fullname'] ?? '-') ?>
-                    </button>
-                    <div class="text-muted"><?= htmlspecialchars($row['position_name'] ?? '-') ?> · <?= htmlspecialchars($row['department_name'] ?? '-') ?></div>
-
-                    <div class="ops-card-meta">
-                        <span class="ops-meta-pill"><i class="bi bi-calendar3"></i><?= htmlspecialchars(app_format_thai_date((string) $row['work_date'])) ?></span>
-                        <span class="ops-meta-pill"><i class="bi bi-clock"></i><?= !empty($row['time_in']) ? date('H:i', strtotime((string) $row['time_in'])) : '-' ?> - <?= !empty($row['time_out']) ? date('H:i', strtotime((string) $row['time_out'])) : '-' ?></span>
-                        <span class="ops-meta-pill"><i class="bi bi-hourglass-split"></i><?= number_format((float) $row['work_hours'], 2) ?> ชม.</span>
-                    </div>
-
-                    <div class="small text-muted mb-1">หมายเหตุ</div>
-                    <div><?= htmlspecialchars($row['note'] ?: '-') ?></div>
-                </article>
-            <?php endforeach; ?>
-        </div>
+        <div class="ops-empty">ไม่พบรายการที่ตรงกับตัวกรองในขณะนี้</div>
     <?php else: ?>
-        <div class="table-shell">
-            <table class="table align-middle ops-table mb-0">
-                <?php app_render_table_colgroup('approval_queue'); ?>
-                <thead class="table-light">
-                    <tr>
-                        <th class="text-center">เลือก</th>
-                        <th>ลำดับ</th>
-                        <th>วันที่</th>
-                        <th>ชื่อเจ้าหน้าที่</th>
-                        <th>ตำแหน่ง</th>
-                        <th>แผนก</th>
-                        <th>เวลาเข้า</th>
-                        <th>เวลาออก</th>
-                        <th>ชั่วโมงรวม</th>
-                        <th>หมายเหตุ</th>
-                        <th>สถานะ</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div class="approval-list-shell">
+            <div class="approval-list-head">
+                <span></span>
+                <span>วันที่</span>
+                <span>ชื่อ - ตำแหน่ง</span>
+                <span>แผนก</span>
+                <span>เวลาเวร</span>
+                <span>ชั่วโมงรวม</span>
+                <span>หมายเหตุ</span>
+                <span>สถานะ</span>
+                <span class="text-right">จัดการ</span>
+            </div>
+
+            <div class="approval-review-list">
                 <?php foreach ($rows as $index => $row): ?>
                     <?php
-                    $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
-                    $status = app_time_log_status_meta($row);
-                    $rowId = (int) $row['id'];
+                    $rowId = (int) ($row['id'] ?? 0);
                     $rowNumber = app_table_row_number($page, $perPage, $index);
+                    $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
+                    $isReturned = !empty($row['checked_by']) && empty($row['checked_at']);
+                    $statusClass = !empty($row['checked_at']) ? 'success' : ($isReturned ? 'danger' : 'warning');
+                    $statusLabel = !empty($row['checked_at']) ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับ' : 'รอตรวจ');
+                    $workDate = trim((string) ($row['work_date'] ?? ''));
+                    $dateTimestamp = $workDate !== '' ? strtotime($workDate) : false;
+                    $dayNumber = $dateTimestamp ? date('j', $dateTimestamp) : '-';
+                    $monthYearCompact = $dateTimestamp
+                        ? sprintf('%s %d', $thaiMonthShort[(int) date('n', $dateTimestamp)] ?? date('M', $dateTimestamp), (int) date('Y', $dateTimestamp) + 543)
+                        : '-';
+                    $weekdayCompact = $dateTimestamp ? ($thaiWeekdayShort[(int) date('w', $dateTimestamp)] ?? '') : '';
+                    $timeInLabel = !empty($row['time_in']) ? date('H:i', strtotime((string) $row['time_in'])) : '--:--';
+                    $timeOutLabel = !empty($row['time_out']) ? date('H:i', strtotime((string) $row['time_out'])) : '--:--';
+                    $detailText = trim((string) ($row['approval_note'] ?? '')) ?: trim((string) ($row['note'] ?? ''));
+                    if ($detailText === '') {
+                        $detailText = '-';
+                    }
                     ?>
-                    <tr class="ops-table-row <?= $isApprovable ? '' : 'is-disabled' ?>" data-select-row>
-                        <td class="text-center">
-                            <input type="checkbox" class="form-check-input row-checkbox" name="selected_ids[]" value="<?= $rowId ?>" data-fullname="<?= htmlspecialchars($row['fullname'] ?? '-', ENT_QUOTES) ?>" data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>" data-department="<?= htmlspecialchars($row['department_name'] ?? '-', ENT_QUOTES) ?>" <?= $isApprovable ? '' : 'disabled' ?>>
-                        </td>
-                        <td class="fw-semibold"><?= $rowNumber ?></td>
-                        <td><?= htmlspecialchars(app_format_thai_date((string) $row['work_date'])) ?></td>
-                        <td class="name-cell">
-                            <button type="button" class="staff-link btn btn-link p-0 text-start" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>" title="<?= htmlspecialchars($row['fullname'] ?? '-') ?>">
-                                <span class="truncate"><?= htmlspecialchars($row['fullname'] ?? '-') ?></span>
+                    <article class="approval-review-row<?= $isReturned ? ' is-returned' : '' ?><?= !empty($row['checked_at']) ? ' is-approved' : '' ?>" data-select-row>
+                        <div class="approval-row-check">
+                            <input
+                                type="checkbox"
+                                class="form-check-input row-checkbox"
+                                name="selected_ids[]"
+                                value="<?= $rowId ?>"
+                                data-fullname="<?= htmlspecialchars((string) ($row['fullname'] ?? '-'), ENT_QUOTES) ?>"
+                                data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>"
+                                data-department="<?= htmlspecialchars((string) ($row['department_name'] ?? '-'), ENT_QUOTES) ?>"
+                                <?= $isApprovable ? '' : 'disabled' ?>
+                            >
+                        </div>
+
+                        <div class="approval-date-tile">
+                            <strong><?= htmlspecialchars($dayNumber) ?></strong>
+                            <span><?= htmlspecialchars($monthYearCompact) ?></span>
+                            <?php if ($weekdayCompact !== ''): ?><small><?= htmlspecialchars($weekdayCompact) ?></small><?php endif; ?>
+                        </div>
+
+                        <div class="approval-row-main">
+                            <div class="approval-row-name-line">
+                                <button type="button" class="approval-staff-link" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                                    <?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?>
+                                </button>
+                                <span class="approval-row-index">#<?= $rowNumber ?></span>
+                            </div>
+                            <div class="approval-row-subline"><?= htmlspecialchars((string) ($row['position_name'] ?? '-') ?: '-') ?></div>
+                        </div>
+
+                        <div class="approval-row-department"><?= htmlspecialchars((string) ($row['department_name'] ?? '-') ?: '-') ?></div>
+
+                        <div class="approval-row-shift"><?= htmlspecialchars($timeInLabel) ?> - <?= htmlspecialchars($timeOutLabel) ?></div>
+
+                        <div class="approval-row-hours"><?= number_format((float) ($row['work_hours'] ?? 0), 2) ?> ชม.</div>
+
+                        <div class="approval-row-note"><?= htmlspecialchars($detailText) ?></div>
+
+                        <div class="approval-row-status">
+                            <span class="status-chip <?= htmlspecialchars($statusClass) ?>"><?= htmlspecialchars($statusLabel) ?></span>
+                        </div>
+
+                        <div class="approval-row-actions">
+                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                                ดูรายละเอียด
                             </button>
-                        </td>
-                        <td class="position-cell"><span class="truncate" title="<?= htmlspecialchars($row['position_name'] ?? '-') ?>"><?= htmlspecialchars($row['position_name'] ?? '-') ?></span></td>
-                        <td class="department-cell"><span class="truncate" title="<?= htmlspecialchars($row['department_name'] ?? '-') ?>"><?= htmlspecialchars($row['department_name'] ?? '-') ?></span></td>
-                        <td><?= !empty($row['time_in']) ? date('H:i', strtotime((string) $row['time_in'])) : '-' ?></td>
-                        <td><?= !empty($row['time_out']) ? date('H:i', strtotime((string) $row['time_out'])) : '-' ?></td>
-                        <td><?= number_format((float) $row['work_hours'], 2) ?></td>
-                        <td class="note-cell"><span class="truncate" title="<?= htmlspecialchars($row['note'] ?: '-') ?>"><?= htmlspecialchars($row['note'] ?: '-') ?></span></td>
-                        <td><span class="status-badge status-<?= $status['class'] ?>"><?= htmlspecialchars($status['label']) ?></span></td>
-                    </tr>
+                            <?php if ($isApprovable): ?>
+                                <button type="button" class="dash-btn dash-btn-primary approval-row-btn is-approve" data-approve-single="<?= $rowId ?>">
+                                    อนุมัติ
+                                </button>
+                            <?php elseif (!empty($row['checked_at'])): ?>
+                                <button type="button" class="dash-btn dash-btn-ghost approval-row-btn is-disabled" disabled>อนุมัติแล้ว</button>
+                            <?php else: ?>
+                                <button type="button" class="dash-btn dash-btn-ghost approval-row-btn is-disabled" disabled>ตีกลับ</button>
+                            <?php endif; ?>
+                            <button type="button" class="dash-icon-button approval-row-menu" disabled aria-label="เมนูเพิ่มเติม">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </div>
+                    </article>
                 <?php endforeach; ?>
-                </tbody>
-            </table>
+            </div>
         </div>
     <?php endif; ?>
 
     <?php if ($totalPages > 1): ?>
         <nav class="mt-4">
-            <ul class="pagination mb-0">
+            <ul class="pagination mb-0 time-pagination justify-content-center">
                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <?php $pageQuery = http_build_query(array_filter([
-                        'name' => $filters['name'],
-                        'position_name' => $filters['position_name'],
-                        'department' => $filters['department'],
-                        'date_from' => $filters['date_from'],
-                        'date_to' => $filters['date_to'],
-                        'status' => $filters['status'],
+                    <?php
+                    $pageQuery = http_build_query(array_filter([
+                        'name' => $filters['name'] ?? '',
+                        'position_name' => $filters['position_name'] ?? '',
+                        'department' => $filters['department'] ?? '',
+                        'date_from' => $filters['date_from'] ?? '',
+                        'date_to' => $filters['date_to'] ?? '',
+                        'status' => $filters['status'] ?? '',
                         'per_page' => $perPage,
-                        'view' => $view,
+                        'view' => $view ?? 'table',
                         'p' => $i,
-                    ], static fn($value) => $value !== '' && $value !== null)); ?>
+                    ], static fn($value) => $value !== '' && $value !== null));
+                    ?>
                     <li class="page-item <?= $i === $page ? 'active' : '' ?>">
                         <a class="page-link" href="?<?= htmlspecialchars($pageQuery) ?>" data-approval-page-link="<?= (int) $i ?>"><?= $i ?></a>
                     </li>

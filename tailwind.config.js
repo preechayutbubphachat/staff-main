@@ -4,8 +4,10 @@ module.exports = {
     './index.php',
     './pages/dashboard.php',
     './pages/time.php',
+    './pages/approval_queue.php',
     './includes/navigation.php',
     './partials/time/**/*.php',
+    './partials/approval/**/*.php',
   ],
   theme: {
     extend: {
