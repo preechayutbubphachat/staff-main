@@ -987,6 +987,172 @@ function app_group_daily_schedule_rows_by_shift(array $rows): array
     return $visibleGroups;
 }
 
+function app_daily_schedule_clock_value(array $row, string $key): string
+{
+    return app_time_log_clock_value((string) ($row[$key] ?? ''));
+}
+
+function app_daily_schedule_time_window(array $row): array
+{
+    $date = substr((string) ($row['work_date'] ?? ''), 0, 10);
+    $timeIn = app_daily_schedule_clock_value($row, 'time_in');
+    $timeOut = app_daily_schedule_clock_value($row, 'time_out');
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $timeIn === '' || $timeOut === '') {
+        return [null, null];
+    }
+
+    $timezone = new DateTimeZone(date_default_timezone_get() ?: 'Asia/Bangkok');
+    $start = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $timeIn, $timezone) ?: null;
+    $end = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $timeOut, $timezone) ?: null;
+
+    if (!$start || !$end) {
+        return [null, null];
+    }
+
+    if ($end <= $start) {
+        $end = $end->modify('+1 day');
+    }
+
+    return [$start, $end];
+}
+
+function app_daily_schedule_runtime_status(array $row, ?DateTimeImmutable $now = null): array
+{
+    [$start, $end] = app_daily_schedule_time_window($row);
+    $timezone = new DateTimeZone(date_default_timezone_get() ?: 'Asia/Bangkok');
+    $now = $now ?? new DateTimeImmutable('now', $timezone);
+
+    if (!$start || !$end) {
+        return [
+            'key' => 'pending',
+            'label' => 'รอจัดสรร',
+            'class' => 'warning',
+        ];
+    }
+
+    if ($now < $start) {
+        return [
+            'key' => 'upcoming',
+            'label' => 'กำลังจะเริ่ม',
+            'class' => 'warning',
+        ];
+    }
+
+    if ($now >= $start && $now < $end) {
+        return [
+            'key' => 'active',
+            'label' => 'ปฏิบัติงานอยู่',
+            'class' => 'success',
+        ];
+    }
+
+    return [
+        'key' => 'completed',
+        'label' => 'ครบเวรแล้ว',
+        'class' => 'complete',
+    ];
+}
+
+function app_daily_schedule_shift_bucket(array $row): string
+{
+    $matched = app_match_daily_shift_group($row);
+    if (in_array($matched, ['morning', 'afternoon', 'night'], true)) {
+        return $matched;
+    }
+
+    $timeIn = app_daily_schedule_clock_value($row, 'time_in');
+    if ($timeIn === '') {
+        return 'other';
+    }
+
+    $hour = (int) substr($timeIn, 0, 2);
+    if ($hour >= 5 && $hour < 12) {
+        return 'morning';
+    }
+
+    if ($hour >= 12 && $hour < 22) {
+        return 'afternoon';
+    }
+
+    return 'night';
+}
+
+function app_daily_schedule_derived_stats(array $schedule): array
+{
+    $rows = array_values($schedule['logs'] ?? []);
+    $total = count($rows);
+    $timezone = new DateTimeZone(date_default_timezone_get() ?: 'Asia/Bangkok');
+    $now = new DateTimeImmutable('now', $timezone);
+    $shiftStats = [
+        'morning' => ['label' => 'เช้า (08:00 - 16:00)', 'count' => 0, 'active' => 0, 'icon' => 'bi-sun', 'tone' => 'green'],
+        'afternoon' => ['label' => 'บ่าย (16:00 - 00:00)', 'count' => 0, 'active' => 0, 'icon' => 'bi-sun-fill', 'tone' => 'amber'],
+        'night' => ['label' => 'ดึก (00:00 - 08:00)', 'count' => 0, 'active' => 0, 'icon' => 'bi-moon-stars', 'tone' => 'violet'],
+    ];
+    $statusCounts = [
+        'active' => 0,
+        'completed' => 0,
+        'upcoming' => 0,
+        'pending' => 0,
+    ];
+    $departmentCounts = [];
+    $latestStart = null;
+
+    foreach ($rows as $row) {
+        $status = app_daily_schedule_runtime_status($row, $now);
+        $statusKey = (string) ($status['key'] ?? 'pending');
+        if (!isset($statusCounts[$statusKey])) {
+            $statusKey = 'pending';
+        }
+        $statusCounts[$statusKey]++;
+
+        $bucket = app_daily_schedule_shift_bucket($row);
+        if (isset($shiftStats[$bucket])) {
+            $shiftStats[$bucket]['count']++;
+            if ($statusKey === 'active') {
+                $shiftStats[$bucket]['active']++;
+            }
+        }
+
+        $departmentName = trim((string) ($row['department_name'] ?? ''));
+        if ($departmentName !== '') {
+            $departmentCounts[$departmentName] = ($departmentCounts[$departmentName] ?? 0) + 1;
+        }
+
+        [$start] = app_daily_schedule_time_window($row);
+        if ($start && (!$latestStart || $start > $latestStart)) {
+            $latestStart = $start;
+        }
+    }
+
+    arsort($departmentCounts);
+    $topDepartmentName = $departmentCounts ? (string) array_key_first($departmentCounts) : '-';
+    $topDepartmentCount = $departmentCounts ? (int) reset($departmentCounts) : 0;
+    $startedOrDone = $statusCounts['active'] + $statusCounts['completed'];
+    $progress = $total > 0 ? min(100, round(($startedOrDone / $total) * 100, 1)) : 0.0;
+
+    foreach ($shiftStats as &$shift) {
+        $shift['percent'] = $shift['count'] > 0 ? round(($shift['active'] / $shift['count']) * 100) : 0;
+    }
+    unset($shift);
+
+    return [
+        'total' => $total,
+        'active' => $statusCounts['active'],
+        'completed' => $statusCounts['completed'],
+        'pending' => $statusCounts['upcoming'] + $statusCounts['pending'],
+        'upcoming' => $statusCounts['upcoming'],
+        'unassigned' => $statusCounts['pending'],
+        'shift_stats' => $shiftStats,
+        'top_department_name' => $topDepartmentName,
+        'top_department_count' => $topDepartmentCount,
+        'top_department_percent' => $total > 0 ? round(($topDepartmentCount / $total) * 100, 1) : 0.0,
+        'latest_time_label' => $latestStart ? $latestStart->format('H:i') . ' น.' : $now->format('H:i') . ' น.',
+        'updated_time_label' => $now->format('H:i') . ' น.',
+        'progress' => $progress,
+    ];
+}
+
 function app_daily_schedule_scope_filter_sql(string $selectedDepartment, array $scope, array &$params, string $departmentColumn = 't.department_id'): string
 {
     if (!$scope['ids']) {
@@ -2027,8 +2193,10 @@ function app_build_manageable_user_filters(array $input): array
     $positionName = trim((string) ($input['position_name'] ?? ''));
     $department = trim((string) ($input['department'] ?? ''));
     $role = trim((string) ($input['role'] ?? ''));
+    $accountStatus = trim((string) ($input['account_status'] ?? ''));
     $allowedRoles = ['admin', 'checker', 'finance', 'staff'];
     $role = in_array($role, $allowedRoles, true) ? $role : '';
+    $accountStatus = in_array($accountStatus, ['active', 'inactive'], true) ? $accountStatus : '';
 
     $where = ['1 = 1'];
     $params = [];
@@ -2053,6 +2221,10 @@ function app_build_manageable_user_filters(array $input): array
         $where[] = 'u.role = ?';
         $params[] = $role;
     }
+    if ($accountStatus !== '') {
+        $where[] = 'u.is_active = ?';
+        $params[] = $accountStatus === 'active' ? 1 : 0;
+    }
 
     return [
         'fullname' => $fullname,
@@ -2060,6 +2232,7 @@ function app_build_manageable_user_filters(array $input): array
         'position_name' => $positionName,
         'department' => $department,
         'role' => $role,
+        'account_status' => $accountStatus,
         'where_sql' => implode(' AND ', $where),
         'params' => $params,
     ];

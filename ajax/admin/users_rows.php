@@ -19,6 +19,7 @@ function app_manage_users_query(array $filters, array $extra = []): string
         'position_name' => $filters['position_name'],
         'department' => $filters['department'],
         'role' => $filters['role'],
+        'account_status' => $filters['account_status'],
         'per_page' => $extra['per_page'] ?? 20,
     ], $extra);
 }
