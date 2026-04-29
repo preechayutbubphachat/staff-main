@@ -239,6 +239,14 @@
 
 > à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆ Codex à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆ à¹ƒà¸«à¹‰à¹€à¸žà¸´à¹ˆà¸¡ entry à¹ƒà¸«à¸¡à¹ˆà¹„à¸§à¹‰à¸šà¸™à¸ªà¸¸à¸”à¸‚à¸­à¸‡à¸£à¸²à¸¢à¸à¸²à¸£à¸™à¸µà¹‰
 
+### 2026-04-29 09:02
+**Task:** Refine Database Admin dashboard (`จัดการข้อมูลฐานข้อมูล`) to fix viewport clipping and align hero/filter/table composition with the latest reference.
+**Files changed:** `assets/css/dashboard-tailwind.css`, `assets/css/dashboard-tailwind.output.css`, `PROJECT_STATUS.md`
+**What changed:** Applied page-scoped root-cause layout fixes for Database Admin only: unlocked page scroll on desktop by overriding `dash-shell`/`dash-main` when `db-admin-page-*` classes are present, reduced hero height/density, normalized hero metric dividers, tightened KPI row and content grid spacing, increased filter input/search control consistency, switched table wrappers to `overflow-x-auto` + visible vertical flow, and prevented audit card clipping. Kept all existing PHP data sources, filters, routes, permission checks, export/print links, and row actions unchanged.
+**Verification:** Ran `npm run build:tailwind:dashboard`; ran `C:\xampp\php\php.exe -l pages\db_admin_dashboard.php` (passed); verified updated selectors compile into `assets/css/dashboard-tailwind.output.css`.
+**Remaining issues:** Pixel-perfect parity for icon optics and button spacing still requires a live browser compare on 1440px/1920px after cache clear.
+**Next recommended task:** Hard refresh `pages/db_admin_dashboard.php`, validate scroll to audit + bottom summary, then do a final 1-pass visual tune only if any remaining mismatch is visible.
+
 ### 2026-04-28 15:27
 **Task:** Refine Database Admin dashboard (`จัดการข้อมูลฐานข้อมูล`) spacing and density against the latest target screenshot.
 **Files changed:** `assets/css/dashboard-tailwind.css`, `assets/css/dashboard-tailwind.output.css`, `PROJECT_STATUS.md`

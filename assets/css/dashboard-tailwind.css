@@ -5760,16 +5760,28 @@
     }
   }
 
+  .dash-shell.db-admin-page-shell {
+    @apply min-h-screen xl:h-auto xl:overflow-visible;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .dash-main.db-admin-page-main {
+    @apply min-h-screen xl:h-auto xl:flex-none xl:overflow-visible;
+    overflow: visible;
+  }
+
   .db-admin-page-main {
     @apply bg-[radial-gradient(circle_at_top_left,rgba(178,235,242,0.38),transparent_34rem),linear-gradient(135deg,#f7fbff_0%,#eef8f8_100%)];
+    padding-bottom: 1.5rem;
   }
 
   .db-admin-dashboard-frame {
-    @apply grid gap-2.5 pb-4 xl:gap-3;
+    @apply grid gap-3 pb-4 xl:gap-4;
   }
 
   .db-admin-hero-card {
-    @apply grid min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(30,181,205,0.24),transparent_24rem),linear-gradient(135deg,#083553_0%,#0b3f63_48%,#062a44_100%)] p-5 text-white shadow-[0_20px_48px_rgba(7,40,68,0.17)] xl:grid-cols-[minmax(320px,0.95fr)_minmax(500px,1.28fr)_240px] xl:items-center xl:gap-6 xl:p-6;
+    @apply grid min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(30,181,205,0.24),transparent_24rem),linear-gradient(135deg,#083553_0%,#0b3f63_48%,#062a44_100%)] p-5 text-white shadow-[0_20px_48px_rgba(7,40,68,0.17)] xl:min-h-[210px] xl:grid-cols-[minmax(340px,1.05fr)_minmax(500px,1.2fr)_230px] xl:items-center xl:gap-5 xl:p-6;
   }
 
   .db-admin-hero-copy {
@@ -5785,11 +5797,20 @@
   }
 
   .db-admin-hero-metrics {
-    @apply mt-5 grid grid-cols-2 gap-0 xl:mt-0 xl:grid-cols-4;
+    @apply mt-5 grid grid-cols-2 gap-0 rounded-[1rem] bg-white/[0.02] xl:mt-0 xl:grid-cols-4;
   }
 
   .db-admin-hero-metric {
-    @apply flex min-h-[6.9rem] flex-col items-center justify-center gap-1.5 border-white/15 px-3 text-center odd:border-l-0 xl:border-l xl:first:border-l-0;
+    @apply flex min-h-[6.5rem] flex-col items-center justify-center gap-1.5 border-l border-white/15 px-3 text-center;
+  }
+
+  .db-admin-hero-metric:nth-child(odd) {
+    @apply border-l-0;
+  }
+
+  .db-admin-hero-metric:nth-child(3),
+  .db-admin-hero-metric:nth-child(4) {
+    @apply border-t border-white/15;
   }
 
   .db-admin-hero-icon,
@@ -5876,7 +5897,7 @@
   }
 
   .db-admin-hero-actions {
-    @apply mt-5 flex flex-col gap-2.5 xl:mt-0 xl:justify-self-end;
+    @apply mt-5 flex flex-col gap-2.5 xl:mt-0 xl:w-[230px] xl:justify-self-end;
   }
 
   .db-admin-hero-actions .dash-btn {
@@ -5892,7 +5913,7 @@
   }
 
   .db-admin-summary-row {
-    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4;
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4;
   }
 
   .db-admin-summary-card {
@@ -5912,7 +5933,7 @@
   }
 
   .db-admin-content-grid {
-    @apply grid min-w-0 gap-3 xl:grid-cols-[330px_minmax(0,1fr)];
+    @apply grid min-w-0 items-start gap-3 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4;
   }
 
   .db-admin-filter-card,
@@ -5957,11 +5978,11 @@
 
   .db-admin-field input,
   .db-admin-field select {
-    @apply h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-hospital-ink outline-none transition-all duration-200 focus:border-hospital-teal focus:ring-4 focus:ring-hospital-teal/10;
+    @apply h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-hospital-ink outline-none transition-all duration-200 focus:border-hospital-teal focus:ring-4 focus:ring-hospital-teal/10;
   }
 
   .db-admin-search-field {
-    @apply flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 transition-all duration-200 focus-within:border-hospital-teal focus-within:ring-4 focus-within:ring-hospital-teal/10;
+    @apply flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 transition-all duration-200 focus-within:border-hospital-teal focus-within:ring-4 focus-within:ring-hospital-teal/10;
   }
 
   .db-admin-search-field input {
@@ -6015,7 +6036,7 @@
 
   .db-admin-table-shell,
   .db-admin-audit-table-shell {
-    @apply min-w-0 overflow-auto p-2.5 pt-0;
+    @apply min-w-0 overflow-x-auto overflow-y-visible p-2.5 pt-0;
   }
 
   .db-admin-table,
@@ -6126,7 +6147,7 @@
   }
 
   .db-admin-audit-card {
-    @apply overflow-hidden;
+    @apply overflow-visible;
   }
 
   .db-admin-audit-actions {
@@ -6188,8 +6209,32 @@
       @apply grid-cols-1;
     }
 
+    .db-admin-hero-metric {
+      @apply border-l border-t-0;
+    }
+
+    .db-admin-hero-metric:nth-child(odd) {
+      @apply border-l-0;
+    }
+
+    .db-admin-hero-metric:nth-child(3),
+    .db-admin-hero-metric:nth-child(4) {
+      @apply border-t border-white/15;
+    }
+
     .db-admin-content-grid {
       @apply grid-cols-1;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .db-admin-hero-metric {
+      @apply border-t-0;
+    }
+
+    .db-admin-hero-metric:nth-child(3),
+    .db-admin-hero-metric:nth-child(4) {
+      @apply border-t-0;
     }
   }
 
