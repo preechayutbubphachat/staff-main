@@ -1,82 +1,123 @@
-<section class="ops-results-panel">
-    <section class="row g-4 mb-4" data-results-summary>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">จำนวนเจ้าหน้าที่</div>
-                <div class="report-stat-value"><?= number_format((int) ($departmentTotals['staff_count'] ?? 0)) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">จำนวนเวร</div>
-                <div class="report-stat-value"><?= number_format((int) ($departmentTotals['total_logs'] ?? 0)) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">ชั่วโมงรวม</div>
-                <div class="report-stat-value"><?= number_format((float) ($departmentTotals['total_hours'] ?? 0), 2) ?></div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="report-stat-card">
-                <div class="report-stat-label">รอตรวจ</div>
-                <div class="report-stat-value"><?= number_format((int) ($departmentTotals['pending_logs'] ?? 0)) ?></div>
-            </div>
-        </div>
-    </section>
+<?php
+$departmentTotals = $departmentTotals ?? ['staff_count' => 0, 'total_logs' => 0, 'total_hours' => 0, 'approved_logs' => 0, 'pending_logs' => 0];
+$filters = $filters ?? [];
+$pagedRows = $pagedRows ?? [];
+$staffRows = $staffRows ?? [];
+$headingContext = $headingContext ?? app_get_department_report_heading_context($filters);
+$view = $view ?? ($filters['view'] ?? 'table');
+$page = (int) ($page ?? 1);
+$perPage = (int) ($perPage ?? 20);
+$totalRows = (int) ($totalRows ?? count($staffRows ?: $pagedRows));
+$totalPages = (int) ($totalPages ?? 1);
+$queryBase = $queryBase ?? [];
+$staffCount = (int) ($departmentTotals['staff_count'] ?? 0);
+$totalLogs = (int) ($departmentTotals['total_logs'] ?? 0);
+$totalHours = (float) ($departmentTotals['total_hours'] ?? 0);
+$approvedLogs = (int) ($departmentTotals['approved_logs'] ?? 0);
+$pendingLogs = (int) ($departmentTotals['pending_logs'] ?? 0);
+$approvedPercent = $totalLogs > 0 ? ($approvedLogs / $totalLogs) * 100 : 0;
+$pendingPercent = $totalLogs > 0 ? ($pendingLogs / $totalLogs) * 100 : 0;
+$departmentLogTotals = [];
+foreach (($staffRows ?: $pagedRows) as $row) {
+    $departmentName = trim((string) ($row['department_name'] ?? '')) ?: '-';
+    $departmentLogTotals[$departmentName] = ($departmentLogTotals[$departmentName] ?? 0) + (int) ($row['total_logs'] ?? 0);
+}
+arsort($departmentLogTotals);
+$topDepartmentName = $departmentLogTotals ? (string) array_key_first($departmentLogTotals) : '-';
+$topDepartmentLogs = $departmentLogTotals ? (int) reset($departmentLogTotals) : 0;
+$topDepartmentPercent = $totalLogs > 0 ? ($topDepartmentLogs / $totalLogs) * 100 : 0;
+$scopeLabel = (string) ($headingContext['department_label'] ?? 'ทุกแผนกในระบบ');
+$monthYearLabel = (string) ($headingContext['month_year_label'] ?? '');
+$fromRow = $totalRows > 0 ? (($page - 1) * $perPage) + 1 : 0;
+$toRow = min($totalRows, $page * $perPage);
+?>
 
-    <div class="mb-4">
-        <div class="small text-uppercase fw-semibold text-secondary mb-2">หัวข้อรายงานปัจจุบัน</div>
-        <h2 class="ops-results-title mb-2"><?= htmlspecialchars($headingContext['heading_text'] ?? 'รายงานสรุปแผนก') ?></h2>
-        <p class="ops-results-subtitle mb-0"><?= htmlspecialchars($headingContext['subheading_text'] ?? 'ข้อมูลสรุปตามตัวกรองที่เลือก') ?></p>
-    </div>
-
-    <div class="ops-results-header">
+<section class="department-report-summary-row" data-results-summary
+    data-staff="<?= (int) $staffCount ?>"
+    data-logs="<?= (int) $totalLogs ?>"
+    data-hours="<?= htmlspecialchars(number_format($totalHours, 2, '.', '')) ?>"
+    data-pending="<?= (int) $pendingLogs ?>">
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-blue"><i class="bi bi-grid-3x3-gap"></i></span>
         <div>
-            <h2 class="ops-results-title">สรุปรายบุคคล</h2>
-            <p class="ops-results-subtitle">คลิกชื่อเจ้าหน้าที่เพื่อดูโปรไฟล์ และใช้ตัวสลับมุมมองเพื่อดูแบบการ์ดหรือแบบตารางจากชุดข้อมูลเดียวกัน</p>
+            <p>ขอบเขตรายงาน</p>
+            <strong><?= htmlspecialchars($scopeLabel) ?></strong>
+            <span>ครอบคลุมทั้งหมด</span>
         </div>
-        <div class="table-toolbar-side">
-            <div class="nav nav-pills view-switch">
-                <a class="nav-link <?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link>การ์ด</a>
-                <a class="nav-link <?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link>ตาราง</a>
-            </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-green"><i class="bi bi-calendar2-week"></i></span>
+        <div>
+            <p>เดือนปัจจุบัน</p>
+            <strong><?= htmlspecialchars($monthYearLabel) ?></strong>
+            <span>ช่วงเวลาที่เลือก</span>
+        </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-mint"><i class="bi bi-clock"></i></span>
+        <div>
+            <p>ชั่วโมงรวม</p>
+            <strong><?= number_format($totalHours, 2) ?> ชม.</strong>
+            <span>รวมเวลาปฏิบัติงานทั้งหมด</span>
+        </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-amber"><i class="bi bi-person-badge"></i></span>
+        <div>
+            <p>แผนกที่มีเวรสูงสุด</p>
+            <strong><?= htmlspecialchars($topDepartmentName) ?></strong>
+            <span><?= number_format($topDepartmentLogs) ?> เวร (<?= number_format($topDepartmentPercent, 1) ?>%)</span>
+        </div>
+    </article>
+</section>
+
+<section class="dash-card department-report-results-panel" id="department-report-results-panel">
+    <div class="department-report-results-header">
+        <div>
+            <h2 class="department-report-card-title">รายการสรุปรายแผนก</h2>
+            <p class="department-report-card-copy">สรุปจำนวนเวร ชั่วโมงรวม และสถานะการตรวจของเจ้าหน้าที่ในขอบเขตรายงานที่เลือก</p>
+        </div>
+        <div class="department-report-view-switch">
+            <a class="<?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
+            <a class="<?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
         </div>
     </div>
 
     <?php if (!$pagedRows): ?>
-        <div class="ops-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+        <div class="department-report-empty-state">
+            <i class="bi bi-folder-x"></i>
+            <strong>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</strong>
+            <span>ลองเปลี่ยนเดือน ปี หรือขอบเขตรายงานอีกครั้ง</span>
+        </div>
     <?php elseif ($view === 'cards'): ?>
-        <div class="report-card-grid">
+        <div class="department-report-card-list">
             <?php foreach ($pagedRows as $index => $row): ?>
-                <?php $pendingLogs = max(0, (int) $row['total_logs'] - (int) $row['approved_logs']); ?>
-                <article class="report-card">
-                    <div class="report-card-top">
+                <?php $rowPending = max(0, (int) $row['total_logs'] - (int) $row['approved_logs']); ?>
+                <article class="department-report-person-card">
+                    <div class="department-report-card-top">
                         <div>
-                            <div class="small text-muted mb-2">ลำดับที่ <?= app_table_row_number($page, $perPage, $index) ?></div>
-                            <button type="button" class="staff-link btn btn-link p-0 text-start fs-5" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">
+                            <div class="text-xs font-bold text-hospital-muted">ลำดับที่ <?= app_table_row_number($page, $perPage, $index) ?></div>
+                            <button type="button" class="department-report-staff-link" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">
                                 <?= htmlspecialchars(app_user_display_name($row)) ?>
                             </button>
-                            <div class="text-muted"><?= htmlspecialchars($row['position_name'] ?: 'ไม่ระบุตำแหน่ง') ?></div>
-                            <div class="text-muted small mt-1"><?= htmlspecialchars($row['department_name'] ?? '-') ?></div>
+                            <p><?= htmlspecialchars($row['position_name'] ?: 'ไม่ระบุตำแหน่ง') ?> · <?= htmlspecialchars($row['department_name'] ?? '-') ?></p>
                         </div>
-                        <span class="badge text-bg-success"><?= (int) $row['approved_logs'] ?> ตรวจแล้ว</span>
+                        <span class="department-report-count-badge is-success"><?= (int) $row['approved_logs'] ?> ตรวจแล้ว</span>
                     </div>
-                    <div class="report-card-meta">
-                        <span class="badge text-bg-light border"><?= (int) $row['total_logs'] ?> เวร</span>
-                        <span class="badge text-bg-light border"><?= number_format((float) $row['total_hours'], 2) ?> ชั่วโมง</span>
-                        <span class="badge text-bg-warning"><?= $pendingLogs ?> รอตรวจ</span>
+                    <div class="department-report-card-stats">
+                        <span><?= (int) $row['total_logs'] ?> เวร</span>
+                        <span><?= number_format((float) $row['total_hours'], 2) ?> ชม.</span>
+                        <span><?= $rowPending ?> รอตรวจ</span>
                     </div>
                 </article>
             <?php endforeach; ?>
         </div>
     <?php else: ?>
-        <div class="table-responsive table-shell">
-            <table class="table align-middle ops-table">
-                <?php app_render_table_colgroup('department_summary'); ?>
+        <div class="department-report-table-shell">
+            <table class="department-report-table">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" class="form-check-input" aria-label="เลือกรายการทั้งหมด"></th>
                         <th>ลำดับ</th>
                         <th>ชื่อเจ้าหน้าที่</th>
                         <th>ตำแหน่ง</th>
@@ -85,23 +126,32 @@
                         <th>ชั่วโมงรวม</th>
                         <th>ตรวจแล้ว</th>
                         <th>รอตรวจ</th>
+                        <th>การจัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($pagedRows as $index => $row): ?>
+                        <?php $rowPending = max(0, (int) $row['total_logs'] - (int) $row['approved_logs']); ?>
                         <tr>
-                            <td class="fw-semibold"><?= app_table_row_number($page, $perPage, $index) ?></td>
-                            <td class="name-cell fw-semibold">
-                                <button type="button" class="staff-link btn btn-link p-0 text-start" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">
+                            <td><input type="checkbox" class="form-check-input" aria-label="เลือกรายการที่ <?= app_table_row_number($page, $perPage, $index) ?>"></td>
+                            <td class="department-report-row-number"><?= app_table_row_number($page, $perPage, $index) ?></td>
+                            <td>
+                                <button type="button" class="department-report-staff-link" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">
                                     <?= htmlspecialchars(app_user_display_name($row)) ?>
                                 </button>
                             </td>
-                            <td class="position-cell"><?= htmlspecialchars($row['position_name'] ?: '-') ?></td>
-                            <td class="department-cell"><?= htmlspecialchars($row['department_name'] ?? '-') ?></td>
+                            <td><?= htmlspecialchars($row['position_name'] ?: '-') ?></td>
+                            <td><?= htmlspecialchars($row['department_name'] ?? '-') ?></td>
                             <td><?= (int) $row['total_logs'] ?></td>
-                            <td class="fw-semibold text-primary"><?= number_format((float) $row['total_hours'], 2) ?></td>
-                            <td><span class="badge text-bg-success"><?= (int) $row['approved_logs'] ?></span></td>
-                            <td><span class="badge text-bg-warning"><?= max(0, (int) $row['total_logs'] - (int) $row['approved_logs']) ?></span></td>
+                            <td><span class="department-report-hours"><?= number_format((float) $row['total_hours'], 2) ?></span></td>
+                            <td><span class="department-report-count-badge is-success"><?= (int) $row['approved_logs'] ?></span></td>
+                            <td><span class="department-report-count-badge is-warning"><?= $rowPending ?></span></td>
+                            <td>
+                                <div class="department-report-row-actions">
+                                    <button type="button" class="department-report-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">ดูรายละเอียด</button>
+                                    <button type="button" class="department-report-row-menu" aria-label="ตัวเลือกเพิ่มเติม"><i class="bi bi-chevron-down"></i></button>
+                                </div>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -109,15 +159,59 @@
         </div>
     <?php endif; ?>
 
-    <?php if ($totalPages > 1): ?>
-        <nav class="mt-4">
-            <ul class="pagination mb-0">
+    <div class="department-report-table-footer">
+        <label class="department-report-page-size">
+            <span>แสดง</span>
+            <select name="per_page" form="departmentReportsFilterForm">
+                <?php foreach ([10, 20, 50, 100] as $size): ?>
+                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span>รายการ</span>
+        </label>
+
+        <div class="department-report-page-meta"><?= number_format($fromRow) ?>-<?= number_format($toRow) ?> จาก <?= number_format($totalRows) ?> รายการ</div>
+
+        <?php if ($totalPages > 1): ?>
+            <nav class="department-report-pagination" aria-label="เปลี่ยนหน้ารายงานแผนก">
                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                        <a class="page-link" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => $view, 'p' => $i])) ?>" data-table-page-link><?= $i ?></a>
-                    </li>
+                    <a class="<?= $i === $page ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => $view, 'p' => $i])) ?>" data-table-page-link><?= $i ?></a>
                 <?php endfor; ?>
-            </ul>
-        </nav>
-    <?php endif; ?>
+            </nav>
+        <?php endif; ?>
+    </div>
+</section>
+
+<section class="dash-card department-report-bottom-strip" data-bottom-summary aria-label="สรุปข้อมูลรายงานแผนก">
+    <div class="department-report-bottom-heading">สรุปข้อมูลรายงานแผนก</div>
+    <div class="department-report-bottom-item">
+        <span>จำนวนเจ้าหน้าที่</span>
+        <strong><?= number_format($staffCount) ?> คน</strong>
+        <small>จากทั้งหมด <?= number_format($staffCount) ?> คน</small>
+    </div>
+    <div class="department-report-bottom-item">
+        <span>จำนวนเวร</span>
+        <strong><?= number_format($totalLogs) ?> เวร</strong>
+        <small>จากทั้งหมด <?= number_format($totalLogs) ?> เวร</small>
+    </div>
+    <div class="department-report-bottom-item">
+        <span>ชั่วโมงรวม</span>
+        <strong><?= number_format($totalHours, 2) ?> ชม.</strong>
+        <small>เฉลี่ย <?= $staffCount > 0 ? number_format($totalHours / $staffCount, 2) : '0.00' ?> ชม./คน</small>
+    </div>
+    <div class="department-report-bottom-item">
+        <span>รอตรวจ</span>
+        <strong><?= number_format($pendingLogs) ?> รายการ</strong>
+        <small>คิดเป็น <?= number_format($pendingPercent, 2) ?>%</small>
+    </div>
+    <div class="department-report-bottom-progress">
+        <div>
+            <span>ความคืบหน้าการตรวจสอบ</span>
+            <strong><?= number_format($approvedPercent, 1) ?>%</strong>
+        </div>
+        <div class="department-report-progress-track">
+            <span style="width: <?= htmlspecialchars((string) min(100, max(0, $approvedPercent))) ?>%"></span>
+        </div>
+        <small>ตรวจแล้ว <?= number_format($approvedLogs) ?> / <?= number_format($totalLogs) ?> รายการ</small>
+    </div>
 </section>

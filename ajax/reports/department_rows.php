@@ -23,6 +23,6 @@ $queryBase = [
     'per_page' => $perPage,
 ];
 
-ajax_html(ajax_capture(function () use ($departmentTotals, $view, $pagedRows, $totalPages, $page, $perPage, $queryBase, $headingContext) {
+ajax_html(ajax_capture(function () use ($departmentTotals, $filters, $staffRows, $view, $pagedRows, $totalRows, $totalPages, $page, $perPage, $queryBase, $headingContext) {
     require __DIR__ . '/../../partials/reports/department_results.php';
 }));

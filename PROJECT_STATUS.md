@@ -239,6 +239,22 @@
 
 > à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆ Codex à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆ à¹ƒà¸«à¹‰à¹€à¸žà¸´à¹ˆà¸¡ entry à¹ƒà¸«à¸¡à¹ˆà¹„à¸§à¹‰à¸šà¸™à¸ªà¸¸à¸”à¸‚à¸­à¸‡à¸£à¸²à¸¢à¸à¸²à¸£à¸™à¸µà¹‰
 
+### 2026-04-28 15:27
+**Task:** Refine Database Admin dashboard (`จัดการข้อมูลฐานข้อมูล`) spacing and density against the latest target screenshot.
+**Files changed:** `assets/css/dashboard-tailwind.css`, `assets/css/dashboard-tailwind.output.css`, `PROJECT_STATUS.md`
+**What changed:** Tuned page-scoped `.db-admin-*` CSS only: compacted the navy hero, reduced title/copy/pill spacing, tightened KPI cards, narrowed the filter/table grid, reduced table and audit row height, reduced forced table min-width, compacted action/status buttons, and lowered bottom summary density. Existing PHP data sources, filters, table/action links, audit/export/print routes, permissions, and page routing were preserved.
+**Verification:** Ran `npm run build:tailwind:dashboard`; ran `C:\xampp\php\php.exe -l pages\db_admin_dashboard.php`; verified key `.db-admin-*` selectors compile into `assets/css/dashboard-tailwind.output.css`; ran `git diff --check` for the relevant files (CRLF warnings only).
+**Remaining issues:** Browser pixel-level QA and end-to-end clicks for open table, audit history, filter, print, PDF, and CSV were not run in this turn.
+**Next recommended task:** Hard-refresh `pages/db_admin_dashboard.php` in the browser, compare with the reference at 1440px/1920px, then tune only if the table/action area still feels cropped.
+
+### 2026-04-28 15:14
+**Task:** Redesign Database Admin page (`จัดการข้อมูลฐานข้อมูล`) to match the latest dashboard target while preserving existing database table/audit actions.
+**Files changed:** `pages/db_admin_dashboard.php`, `assets/css/dashboard-tailwind.css`, `assets/css/dashboard-tailwind.output.css`, `tailwind.config.js`, `PROJECT_STATUS.md`
+**What changed:** Rebuilt the Database Admin page into the shared dashboard shell with sidebar/topbar, navy gradient hero, hero KPI metrics, summary cards, filter/tools panel, managed table list, audit log card, and bottom summary strip. Added page-scoped `.db-admin-*` styling, fixed icon-circle centering, and added Database Admin pages/partials to Tailwind content scanning so the scoped CSS is compiled. Existing permission checks, helper data sources, table open links, audit log links, export/print routes, and form field names were preserved.
+**Verification:** Ran `npm run build:tailwind:dashboard`; verified `db-admin-hero-card` exists in `assets/css/dashboard-tailwind.output.css`; ran `C:\xampp\php\php.exe -l pages\db_admin_dashboard.php`; ran `git diff --check` for the relevant files.
+**Remaining issues:** Browser pixel-level QA and end-to-end clicks for open table, audit history, filter, print, PDF, and CSV were not run in this turn.
+**Next recommended task:** Hard-refresh `pages/db_admin_dashboard.php` in the browser, compare against the target screenshot, then test all Database Admin actions and tune spacing if needed.
+
 ### 2026-04-28 14:27
 **Task:** Refine Admin User Management dashboard layout to match the target screenshot more closely and prevent filter/table cropping.
 **Files changed:** `assets/css/dashboard-tailwind.css`, `assets/css/dashboard-tailwind.output.css`, `PROJECT_STATUS.md`

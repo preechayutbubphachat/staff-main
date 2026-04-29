@@ -5,12 +5,14 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/navigation.php';
 require_once __DIR__ . '/../includes/report_helpers.php';
 require_once __DIR__ . '/../includes/profile_modal.php';
+require_once __DIR__ . '/../includes/notification_helpers.php';
 
 app_require_permission('can_manage_time_logs');
 date_default_timezone_set('Asia/Bangkok');
 
 $actorId = (int) ($_SESSION['id'] ?? 0);
 $actorName = (string) ($_SESSION['fullname'] ?? '');
+$currentUserId = $actorId;
 $csrfToken = app_csrf_token('manage_time_logs');
 $message = $_SESSION['flash_manage_logs_error'] ?? '';
 $messageType = $message !== '' ? 'danger' : 'success';
@@ -92,6 +94,45 @@ $csvQuery = http_build_query(array_filter([
     'per_page' => $perPage,
     'type' => 'manage',
 ], static fn($value) => $value !== '' && $value !== null));
+
+$userStmt = $conn->prepare("
+    SELECT u.*, d.department_name
+    FROM users u
+    LEFT JOIN departments d ON u.department_id = d.id
+    WHERE u.id = ?
+");
+$userStmt->execute([$currentUserId]);
+$userMeta = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$role = app_current_role();
+$roleLabel = app_role_label($role);
+$hasProfileImageColumn = app_column_exists($conn, 'users', 'profile_image_path');
+$profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
+$displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
+$notificationCount = app_get_unread_notification_count($conn, $currentUserId);
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
+
+$totalLogs = (int) ($summary['total_rows'] ?? 0);
+$uniqueStaff = (int) ($summary['unique_staff_count'] ?? 0);
+$uniqueDepartments = (int) ($summary['unique_department_count'] ?? 0);
+$checkedCount = (int) ($summary['checked_count'] ?? 0);
+$pendingCount = (int) ($summary['pending_count'] ?? 0);
+$totalHours = (float) ($summary['total_hours'] ?? 0);
+$issueCount = max(0, $totalLogs - $checkedCount - $pendingCount);
+$completedPercent = $totalLogs > 0 ? ($checkedCount / $totalLogs) * 100 : 0;
+$pendingPercent = $totalLogs > 0 ? ($pendingCount / $totalLogs) * 100 : 0;
+$issuePercent = $totalLogs > 0 ? ($issueCount / $totalLogs) * 100 : 0;
+$dataCompleteness = $totalLogs > 0 ? (($totalLogs - $issueCount) / $totalLogs) * 100 : 0;
+
+$selectedDateFrom = trim((string) ($filters['date_from'] ?? ''));
+$selectedDateTo = trim((string) ($filters['date_to'] ?? ''));
+$periodMonth = date('Y-m');
+if ($selectedDateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDateFrom)) {
+    $periodMonth = substr($selectedDateFrom, 0, 7);
+} elseif ($selectedDateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDateTo)) {
+    $periodMonth = substr($selectedDateTo, 0, 7);
+}
+$periodLabel = app_format_thai_month_year($periodMonth);
+$latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -102,108 +143,281 @@ $csvQuery = http_build_query(array_filter([
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/app-ui.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
-<body class="app-ui">
-<?php render_app_navigation('manage_time_logs.php'); ?>
-<main class="container py-4 py-lg-5">
-    <section class="hero ops-hero mb-4">
-        <div class="ops-hero-grid">
-            <div class="hero-copy">
-                <div class="eyebrow mb-2">จัดการหลังบ้าน</div>
-                <h1>จัดการลงเวลาเวร</h1>
-                <p>ค้นหาและจัดการรายการลงเวลาเวรทั้งหมดในขอบเขตที่ได้รับสิทธิ์ เปิดดูรายละเอียด แก้ไขรายการ หรือรีเซ็ตสถานะอนุมัติได้จากพื้นที่เดียว โดยให้ความสำคัญกับการอ่านตารางและการทำงานต่อเนื่องของเจ้าหน้าที่หลังบ้าน</p>
-            </div>
-            <aside class="ops-hero-side">
-                <h2 class="title">ขอบเขตการจัดการ</h2>
-                <div class="ops-hero-stat">
-                    <div class="label">ขอบเขตข้อมูล</div>
-                    <div class="value" style="font-size:1.08rem;"><?= htmlspecialchars($scopeLabel) ?></div>
-                </div>
-                <div class="ops-hero-stat">
-                    <div class="label">สิทธิ์รีเซ็ตการอนุมัติ</div>
-                    <div class="value" style="font-size:1.08rem;"><?= app_can('can_edit_locked_time_logs') ? 'มีสิทธิ์' : 'ไม่มีสิทธิ์' ?></div>
-                </div>
-            </aside>
+<body class="dash-shell manage-time-page-shell">
+<?php render_dashboard_sidebar('manage_time_logs.php', $displayName, $roleLabel, $profileImageSrc); ?>
+
+<main class="dash-main manage-time-page-main">
+    <header class="dash-topbar">
+        <button type="button" class="dash-icon-button lg:hidden" data-dashboard-sidebar-open aria-label="เปิดเมนู">
+            <i class="bi bi-list text-xl"></i>
+        </button>
+
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal">Time Workspace</p>
+            <h1 class="font-prompt text-2xl font-bold tracking-[-0.03em] text-hospital-ink">จัดการลงเวลาเวร</h1>
         </div>
-    </section>
 
-    <div id="manageTimeLogsMessage">
-        <?php if ($message !== ''): ?>
-            <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-4"><?= htmlspecialchars($message) ?></div>
-        <?php endif; ?>
-    </div>
+        <label class="dash-search-control">
+            <i class="bi bi-search"></i>
+            <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
+        </label>
 
-    <section class="panel mb-4">
-        <div id="manageTimeLogsSummary" class="mb-4"></div>
+        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
+            <i class="bi bi-bell text-lg"></i>
+            <?php if ($notificationCount > 0): ?>
+                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
+                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
+                </span>
+            <?php endif; ?>
+        </a>
 
-        <div class="table-toolbar table-toolbar--filters">
-            <div class="table-toolbar-main">
-                <div class="table-toolbar-title">ตัวกรองรายการลงเวลาเวร</div>
-                <div class="table-toolbar-help">ตัวกรองและปุ่มส่งออกอ้างอิงข้อมูลชุดเดียวกัน</div>
-                <form method="get" id="manageTimeLogsFilterForm" class="table-toolbar-form" data-page-state-key="manage_time_logs">
+        <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
+            <span class="dash-avatar">
+                <?php if ($profileImageSrc): ?>
+                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="<?= htmlspecialchars($displayName) ?>" class="h-full w-full object-cover">
+                <?php else: ?>
+                    <?= htmlspecialchars(mb_substr($displayName !== '-' ? $displayName : 'U', 0, 1, 'UTF-8')) ?>
+                <?php endif; ?>
+            </span>
+            <span class="hidden text-left sm:block">
+                <span class="block max-w-[8rem] truncate font-semibold text-hospital-ink"><?= htmlspecialchars($displayName) ?></span>
+                <span class="block text-xs text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+            </span>
+            <i class="bi bi-chevron-down text-xs text-hospital-muted"></i>
+        </button>
+    </header>
+
+    <div class="manage-time-dashboard-frame panel">
+        <section class="manage-time-hero-stage">
+            <article class="dash-card-strong manage-time-hero-card">
+                <div class="manage-time-hero-grid">
+                    <div class="manage-time-hero-copy">
+                        <span class="dash-hero-pill"><i class="bi bi-sliders"></i> Shift Management</span>
+                        <h2 class="dash-hero-title manage-time-hero-title">จัดการลงเวลาเวร</h2>
+                        <p class="dash-hero-copy">
+                            ตรวจสอบ แก้ไข และจัดการรายการลงเวลาเข้าออกของเจ้าหน้าที่ในแต่ละเวรให้ถูกต้องและเป็นปัจจุบัน
+                        </p>
+                        <div class="dash-hero-chips">
+                            <span class="dash-hero-chip"><i class="bi bi-calendar3"></i>เดือน <?= htmlspecialchars($periodLabel) ?></span>
+                            <span class="dash-hero-chip"><i class="bi bi-clock-history"></i>อัปเดตล่าสุด <?= htmlspecialchars($latestLabel) ?></span>
+                        </div>
+                    </div>
+
+                    <div class="manage-time-hero-metrics" aria-label="สรุปจัดการลงเวลาเวร">
+                        <div class="manage-time-hero-metric">
+                            <span class="manage-time-hero-icon is-blue"><i class="bi bi-list-ul"></i></span>
+                            <small>จำนวนรายการ</small>
+                            <strong><?= number_format($totalLogs) ?></strong>
+                            <span>รายการทั้งหมด</span>
+                        </div>
+                        <div class="manage-time-hero-metric">
+                            <span class="manage-time-hero-icon is-green"><i class="bi bi-person-fill"></i></span>
+                            <small>จำนวนพนักงาน</small>
+                            <strong><?= number_format($uniqueStaff) ?></strong>
+                            <span>คน</span>
+                        </div>
+                        <div class="manage-time-hero-metric">
+                            <span class="manage-time-hero-icon is-purple"><i class="bi bi-building"></i></span>
+                            <small>จำนวนแผนก</small>
+                            <strong><?= number_format($uniqueDepartments) ?></strong>
+                            <span>แผนก</span>
+                        </div>
+                        <div class="manage-time-hero-metric">
+                            <span class="manage-time-hero-icon is-amber"><i class="bi bi-clock"></i></span>
+                            <small>ชั่วโมงรวม</small>
+                            <strong><?= number_format($totalHours, 2) ?></strong>
+                            <span>ชั่วโมง</span>
+                        </div>
+                    </div>
+
+                    <div class="manage-time-hero-actions">
+                        <a href="#manage-time-results-panel" class="dash-btn dash-btn-secondary">
+                            <i class="bi bi-calendar2-week"></i>เปิดตารางเวร
+                        </a>
+                        <a href="db_change_logs.php" class="dash-btn dash-btn-on-dark">
+                            <i class="bi bi-clock-history"></i>ประวัติการแก้ไข
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <div id="manageTimeLogsMessage">
+            <?php if ($message !== ''): ?>
+                <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-3"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
+        </div>
+
+        <div id="manageTimeLogsSummary">
+            <section class="manage-time-summary-row" data-static-summary>
+                <article class="dash-kpi-card manage-time-summary-card">
+                    <span class="manage-time-summary-icon is-blue"><i class="bi bi-calendar3"></i></span>
+                    <div>
+                        <p>ช่วงข้อมูล</p>
+                        <strong><?= htmlspecialchars($periodLabel) ?></strong>
+                        <span>ช่วงเวลาที่เลือก</span>
+                    </div>
+                </article>
+                <article class="dash-kpi-card manage-time-summary-card">
+                    <span class="manage-time-summary-icon is-green"><i class="bi bi-check-circle"></i></span>
+                    <div>
+                        <p>ลงเวลาแล้ว</p>
+                        <strong><?= number_format($checkedCount) ?> รายการ</strong>
+                        <span>คิดเป็น <?= number_format($completedPercent, 2) ?>%</span>
+                    </div>
+                </article>
+                <article class="dash-kpi-card manage-time-summary-card">
+                    <span class="manage-time-summary-icon is-amber"><i class="bi bi-hourglass-split"></i></span>
+                    <div>
+                        <p>รอตรวจสอบ</p>
+                        <strong><?= number_format($pendingCount) ?> รายการ</strong>
+                        <span>คิดเป็น <?= number_format($pendingPercent, 2) ?>%</span>
+                    </div>
+                </article>
+                <article class="dash-kpi-card manage-time-summary-card">
+                    <span class="manage-time-summary-icon is-danger"><i class="bi bi-exclamation-triangle"></i></span>
+                    <div>
+                        <p>ต้องแก้ไข</p>
+                        <strong><?= number_format($issueCount) ?> รายการ</strong>
+                        <span>คิดเป็น <?= number_format($issuePercent, 2) ?>%</span>
+                    </div>
+                </article>
+            </section>
+        </div>
+
+        <section class="manage-time-workspace-grid">
+            <aside class="dash-card manage-time-filter-card">
+                <div>
+                    <p class="manage-time-section-eyebrow">Time log filters</p>
+                    <h2 class="manage-time-card-title">ตัวกรองการลงเวลาเวร</h2>
+                    <p class="manage-time-card-copy">ค้นหาและจัดการรายการตามขอบเขตสิทธิ์ของผู้ดูแลระบบ</p>
+                </div>
+
+                <form method="get" id="manageTimeLogsFilterForm" class="manage-time-filter-form" data-page-state-key="manage_time_logs">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
-                    <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">ค้นหา</label>
-                        <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($filters['name']) ?>" placeholder="ค้นหาชื่อเจ้าหน้าที่">
+
+                    <div class="manage-time-filter-field is-wide">
+                        <label class="manage-time-field-label">ค้นหาชื่อพนักงาน</label>
+                        <label class="manage-time-search-field">
+                            <input type="text" name="name" value="<?= htmlspecialchars($filters['name']) ?>" placeholder="ค้นหาชื่อพนักงาน">
+                            <i class="bi bi-search"></i>
+                        </label>
                     </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">ตำแหน่ง</label>
-                        <input type="text" name="position_name" class="form-control" value="<?= htmlspecialchars($filters['position_name']) ?>" placeholder="เช่น พยาบาลวิชาชีพ">
+
+                    <div class="manage-time-filter-grid">
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">ตำแหน่ง</label>
+                            <input type="text" name="position_name" class="form-control" value="<?= htmlspecialchars($filters['position_name']) ?>" placeholder="ทั้งหมด">
+                        </div>
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">แผนก</label>
+                            <select name="department" class="form-select">
+                                <option value="">ทั้งหมด</option>
+                                <?php foreach ($departments as $department): ?>
+                                    <option value="<?= (int) $department['id'] ?>" <?= (string) $filters['department'] === (string) $department['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($department['department_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">สถานะ</label>
+                            <select name="status" class="form-select">
+                                <option value="all" <?= $filters['status'] === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
+                                <option value="pending" <?= $filters['status'] === 'pending' ? 'selected' : '' ?>>รอตรวจสอบ</option>
+                                <option value="checked" <?= $filters['status'] === 'checked' ? 'selected' : '' ?>>อนุมัติแล้ว</option>
+                            </select>
+                        </div>
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">แสดง</label>
+                            <select name="per_page" class="form-select">
+                                <?php foreach ([10, 20, 50, 100] as $size): ?>
+                                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการ</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">วันที่เริ่มต้น</label>
+                            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from']) ?>">
+                        </div>
+                        <div class="manage-time-filter-field">
+                            <label class="manage-time-field-label">วันที่สิ้นสุด</label>
+                            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to']) ?>">
+                        </div>
                     </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">แผนก</label>
-                        <select name="department" class="form-select">
-                            <option value="">ทั้งหมดตามสิทธิ์</option>
-                            <?php foreach ($departments as $department): ?>
-                                <option value="<?= (int) $department['id'] ?>" <?= (string) $filters['department'] === (string) $department['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($department['department_name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">สถานะ</label>
-                        <select name="status" class="form-select">
-                            <option value="all" <?= $filters['status'] === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
-                            <option value="pending" <?= $filters['status'] === 'pending' ? 'selected' : '' ?>>รอตรวจ</option>
-                            <option value="checked" <?= $filters['status'] === 'checked' ? 'selected' : '' ?>>อนุมัติแล้ว</option>
-                        </select>
-                    </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">จากวันที่</label>
-                        <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from']) ?>">
-                    </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">ถึงวันที่</label>
-                        <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to']) ?>">
+
+                    <div class="manage-time-filter-actions">
+                        <a class="dash-btn dash-btn-ghost manage-time-action-btn" href="manage_time_logs.php">
+                            <i class="bi bi-arrow-clockwise"></i>ล้างตัวกรอง
+                        </a>
+                        <button type="submit" class="dash-btn dash-btn-primary manage-time-action-btn">
+                            <i class="bi bi-search"></i>ค้นหา
+                        </button>
                     </div>
                 </form>
-            </div>
-        </div>
 
-        <div class="table-toolbar table-toolbar--actions">
-            <div class="table-toolbar-side">
-                <label class="table-page-size">
-                    <span>แสดง</span>
-                    <select name="per_page" form="manageTimeLogsFilterForm">
-                        <?php foreach ([10, 20, 50, 100] as $size): ?>
-                            <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <span>รายการต่อหน้า</span>
-                </label>
-                <div class="table-export-group">
-                    <a class="btn btn-outline-dark btn-pill" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i>พิมพ์รายงาน</a>
-                    <a class="btn btn-outline-dark btn-pill" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener"><i class="bi bi-filetype-pdf"></i>ส่งออก PDF</a>
-                    <a class="btn btn-dark btn-pill" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>"><i class="bi bi-filetype-csv"></i>ส่งออก CSV</a>
-                    <a href="manage_time_logs.php" class="btn btn-outline-secondary btn-pill">ล้างตัวกรอง</a>
+                <div class="manage-time-tools-card">
+                    <h3>เครื่องมือ</h3>
+                    <div class="manage-time-tool-grid">
+                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="report_print.php" data-export-type="manage" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
+                            <i class="bi bi-printer"></i>พิมพ์รายงาน
+                        </a>
+                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="report_print.php" data-export-type="manage" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
+                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
+                        </a>
+                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="export_report.php" data-export-type="manage" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
+                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div id="manageTimeLogsResults"><?php require __DIR__ . '/../partials/manage_time_logs/results_block.php'; ?></div>
-    </section>
+                <div class="manage-time-filter-total">
+                    <i class="bi bi-list-check"></i>
+                    <span><?= number_format($totalLogs) ?> รายการทั้งหมด</span>
+                </div>
+            </aside>
+
+            <div id="manageTimeLogsResults" class="min-w-0">
+                <?php require __DIR__ . '/../partials/manage_time_logs/results_block.php'; ?>
+            </div>
+        </section>
+
+        <section class="dash-card manage-time-bottom-strip" aria-label="สรุปจัดการลงเวลาเวร">
+            <div class="manage-time-bottom-heading">สรุปข้อมูลจัดการลงเวลาเวร</div>
+            <div class="manage-time-bottom-item">
+                <span>รายการทั้งหมด</span>
+                <strong><?= number_format($totalLogs) ?> รายการ</strong>
+                <small>จากทั้งหมด <?= number_format($totalLogs) ?> รายการ</small>
+            </div>
+            <div class="manage-time-bottom-item">
+                <span>พนักงาน</span>
+                <strong><?= number_format($uniqueStaff) ?> คน</strong>
+                <small>จากทั้งหมด <?= number_format($uniqueStaff) ?> คน</small>
+            </div>
+            <div class="manage-time-bottom-item">
+                <span>แผนก</span>
+                <strong><?= number_format($uniqueDepartments) ?> แผนก</strong>
+                <small>จากทั้งหมด <?= number_format($uniqueDepartments) ?> แผนก</small>
+            </div>
+            <div class="manage-time-bottom-item">
+                <span>ชั่วโมงรวม</span>
+                <strong><?= number_format($totalHours, 2) ?> ชม.</strong>
+                <small>เฉลี่ย <?= $totalLogs > 0 ? number_format($totalHours / $totalLogs, 2) : '0.00' ?> ชม./รายการ</small>
+            </div>
+            <div class="manage-time-bottom-progress">
+                <div>
+                    <span>ความสมบูรณ์ของข้อมูล</span>
+                    <strong><?= number_format($dataCompleteness, 2) ?>%</strong>
+                </div>
+                <div class="manage-time-progress-track">
+                    <span style="width: <?= htmlspecialchars((string) min(100, max(0, $dataCompleteness))) ?>%"></span>
+                </div>
+                <small>ลงเวลาแล้ว <?= number_format($checkedCount) ?> / <?= number_format($totalLogs) ?> รายการ</small>
+            </div>
+        </section>
+    </div>
 </main>
 
 <?php render_staff_profile_modal(); ?>
@@ -216,6 +430,7 @@ $csvQuery = http_build_query(array_filter([
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
 <script src="../assets/js/profile-modal.js"></script>
 <script src="../assets/js/manage-time-logs.js"></script>

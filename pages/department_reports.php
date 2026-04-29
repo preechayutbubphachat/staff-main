@@ -7,7 +7,9 @@ require_once __DIR__ . '/../includes/report_helpers.php';
 require_once __DIR__ . '/../includes/profile_modal.php';
 
 app_require_permission('can_view_department_reports');
+date_default_timezone_set('Asia/Bangkok');
 
+$currentUserId = (int) ($_SESSION['id'] ?? 0);
 $reportData = app_fetch_department_report_data($conn, $_GET);
 $filters = $reportData['filters'];
 $staffRows = $reportData['staff_rows'];
@@ -32,6 +34,43 @@ $queryBase = [
 $printQuery = app_build_table_query($queryBase, ['type' => 'department']);
 $pdfQuery = app_build_table_query($queryBase, ['type' => 'department', 'download' => 'pdf']);
 $csvQuery = app_build_table_query($queryBase, ['type' => 'department']);
+$historyQuery = app_build_table_query($queryBase, ['p' => 1]);
+
+$userStmt = $conn->prepare("
+    SELECT u.*, d.department_name
+    FROM users u
+    LEFT JOIN departments d ON u.department_id = d.id
+    WHERE u.id = ?
+");
+$userStmt->execute([$currentUserId]);
+$userMeta = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$role = app_current_role();
+$roleLabel = app_role_label($role);
+$hasProfileImageColumn = app_column_exists($conn, 'users', 'profile_image_path');
+$profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
+$displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
+$notificationCount = app_get_unread_notification_count($conn, $currentUserId);
+
+$staffCount = (int) ($departmentTotals['staff_count'] ?? 0);
+$totalLogs = (int) ($departmentTotals['total_logs'] ?? 0);
+$totalHours = (float) ($departmentTotals['total_hours'] ?? 0);
+$approvedLogs = (int) ($departmentTotals['approved_logs'] ?? 0);
+$pendingLogs = (int) ($departmentTotals['pending_logs'] ?? 0);
+$approvedPercent = $totalLogs > 0 ? ($approvedLogs / $totalLogs) * 100 : 0;
+$pendingPercent = $totalLogs > 0 ? ($pendingLogs / $totalLogs) * 100 : 0;
+$departmentLogTotals = [];
+foreach ($staffRows as $row) {
+    $departmentName = trim((string) ($row['department_name'] ?? '')) ?: '-';
+    $departmentLogTotals[$departmentName] = ($departmentLogTotals[$departmentName] ?? 0) + (int) ($row['total_logs'] ?? 0);
+}
+arsort($departmentLogTotals);
+$topDepartmentName = $departmentLogTotals ? (string) array_key_first($departmentLogTotals) : '-';
+$topDepartmentLogs = $departmentLogTotals ? (int) reset($departmentLogTotals) : 0;
+$topDepartmentPercent = $totalLogs > 0 ? ($topDepartmentLogs / $totalLogs) * 100 : 0;
+$scopeLabel = (string) ($headingContext['department_label'] ?? 'ทุกแผนกในระบบ');
+$monthYearLabel = (string) ($headingContext['month_year_label'] ?? '');
+$latestLabel = app_format_thai_date(date('Y-m-d'));
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -42,171 +81,267 @@ $csvQuery = app_build_table_query($queryBase, ['type' => 'department']);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/app-ui.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
-<body class="app-ui">
-<?php render_app_navigation('department_reports.php'); ?>
-<main class="container py-4 py-lg-5">
-    <section class="ops-hero mb-4">
-        <div class="ops-hero-grid">
-            <div>
-                <div class="eyebrow mb-2">รายงานแผนก</div>
-                <h1 class="mb-2"><?= htmlspecialchars($headingContext['heading_text']) ?></h1>
-                <p class="mb-0 text-white-50"><?= htmlspecialchars($headingContext['subheading_text']) ?></p>
-            </div>
-            <aside class="ops-hero-side">
-                <div class="ops-hero-stat">
-                    <span>ขอบเขตรายงาน</span>
-                    <strong><?= htmlspecialchars($headingContext['department_label']) ?></strong>
-                </div>
-                <div class="ops-hero-stat">
-                    <span>ช่วงเดือน</span>
-                    <strong><?= htmlspecialchars($headingContext['month_year_label']) ?></strong>
-                </div>
-            </aside>
+<body class="dash-shell department-report-page-shell">
+<?php render_dashboard_sidebar('department_reports.php', $displayName, $roleLabel, $profileImageSrc); ?>
+
+<main class="dash-main department-report-page-main">
+    <header class="dash-topbar">
+        <button type="button" class="dash-icon-button lg:hidden" data-dashboard-sidebar-open aria-label="เปิดเมนู">
+            <i class="bi bi-list text-xl"></i>
+        </button>
+
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal">Time Workspace</p>
+            <h1 class="font-prompt text-2xl font-bold tracking-[-0.03em] text-hospital-ink">รายงานแผนก</h1>
         </div>
-    </section>
 
-    <section class="panel mb-4">
-        <div id="departmentReportsSummary" class="mb-4"></div>
+        <label class="dash-search-control">
+            <i class="bi bi-search"></i>
+            <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
+        </label>
 
-        <div class="table-toolbar table-toolbar--filters">
-            <div class="table-toolbar-main">
-                <div class="table-toolbar-title">ตัวกรองรายงานแผนก</div>
-                <div class="table-toolbar-help">เลือกแผนก เดือน และปี แล้วผลลัพธ์จะอัปเดตทันที</div>
-                <form method="get" id="departmentReportsFilterForm" class="table-toolbar-form" data-page-state-key="department_reports">
+        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
+            <i class="bi bi-bell text-lg"></i>
+            <?php if ($notificationCount > 0): ?>
+                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
+                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
+                </span>
+            <?php endif; ?>
+        </a>
+
+        <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
+            <span class="dash-avatar">
+                <?php if ($profileImageSrc): ?>
+                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="<?= htmlspecialchars($displayName) ?>" class="h-full w-full object-cover">
+                <?php else: ?>
+                    <?= htmlspecialchars(mb_substr($displayName !== '-' ? $displayName : 'U', 0, 1, 'UTF-8')) ?>
+                <?php endif; ?>
+            </span>
+            <span class="hidden text-left sm:block">
+                <span class="block max-w-[8rem] truncate font-semibold text-hospital-ink"><?= htmlspecialchars($displayName) ?></span>
+                <span class="block text-xs text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+            </span>
+            <i class="bi bi-chevron-down text-xs text-hospital-muted"></i>
+        </button>
+    </header>
+
+    <div class="department-report-dashboard-frame">
+        <section class="department-report-hero-stage">
+            <article class="dash-card-strong department-report-hero-card">
+                <div class="department-report-hero-grid">
+                    <div class="department-report-hero-copy">
+                        <span class="dash-hero-pill"><i class="bi bi-building"></i> Department Reports</span>
+                        <h2 class="dash-hero-title department-report-hero-title">รายงานสรุปแผนกทั้งหมด</h2>
+                        <p class="dash-hero-copy">
+                            สรุปข้อมูลการลงเวลาและเวรทุกแผนกในระบบ เพื่อใช้เปรียบเทียบภาระงานและติดตามสถานะการตรวจสอบของแต่ละแผนก
+                        </p>
+                        <div class="dash-hero-chips">
+                            <span class="dash-hero-chip"><i class="bi bi-calendar-event"></i><span data-department-report-period><?= htmlspecialchars($monthYearLabel) ?></span></span>
+                            <span class="dash-hero-chip"><i class="bi bi-diagram-3"></i>ขอบเขตรายงาน: <span data-department-report-scope><?= htmlspecialchars($scopeLabel) ?></span></span>
+                            <span class="dash-hero-chip"><i class="bi bi-clock-history"></i>อัปเดตล่าสุด: <?= htmlspecialchars($latestLabel) ?></span>
+                        </div>
+                    </div>
+
+                    <div class="department-report-hero-divider" aria-hidden="true"></div>
+
+                    <div class="department-report-hero-metrics" aria-label="สรุปรายงานแผนก">
+                        <div class="department-report-hero-metric">
+                            <span class="department-report-hero-icon is-blue"><i class="bi bi-people-fill"></i></span>
+                            <strong data-department-report-staff><?= number_format($staffCount) ?></strong>
+                            <span>จำนวนเจ้าหน้าที่</span>
+                        </div>
+                        <div class="department-report-hero-metric">
+                            <span class="department-report-hero-icon is-green"><i class="bi bi-calendar2-check"></i></span>
+                            <strong data-department-report-logs><?= number_format($totalLogs) ?></strong>
+                            <span>จำนวนเวร</span>
+                        </div>
+                        <div class="department-report-hero-metric">
+                            <span class="department-report-hero-icon is-mint"><i class="bi bi-clock"></i></span>
+                            <strong data-department-report-hours><?= number_format($totalHours, 2) ?></strong>
+                            <span>ชั่วโมงรวม</span>
+                        </div>
+                        <div class="department-report-hero-metric">
+                            <span class="department-report-hero-icon is-amber"><i class="bi bi-hourglass-split"></i></span>
+                            <strong data-department-report-pending><?= number_format($pendingLogs) ?></strong>
+                            <span>รอตรวจ</span>
+                        </div>
+                    </div>
+
+                    <div class="department-report-hero-actions">
+                        <a href="#department-report-results-panel" class="dash-btn dash-btn-secondary">
+                            <i class="bi bi-file-earmark-bar-graph"></i>เปิดรายงานแผนก
+                        </a>
+                        <a href="department_reports.php?<?= htmlspecialchars($historyQuery) ?>" class="dash-btn dash-btn-on-dark">
+                            <i class="bi bi-clock-history"></i>ดูประวัติรายงาน
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <div id="departmentReportsSummary"></div>
+
+        <section class="department-report-workspace-grid">
+            <aside class="dash-card department-report-filter-card">
+                <div>
+                    <p class="department-report-section-eyebrow">Report filters</p>
+                    <h2 class="department-report-card-title">ตัวกรองรายงานและเครื่องมือ</h2>
+                </div>
+
+                <form method="get" id="departmentReportsFilterForm" class="department-report-filter-form" data-page-state-key="department_reports">
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
-                    <div class="toolbar-col-4">
-                        <label class="form-label fw-semibold small text-muted">ขอบเขตรายงาน</label>
+
+                    <div class="department-report-filter-field is-wide">
+                        <label class="department-report-field-label">ขอบเขตรายงาน</label>
                         <select name="department_id" class="form-select">
-                            <option value="">ทั้งหมดตามสิทธิ์ที่เข้าถึงได้</option>
+                            <option value="">ทุกแผนกในระบบ</option>
                             <?php foreach ($departments as $department): ?>
                                 <option value="<?= (int) $department['id'] ?>" <?= $filters['selected_department_id'] === (int) $department['id'] ? 'selected' : '' ?>><?= htmlspecialchars($department['department_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="toolbar-col-3">
-                        <label class="form-label fw-semibold small text-muted">เดือน</label>
-                        <select name="month" class="form-select">
-                            <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
-                                <option value="<?= (int) $monthValue ?>" <?= (int) $filters['month_number'] === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+
+                    <div class="department-report-filter-grid">
+                        <div class="department-report-filter-field">
+                            <label class="department-report-field-label">เดือน</label>
+                            <select name="month" class="form-select">
+                                <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
+                                    <option value="<?= (int) $monthValue ?>" <?= (int) $filters['month_number'] === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="department-report-filter-field">
+                            <label class="department-report-field-label">ปี (พ.ศ.)</label>
+                            <input type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $filters['year_be']) ?>" inputmode="numeric">
+                        </div>
+                        <div class="department-report-filter-field">
+                            <label class="department-report-field-label">แผนก</label>
+                            <select class="form-select" aria-label="แผนก">
+                                <option><?= htmlspecialchars($scopeLabel) ?></option>
+                            </select>
+                        </div>
+                        <div class="department-report-filter-field">
+                            <label class="department-report-field-label">สถานะ</label>
+                            <select class="form-select" aria-label="สถานะ">
+                                <option>ทั้งหมดสถานะ</option>
+                                <option>ตรวจแล้ว</option>
+                                <option>รอตรวจ</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="toolbar-col-2">
-                        <label class="form-label fw-semibold small text-muted">ปี (พ.ศ.)</label>
-                        <input type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $filters['year_be']) ?>" inputmode="numeric">
+
+                    <div class="department-report-filter-field is-wide">
+                        <label class="department-report-field-label">ค้นหาชื่อเจ้าหน้าที่ / ตำแหน่ง</label>
+                        <label class="department-report-search-field">
+                            <input type="search" placeholder="พิมพ์ชื่อ, ตำแหน่ง หรือคำค้น" aria-label="ค้นหาชื่อเจ้าหน้าที่หรือตำแหน่ง">
+                            <i class="bi bi-search"></i>
+                        </label>
+                    </div>
+
+                    <div class="department-report-filter-actions">
+                        <a class="dash-btn dash-btn-ghost department-report-action-btn" href="department_reports.php">
+                            <i class="bi bi-arrow-clockwise"></i>ล้างตัวกรอง
+                        </a>
+                        <button type="submit" class="dash-btn dash-btn-primary department-report-action-btn">
+                            <i class="bi bi-search"></i>ค้นหา
+                        </button>
                     </div>
                 </form>
-            </div>
-        </div>
 
-        <div class="table-toolbar table-toolbar--actions">
-            <div class="table-toolbar-side">
-                <label class="table-page-size">
-                    <span>แสดง</span>
-                    <select name="per_page" form="departmentReportsFilterForm">
-                        <?php foreach ([10, 20, 50, 100] as $size): ?>
-                            <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <span>รายการต่อหน้า</span>
-                </label>
-                <div class="table-export-group">
-                    <a class="btn btn-outline-dark btn-pill" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i>พิมพ์รายงาน</a>
-                    <a class="btn btn-outline-dark btn-pill" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener"><i class="bi bi-filetype-pdf"></i>ส่งออก PDF</a>
-                    <a class="btn btn-dark btn-pill" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>"><i class="bi bi-download"></i>ส่งออก CSV</a>
+                <div class="department-report-tools-card">
+                    <h3>จัดการรายงาน</h3>
+                    <div class="department-report-tool-grid">
+                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="report_print.php" data-export-type="department" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
+                            <i class="bi bi-printer"></i>พิมพ์รายงาน
+                        </a>
+                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="report_print.php" data-export-type="department" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
+                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
+                        </a>
+                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="export_report.php" data-export-type="department" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
+                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </aside>
 
-        <div id="departmentReportsResults"><?php require __DIR__ . '/../partials/reports/department_results.php'; ?></div>
-    </section>
+            <div id="departmentReportsResults" class="min-w-0">
+                <?php require __DIR__ . '/../partials/reports/department_results.php'; ?>
+            </div>
+        </section>
+
+        <div id="departmentReportsBottomSummary"></div>
+    </div>
 </main>
+
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
 <script>
-function buildDepartmentReportMonthLabel(form) {
-    const monthField = form ? form.querySelector('[name="month"]') : null;
-    const yearField = form ? form.querySelector('[name="year_be"]') : null;
-    const selectedMonthOption = monthField && monthField.options.length
-        ? monthField.options[monthField.selectedIndex]
-        : null;
-    const monthLabel = selectedMonthOption ? String(selectedMonthOption.text || '').trim() : '';
-    const yearBe = yearField ? String(yearField.value || '').trim() : '';
-
-    if (!monthLabel || !yearBe) {
-        return '';
-    }
-
-    return monthLabel + ' ' + yearBe;
-}
-
-function buildDepartmentHeroContext(form) {
-    if (!form) {
+function moveDepartmentReportBlock(container, selector, targetId) {
+    const mount = document.getElementById(targetId);
+    if (!container || !mount) {
         return null;
     }
 
-    const departmentField = form.querySelector('[name="department_id"]');
-    const selectedDepartmentOption = departmentField && departmentField.options.length
-        ? departmentField.options[departmentField.selectedIndex]
-        : null;
-    const departmentId = departmentField ? String(departmentField.value || '').trim() : '';
-    const selectedDepartmentName = selectedDepartmentOption ? String(selectedDepartmentOption.text || '').trim() : '';
-    const isSpecificDepartment = departmentId !== '' && departmentId !== '0' && selectedDepartmentName !== '';
-    const departmentLabel = isSpecificDepartment ? 'แผนก ' + selectedDepartmentName : 'แผนกทั้งหมด';
-    const monthYearLabel = buildDepartmentReportMonthLabel(form);
+    const block = container.querySelector(selector);
+    mount.innerHTML = '';
+    if (block) {
+        mount.appendChild(block);
+    }
+    return block;
+}
 
-    return {
-        departmentLabel: departmentLabel,
-        monthYearLabel: monthYearLabel,
-        headingText: 'รายงานสรุป' + departmentLabel + (monthYearLabel ? ' ประจำเดือน ' + monthYearLabel : ''),
-        subheadingText: isSpecificDepartment
-            ? 'ข้อมูลสรุปของแผนกที่เลือกตามตัวกรองปัจจุบัน'
-            : 'ข้อมูลสรุปของทุกแผนกตามสิทธิ์ที่เข้าถึงได้ในช่วงเวลาที่เลือก'
+function updateDepartmentReportHero(summaryBlock, form) {
+    if (form) {
+        const monthField = form.querySelector('[name="month"]');
+        const yearField = form.querySelector('[name="year_be"]');
+        const departmentField = form.querySelector('[name="department_id"]');
+        const monthLabel = monthField && monthField.options.length ? monthField.options[monthField.selectedIndex].textContent.trim() : '';
+        const yearLabel = yearField ? String(yearField.value || '').trim() : '';
+        const departmentLabel = departmentField && departmentField.value !== ''
+            ? departmentField.options[departmentField.selectedIndex].textContent.trim()
+            : 'ทุกแผนกในระบบ';
+
+        const periodTarget = document.querySelector('[data-department-report-period]');
+        const scopeTarget = document.querySelector('[data-department-report-scope]');
+        if (periodTarget && monthLabel && yearLabel) {
+            periodTarget.textContent = monthLabel + ' ' + yearLabel;
+        }
+        if (scopeTarget) {
+            scopeTarget.textContent = departmentLabel;
+        }
+    }
+
+    if (!summaryBlock) {
+        return;
+    }
+
+    const mappings = {
+        staff: '[data-department-report-staff]',
+        logs: '[data-department-report-logs]',
+        hours: '[data-department-report-hours]',
+        pending: '[data-department-report-pending]'
     };
+
+    Object.entries(mappings).forEach(function ([key, selector]) {
+        const target = document.querySelector(selector);
+        const value = summaryBlock.getAttribute('data-' + key);
+        if (target && value !== null && value !== '') {
+            target.textContent = key === 'hours' ? Number(value).toFixed(2) : Number(value).toLocaleString('th-TH');
+        }
+    });
 }
 
 function syncDepartmentReportLayout(payload) {
     const form = payload && payload.form ? payload.form : document.getElementById('departmentReportsFilterForm');
-    const hero = document.querySelector('.ops-hero-grid');
     const resultsContainer = payload && payload.container ? payload.container : document.getElementById('departmentReportsResults');
-
-    if (window.TableFilters && typeof window.TableFilters.syncSummaryBlock === 'function') {
-        window.TableFilters.syncSummaryBlock(resultsContainer, 'departmentReportsSummary');
-    }
-
-    if (!form || !hero) {
-        return;
-    }
-
-    const context = buildDepartmentHeroContext(form);
-    if (!context) {
-        return;
-    }
-
-    const heading = hero.querySelector('h1');
-    const helper = hero.querySelector('p');
-    const statValues = hero.querySelectorAll('.ops-hero-stat strong');
-
-    if (heading) {
-        heading.textContent = context.headingText;
-    }
-
-    if (helper) {
-        helper.textContent = context.subheadingText;
-    }
-
-    if (statValues[0]) {
-        statValues[0].textContent = context.departmentLabel;
-    }
-
-    if (statValues[1]) {
-        statValues[1].textContent = context.monthYearLabel;
-    }
+    const summaryBlock = moveDepartmentReportBlock(resultsContainer, '[data-results-summary]', 'departmentReportsSummary');
+    moveDepartmentReportBlock(resultsContainer, '[data-bottom-summary]', 'departmentReportsBottomSummary');
+    updateDepartmentReportHero(summaryBlock, form);
 }
 
 TableFilters.init({
@@ -214,6 +349,7 @@ TableFilters.init({
     containerId: 'departmentReportsResults',
     endpoint: '../ajax/reports/department_rows.php',
     pushBase: 'department_reports.php',
+    scopeSelector: '.department-report-dashboard-frame',
     onRefresh: syncDepartmentReportLayout
 });
 
@@ -221,6 +357,27 @@ syncDepartmentReportLayout({
     form: document.getElementById('departmentReportsFilterForm'),
     container: document.getElementById('departmentReportsResults')
 });
+
+(function () {
+    const openButton = document.querySelector('[data-dashboard-sidebar-open]');
+    const closeButton = document.querySelector('[data-dashboard-sidebar-close]');
+    const drawer = document.querySelector('[data-dashboard-sidebar-drawer]');
+    const backdrop = document.querySelector('[data-dashboard-sidebar-backdrop]');
+
+    if (!openButton || !closeButton || !drawer || !backdrop) {
+        return;
+    }
+
+    const setOpen = function (isOpen) {
+        drawer.classList.toggle('is-open', isOpen);
+        backdrop.classList.toggle('is-open', isOpen);
+        document.body.classList.toggle('overflow-hidden', isOpen);
+    };
+
+    openButton.addEventListener('click', function () { setOpen(true); });
+    closeButton.addEventListener('click', function () { setOpen(false); });
+    backdrop.addEventListener('click', function () { setOpen(false); });
+})();
 </script>
 </body>
 </html>

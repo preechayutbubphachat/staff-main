@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/navigation.php';
 
 app_require_login();
+date_default_timezone_set('Asia/Bangkok');
 
 $userId = (int) $_SESSION['id'];
 $message = '';
@@ -110,9 +111,28 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
 $role = app_current_role();
 $roleLabel = app_role_label($role);
+$roleCompactLabel = app_role_compact_label($role);
 $permissions = $_SESSION['permissions'] ?? [];
 $profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($user['profile_image_path'] ?? '') : null;
 $displayName = app_user_display_name($user);
+$departmentLabel = trim((string) ($user['department_name'] ?? '')) !== '' ? (string) $user['department_name'] : '-';
+$positionLabel = trim((string) ($user['position_name'] ?? '')) !== '' ? (string) $user['position_name'] : $roleLabel;
+$phoneLabel = trim((string) ($user['phone_number'] ?? '')) !== '' ? (string) $user['phone_number'] : '-';
+$usernameLabel = trim((string) ($user['username'] ?? '')) !== '' ? (string) $user['username'] : '-';
+$firstName = trim((string) ($user['first_name'] ?? ''));
+$lastName = trim((string) ($user['last_name'] ?? ''));
+$nameParts = preg_split('/\s+/', $displayName, 2);
+$fallbackFirstName = $nameParts[0] ?? $displayName;
+$fallbackLastName = $nameParts[1] ?? '';
+$firstNameValue = $firstName !== '' ? $firstName : $fallbackFirstName;
+$lastNameValue = $lastName !== '' ? $lastName : $fallbackLastName;
+$emailLabel = trim((string) ($user['email'] ?? '')) !== '' ? (string) $user['email'] : '-';
+$createdAt = !empty($user['created_at']) ? app_format_thai_date((string) $user['created_at']) : '-';
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
+$notificationCount = app_get_unread_notification_count($conn, $userId);
+$signatureSrc = !empty($user['signature_path']) ? '../uploads/signatures/' . rawurlencode((string) $user['signature_path']) : null;
+$canDepartmentReports = !empty($permissions['can_view_department_reports']);
+$canApprove = !empty($permissions['can_approve_logs']);
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -123,358 +143,273 @@ $displayName = app_user_display_name($user);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        :root {
-            --ink: #10243b;
-            --muted: #6b7a8d;
-            --line: rgba(16, 36, 59, 0.1);
-            --surface: rgba(255, 255, 255, 0.9);
-        }
-
-        body {
-            background:
-                radial-gradient(circle at top right, rgba(28, 107, 99, 0.08), transparent 24%),
-                linear-gradient(180deg, #f8fbfd, #eef4f8);
-            font-family: 'Sarabun', sans-serif;
-            color: var(--ink);
-        }
-
-        .hero,
-        .panel,
-        .mini-card {
-            background: var(--surface);
-            border: 1px solid rgba(16, 36, 59, .08);
-            border-radius: 28px;
-            box-shadow: 0 18px 44px rgba(16, 36, 59, .08);
-        }
-
-        .hero,
-        .panel {
-            padding: 28px;
-        }
-
-        .hero h1,
-        .section-title,
-        .profile-name {
-            font-family: 'Prompt', sans-serif;
-        }
-
-        .profile-block {
-            display: grid;
-            grid-template-columns: 132px 1fr;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .avatar-frame {
-            width: 132px;
-            height: 132px;
-            border-radius: 36px;
-            overflow: hidden;
-            position: relative;
-            background:
-                linear-gradient(135deg, rgba(16, 36, 59, 0.96), rgba(28, 107, 99, 0.88)),
-                url('../LOGO/nongphok_logo.png') center/84px no-repeat;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-        }
-
-        .avatar-frame img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .avatar-fallback {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            place-items: center;
-            color: rgba(255,255,255,.96);
-            background:
-                linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)),
-                linear-gradient(135deg, rgba(16, 36, 59, 0.96), rgba(28, 107, 99, 0.88));
-        }
-
-        .avatar-fallback .person {
-            font-size: 3.2rem;
-            line-height: 1;
-            transform: translateY(-4px);
-        }
-
-        .avatar-fallback .hospital-mark {
-            position: absolute;
-            inset: auto 14px 14px auto;
-            width: 42px;
-            height: 42px;
-            border-radius: 14px;
-            background: rgba(255,255,255,.12) url('../LOGO/nongphok_logo.png') center/26px no-repeat;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,.14);
-        }
-
-        .profile-name {
-            font-size: clamp(1.6rem, 2.4vw, 2.2rem);
-            margin-bottom: 8px;
-        }
-
-        .hero-copy {
-            max-width: 680px;
-            color: var(--muted);
-            line-height: 1.75;
-            margin-bottom: 0;
-        }
-
-        .meta-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .meta-pills span {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            background: rgba(16, 36, 59, 0.05);
-            border: 1px solid rgba(16, 36, 59, 0.08);
-        }
-
-        .mini-card {
-            padding: 18px 20px;
-            height: 100%;
-        }
-
-        .mini-card .label {
-            color: var(--muted);
-            font-size: .82rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .05em;
-        }
-
-        .mini-card .value {
-            margin-top: 8px;
-            font-family: 'Prompt', sans-serif;
-            font-size: 1.45rem;
-        }
-
-        .form-control {
-            border-radius: 16px;
-            padding: 13px 14px;
-            border-color: rgba(16, 36, 59, .12);
-        }
-
-        .soft-board {
-            border-radius: 22px;
-            border: 1px solid rgba(16, 36, 59, .08);
-            background: #fbfdff;
-            padding: 16px;
-        }
-
-        #signature-pad {
-            width: 100%;
-            height: 180px;
-            border-radius: 18px;
-            border: 1px dashed rgba(16, 36, 59, .2);
-            background: linear-gradient(180deg, #ffffff, #f9fbfd);
-            touch-action: none;
-        }
-
-        .preview-frame {
-            min-height: 180px;
-            border-radius: 22px;
-            border: 1px dashed rgba(16, 36, 59, .14);
-            background: #fbfdff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-        }
-
-        .preview-frame img {
-            max-width: 100%;
-            max-height: 180px;
-            object-fit: contain;
-            display: block;
-        }
-
-        .action-stack {
-            display: grid;
-            gap: 12px;
-        }
-
-        .action-stack .btn {
-            justify-content: flex-start;
-            text-align: left;
-            padding: 14px 18px;
-            border-radius: 18px;
-        }
-
-        @media (max-width: 767.98px) {
-            .hero,
-            .panel,
-            .mini-card {
-                border-radius: 22px;
-            }
-
-            .hero,
-            .panel {
-                padding: 22px;
-            }
-
-            .profile-block {
-                grid-template-columns: 1fr;
-            }
-
-            .avatar-frame {
-                width: 112px;
-                height: 112px;
-            }
-        }
-    </style>
-    <link rel="stylesheet" href="../assets/css/app-ui.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
-<body class="app-ui">
-<?php render_app_navigation('profile.php'); ?>
-<main class="container py-4 py-lg-5">
-    <section class="hero mb-4">
-        <div class="profile-block">
-            <div class="avatar-frame">
-                <?php if ($profileImageSrc): ?>
-                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์">
-                <?php else: ?>
-                    <div class="avatar-fallback" aria-hidden="true">
-                        <i class="bi bi-person-fill person"></i>
-                        <span class="hospital-mark"></span>
-                    </div>
-                <?php endif; ?>
-            </div>
-            <div>
-                <div class="text-uppercase small text-muted fw-semibold mb-2">เกี่ยวกับฉัน</div>
-                <div class="profile-name"><?= htmlspecialchars($displayName) ?></div>
-                <p class="hero-copy">จัดการชื่อ รหัสผ่าน รูปโปรไฟล์ และลายเซ็นที่ใช้กับรายงานหรือการอนุมัติได้จากหน้าเดียว โดยถ้ายังไม่ได้อัปโหลดรูป ระบบจะแสดงภาพเงาบุคคลพร้อมโลโก้โรงพยาบาลเป็นค่าเริ่มต้น</p>
-                <div class="meta-pills">
-                    <span><i class="bi bi-person-badge"></i><?= htmlspecialchars($roleLabel) ?></span>
-                    <span><i class="bi bi-building"></i><?= htmlspecialchars($user['department_name'] ?? '-') ?></span>
-                    <span><i class="bi bi-at"></i><?= htmlspecialchars($user['username'] ?? '-') ?></span>
-                </div>
-            </div>
+<body class="dash-shell profile-page-shell">
+<?php render_dashboard_sidebar('profile.php', $displayName, $roleLabel, $profileImageSrc); ?>
+
+<main class="dash-main profile-page-main">
+    <header class="dash-topbar">
+        <button type="button" class="dash-icon-button lg:hidden" data-dashboard-sidebar-open aria-label="เปิดเมนู">
+            <i class="bi bi-list text-xl"></i>
+        </button>
+
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal">Time Workspace</p>
+            <h1 class="font-prompt text-2xl font-bold tracking-[-0.03em] text-hospital-ink">โปรไฟล์</h1>
         </div>
-    </section>
 
-    <?php if ($message !== ''): ?>
-        <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-4"><?= htmlspecialchars($message) ?></div>
-    <?php endif; ?>
+        <label class="dash-search-control">
+            <i class="bi bi-search"></i>
+            <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
+        </label>
 
-    <section class="row g-4 mb-4">
-        <div class="col-md-4"><div class="mini-card"><div class="label">บทบาทในระบบ</div><div class="value"><?= htmlspecialchars($roleLabel) ?></div></div></div>
-        <div class="col-md-4"><div class="mini-card"><div class="label">ดูรายงานแผนก</div><div class="value"><?= !empty($permissions['can_view_department_reports']) ? 'ได้' : 'ไม่ได้' ?></div></div></div>
-        <div class="col-md-4"><div class="mini-card"><div class="label">สิทธิ์อนุมัติ</div><div class="value"><?= !empty($permissions['can_approve_logs']) ? 'มี' : 'ไม่มี' ?></div></div></div>
-    </section>
+        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
+            <i class="bi bi-bell text-lg"></i>
+            <?php if ($notificationCount > 0): ?>
+                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
+                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
+                </span>
+            <?php endif; ?>
+        </a>
 
-    <section class="row g-4">
-        <div class="col-xl-7">
-            <div class="panel h-100">
-                <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
-                    <div>
-                        <h2 class="section-title h4 mb-1">ข้อมูลส่วนตัว</h2>
-                        <div class="text-muted small">แก้ไขเฉพาะข้อมูลของบัญชีนี้</div>
+        <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $userId ?>">
+            <span class="dash-avatar">
+                <?php if ($profileImageSrc): ?>
+                    <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="<?= htmlspecialchars($displayName) ?>" class="h-full w-full object-cover">
+                <?php else: ?>
+                    <?= htmlspecialchars(mb_substr($displayName !== '-' ? $displayName : 'U', 0, 1, 'UTF-8')) ?>
+                <?php endif; ?>
+            </span>
+            <span class="hidden text-left sm:block">
+                <span class="block max-w-[8rem] truncate font-semibold text-hospital-ink"><?= htmlspecialchars($displayName) ?></span>
+                <span class="block text-xs text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+            </span>
+            <i class="bi bi-chevron-down text-xs text-hospital-muted"></i>
+        </button>
+    </header>
+
+    <div class="profile-dashboard-frame">
+        <?php if ($message !== ''): ?>
+            <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-0"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
+
+        <section class="dash-card profile-hero-card">
+            <div class="profile-hero-grid">
+                <div class="profile-avatar-wrap">
+                    <div class="profile-avatar-large">
+                        <?php if ($profileImageSrc): ?>
+                            <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์">
+                        <?php else: ?>
+                            <i class="bi bi-person-fill"></i>
+                        <?php endif; ?>
+                    </div>
+                    <label class="profile-camera-button" for="profileImageInput" aria-label="เลือกรูปโปรไฟล์">
+                        <i class="bi bi-camera"></i>
+                    </label>
+                </div>
+
+                <div class="profile-hero-main">
+                    <p class="profile-eyebrow">โปรไฟล์ของฉัน</p>
+                    <div class="profile-name-row">
+                        <h2><?= htmlspecialchars($displayName) ?></h2>
+                        <span class="profile-online-badge">ออนไลน์</span>
+                    </div>
+                    <div class="profile-badge-row">
+                        <span><i class="bi bi-person-badge"></i><?= htmlspecialchars($roleLabel) ?> (<?= htmlspecialchars($role === 'admin' ? 'System Administrator' : $roleCompactLabel) ?>)</span>
+                        <span>รหัสพนักงาน: EMP-<?= str_pad((string) $userId, 4, '0', STR_PAD_LEFT) ?></span>
+                    </div>
+                    <div class="profile-contact-row">
+                        <span><i class="bi bi-envelope"></i><?= htmlspecialchars($emailLabel) ?></span>
+                        <span><i class="bi bi-telephone"></i><?= htmlspecialchars($phoneLabel) ?></span>
+                        <span><i class="bi bi-calendar2-check"></i>เข้าระบบครั้งแรก: <?= htmlspecialchars($createdAt) ?></span>
+                    </div>
+                    <div class="profile-tab-row">
+                        <a href="#profile-personal" class="active"><i class="bi bi-person-lines-fill"></i>ข้อมูลส่วนตัว</a>
+                        <a href="#profile-account"><i class="bi bi-gear"></i>การตั้งค่าบัญชี</a>
+                        <a href="#profile-security"><i class="bi bi-lock"></i>ความปลอดภัย</a>
                     </div>
                 </div>
 
-                <form method="post" enctype="multipart/form-data" id="profileForm" class="row g-4" data-global-loading-form data-loading-message="กำลังบันทึกข้อมูลโปรไฟล์...">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small text-muted">ชื่อ - นามสกุล</label>
-                        <input type="text" name="fullname" class="form-control" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" required>
+                <aside class="profile-info-list">
+                    <div>
+                        <span class="profile-info-icon"><i class="bi bi-building"></i></span>
+                        <p>แผนก</p>
+                        <strong><?= htmlspecialchars($departmentLabel) ?></strong>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small text-muted">รหัสผ่านใหม่</label>
-                        <input type="password" name="password" class="form-control" placeholder="เว้นว่างหากไม่ต้องการเปลี่ยน">
+                    <div>
+                        <span class="profile-info-icon"><i class="bi bi-person"></i></span>
+                        <p>ตำแหน่ง</p>
+                        <strong><?= htmlspecialchars($positionLabel) ?></strong>
                     </div>
+                    <div>
+                        <span class="profile-info-icon"><i class="bi bi-person-check"></i></span>
+                        <p>ระดับสิทธิ์</p>
+                        <strong><?= htmlspecialchars($roleLabel) ?></strong>
+                    </div>
+                    <div>
+                        <span class="profile-info-icon"><i class="bi bi-person-up"></i></span>
+                        <p>หัวหน้างาน</p>
+                        <strong>-</strong>
+                    </div>
+                </aside>
+            </div>
+        </section>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small text-muted">อัปโหลดรูปโปรไฟล์</label>
-                        <input type="file" name="profile_image" class="form-control" accept="image/png, image/jpeg, image/jpg, image/webp">
-                        <div class="small text-muted mt-2">รองรับไฟล์ `PNG`, `JPG`, `JPEG`, `WEBP`</div>
+        <section class="profile-content-grid">
+            <section class="dash-card profile-form-card" id="profile-personal">
+                <div class="profile-card-head">
+                    <div>
+                        <h2>ข้อมูลส่วนตัว</h2>
+                        <p>แก้ไขข้อมูลสำคัญของบัญชีและไฟล์แนบที่ใช้ในระบบลงเวลา</p>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small text-muted">ตัวอย่างรูปโปรไฟล์ปัจจุบัน</label>
-                        <div class="preview-frame">
-                            <?php if ($profileImageSrc): ?>
-                                <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="Current Profile Image">
-                            <?php else: ?>
-                                <div class="avatar-frame" style="width: 120px; height: 120px;">
-                                    <div class="avatar-fallback" aria-hidden="true">
-                                        <i class="bi bi-person-fill person"></i>
-                                        <span class="hospital-mark"></span>
-                                    </div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" id="profileForm" data-global-loading-form data-loading-message="กำลังบันทึกข้อมูลโปรไฟล์...">
+                    <div class="profile-form-grid">
+                        <div class="profile-field">
+                            <label>ชื่อ - นามสกุล</label>
+                            <input type="text" name="fullname" class="form-control" value="<?= htmlspecialchars($user['fullname'] ?? $displayName) ?>" required>
+                        </div>
+                        <div class="profile-field">
+                            <label>ชื่อ</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($firstNameValue) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>นามสกุล</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($lastNameValue !== '' ? $lastNameValue : '-') ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>อีเมล</label>
+                            <input type="email" class="form-control" value="<?= htmlspecialchars($emailLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>เบอร์โทรศัพท์</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($phoneLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>ชื่อผู้ใช้</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($usernameLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>แผนก</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($departmentLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>ตำแหน่ง</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($positionLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label>ประเภทพนักงาน</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($roleLabel) ?>" readonly>
+                        </div>
+                        <div class="profile-field is-full" id="profile-security">
+                            <label>รหัสผ่านใหม่</label>
+                            <input type="password" name="password" class="form-control" placeholder="เว้นว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน">
+                        </div>
+                        <div class="profile-field is-full" id="profile-account">
+                            <label>รูปโปรไฟล์</label>
+                            <div class="profile-upload-row">
+                                <input type="file" id="profileImageInput" name="profile_image" class="form-control" accept="image/png, image/jpeg, image/jpg, image/webp">
+                                <div class="profile-thumb">
+                                    <?php if ($profileImageSrc): ?>
+                                        <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="Current Profile Image">
+                                    <?php else: ?>
+                                        <i class="bi bi-person-fill"></i>
+                                    <?php endif; ?>
                                 </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label fw-semibold small text-muted">วาดลายเซ็น</label>
-                        <div class="soft-board">
-                            <canvas id="signature-pad"></canvas>
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
-                                <span class="text-muted small">ใช้เมาส์หรือนิ้ววาดในกรอบนี้</span>
-                                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" id="clear-signature">ล้างลายเซ็น</button>
                             </div>
-                            <input type="hidden" name="signature_base64" id="signature_base64">
+                            <small>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB</small>
                         </div>
                     </div>
 
-                    <div class="col-12">
-                        <label class="form-label fw-semibold small text-muted">หรืออัปโหลดรูปภาพลายเซ็น</label>
-                        <input type="file" name="signature" class="form-control" accept="image/png, image/jpeg, image/jpg">
+                    <div class="profile-signature-section">
+                        <div class="profile-card-head">
+                            <div>
+                                <h3>ลายเซ็น</h3>
+                                <p>วาดลายเซ็นใหม่ หรืออัปโหลดรูปภาพลายเซ็นเพื่อใช้กับรายงานและการอนุมัติ</p>
+                            </div>
+                        </div>
+                        <div class="profile-signature-grid">
+                            <div class="profile-signature-pad-wrap">
+                                <canvas id="signature-pad"></canvas>
+                                <div class="profile-signature-actions">
+                                    <span>ใช้เมาส์หรือนิ้ววาดในกรอบนี้</span>
+                                    <button type="button" class="dash-btn dash-btn-ghost" id="clear-signature">ล้างลายเซ็น</button>
+                                </div>
+                                <input type="hidden" name="signature_base64" id="signature_base64">
+                            </div>
+                            <div class="profile-signature-preview">
+                                <?php if ($signatureSrc): ?>
+                                    <img src="<?= htmlspecialchars($signatureSrc) ?>" alt="Current Signature">
+                                <?php else: ?>
+                                    <span>ยังไม่มีลายเซ็นในระบบ</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="profile-field mt-3">
+                            <label>หรืออัปโหลดรูปภาพลายเซ็น</label>
+                            <input type="file" name="signature" class="form-control" accept="image/png, image/jpeg, image/jpg">
+                        </div>
                     </div>
 
-                    <div class="col-12 d-flex flex-wrap gap-3">
-                        <a href="dashboard.php" class="btn btn-outline-dark rounded-pill px-4">กลับไปแดชบอร์ด</a>
-                        <button type="submit" class="btn btn-dark rounded-pill px-4">บันทึกข้อมูล</button>
+                    <div class="profile-form-actions">
+                        <button type="submit" class="dash-btn dash-btn-primary">บันทึกข้อมูล</button>
+                        <a href="dashboard.php" class="dash-btn dash-btn-ghost">ยกเลิก</a>
                     </div>
                 </form>
-            </div>
-        </div>
+            </section>
 
-        <div class="col-xl-5">
-            <div class="panel h-100">
-                <h2 class="section-title h4 mb-3">ลายเซ็นปัจจุบันและทางลัด</h2>
-                <div class="preview-frame mb-4">
-                    <?php if (!empty($user['signature_path'])): ?>
-                        <img src="../uploads/signatures/<?= htmlspecialchars($user['signature_path']) ?>" alt="Current Signature">
-                    <?php else: ?>
-                        <div class="text-muted">ยังไม่มีลายเซ็นในระบบ</div>
-                    <?php endif; ?>
-                </div>
+            <aside class="profile-side-column">
+                <section class="dash-card profile-activity-card">
+                    <div class="profile-card-head">
+                        <div>
+                            <h2>กิจกรรมล่าสุด</h2>
+                            <p>ประวัติกิจกรรมของบัญชีนี้</p>
+                        </div>
+                    </div>
+                    <div class="profile-empty-activity">
+                        <span class="profile-empty-icon"><i class="bi bi-activity"></i></span>
+                        <strong>ยังไม่มีบันทึกกิจกรรมล่าสุด</strong>
+                        <span>ระบบจะแสดงกิจกรรมเมื่อมี event log ที่เชื่อมต่อกับบัญชีนี้</span>
+                    </div>
+                </section>
 
-                <div class="action-stack">
-                    <a href="time.php" class="btn btn-outline-dark"><i class="bi bi-clock-history me-2"></i>ไปยังหน้าลงเวลา</a>
-                    <a href="daily_schedule.php" class="btn btn-outline-dark"><i class="bi bi-calendar-week me-2"></i>เปิดตารางเวรวันนี้</a>
-                    <a href="my_reports.php" class="btn btn-outline-dark"><i class="bi bi-bar-chart-line me-2"></i>เปิดรายงานของฉัน</a>
-                    <?php if (app_can('can_view_department_reports')): ?>
-                        <a href="department_reports.php" class="btn btn-outline-dark"><i class="bi bi-building me-2"></i>เปิดรายงานแผนก</a>
-                    <?php endif; ?>
-                    <?php if (app_can('can_approve_logs')): ?>
-                        <a href="approval_queue.php" class="btn btn-outline-dark"><i class="bi bi-patch-check me-2"></i>เปิดคิวตรวจสอบ</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </section>
+                <section class="dash-card profile-shortcut-card">
+                    <div class="profile-card-head">
+                        <div>
+                            <h2>ทางลัด</h2>
+                            <p>เปิดหน้าที่ใช้งานบ่อยได้ทันที</p>
+                        </div>
+                    </div>
+                    <div class="profile-shortcut-grid">
+                        <a href="time.php" class="profile-shortcut is-green"><span><i class="bi bi-clock"></i></span><strong>ไปยังหน้าลงเวลา</strong></a>
+                        <a href="daily_schedule.php" class="profile-shortcut is-blue"><span><i class="bi bi-calendar2-week"></i></span><strong>เปิดตารางเวรวันนี้</strong></a>
+                        <a href="my_reports.php" class="profile-shortcut is-violet"><span><i class="bi bi-bar-chart-line"></i></span><strong>ดูรายงานของฉัน</strong></a>
+                        <?php if ($canDepartmentReports): ?>
+                            <a href="department_reports.php" class="profile-shortcut is-amber"><span><i class="bi bi-people"></i></span><strong>ดูรายงานแผนก</strong></a>
+                        <?php endif; ?>
+                        <a href="profile.php" class="profile-shortcut is-muted"><span><i class="bi bi-gear"></i></span><strong>ตั้งค่าบัญชี</strong></a>
+                        <?php if ($canApprove): ?>
+                            <a href="approval_queue.php" class="profile-shortcut is-blue"><span><i class="bi bi-patch-check"></i></span><strong>คิวตรวจสอบ</strong></a>
+                        <?php endif; ?>
+                    </div>
+                </section>
+            </aside>
+        </section>
+    </div>
 </main>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const canvas = document.getElementById('signature-pad');
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('signature-pad');
+    const clearButton = document.getElementById('clear-signature');
+    const base64Input = document.getElementById('signature_base64');
+    const form = document.getElementById('profileForm');
+
+    if (canvas && clearButton && base64Input && form) {
         const ctx = canvas.getContext('2d');
-        const clearButton = document.getElementById('clear-signature');
-        const base64Input = document.getElementById('signature_base64');
-        const form = document.getElementById('profileForm');
         let isDrawing = false;
         let hasSignature = false;
 
@@ -488,10 +423,28 @@ $displayName = app_user_display_name($user);
             ctx.strokeStyle = '#10243b';
         }
 
-        function startPosition(e) {
+        function pointerPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            if (event.touches && event.touches[0]) {
+                return {
+                    x: event.touches[0].clientX - rect.left,
+                    y: event.touches[0].clientY - rect.top
+                };
+            }
+
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        function startPosition(event) {
             isDrawing = true;
             hasSignature = true;
-            draw(e);
+            const pos = pointerPosition(event);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            event.preventDefault();
         }
 
         function endPosition() {
@@ -499,25 +452,12 @@ $displayName = app_user_display_name($user);
             ctx.beginPath();
         }
 
-        function draw(e) {
+        function draw(event) {
             if (!isDrawing) return;
-            e.preventDefault();
-
-            let clientX;
-            let clientY;
-            if (e.type.includes('touch')) {
-                const rect = canvas.getBoundingClientRect();
-                clientX = e.touches[0].clientX - rect.left;
-                clientY = e.touches[0].clientY - rect.top;
-            } else {
-                clientX = e.offsetX;
-                clientY = e.offsetY;
-            }
-
-            ctx.lineTo(clientX, clientY);
+            const pos = pointerPosition(event);
+            ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(clientX, clientY);
+            event.preventDefault();
         }
 
         resizeCanvas();
@@ -542,7 +482,27 @@ $displayName = app_user_display_name($user);
                 base64Input.value = canvas.toDataURL('image/png');
             }
         });
-    });
+    }
+
+    const openButton = document.querySelector('[data-dashboard-sidebar-open]');
+    const closeButton = document.querySelector('[data-dashboard-sidebar-close]');
+    const drawer = document.querySelector('[data-dashboard-sidebar-drawer]');
+    const backdrop = document.querySelector('[data-dashboard-sidebar-backdrop]');
+
+    if (!openButton || !closeButton || !drawer || !backdrop) {
+        return;
+    }
+
+    const setOpen = function (isOpen) {
+        drawer.classList.toggle('is-open', isOpen);
+        backdrop.classList.toggle('is-open', isOpen);
+        document.body.classList.toggle('overflow-hidden', isOpen);
+    };
+
+    openButton.addEventListener('click', function () { setOpen(true); });
+    closeButton.addEventListener('click', function () { setOpen(false); });
+    backdrop.addEventListener('click', function () { setOpen(false); });
+});
 </script>
 </body>
 </html>

@@ -1,26 +1,53 @@
-## Dashboard tall-card issue checked
+# Bug Audit
 
-- Reviewed the left profile/media block in [dashboard.php](C:/xampp/htdocs/staff-main/pages/dashboard.php).
-- Confirmed the stretching came from row/column height behavior, not from backend data logic.
+## Homepage Render Check
 
-## Image / media constraint checked
+- Rebuilt [index.php](C:/xampp/htdocs/staff-main/index.php) as a Tailwind card-based homepage.
+- Verified PHP syntax with `C:\xampp\php\php.exe -l index.php`.
+- Verified `http://localhost/staff-main/index.php` returns HTTP 200.
+- HTTP response check did not find `Warning`, `Notice`, or `Fatal error` markers.
 
-- Added bounded shared avatar sizing in [app-ui.css](C:/xampp/htdocs/staff-main/assets/css/app-ui.css).
-- The dashboard profile image now renders inside a fixed frame with `object-fit: cover`.
-- Existing signature/media constraint rules remain in place and are not removed.
+## Layout Check
 
-## Grid alignment checked
+- Oversized hero/headline block was removed.
+- Main page now uses a compact dashboard canvas instead of a large text-led hero area.
+- Intro card has bounded content and no large empty left-side block.
+- Cards are aligned to a reusable 12-column desktop grid and use consistent radius, padding, borders, and shadows.
+- KPI row and workflow board now align to the same grid language as the main overview canvas.
+- No obvious horizontal overflow was introduced in the homepage markup/classes.
 
-- The outer dashboard profile row now start-aligns instead of stretching the left card to match the taller right column.
-- The left profile card now uses natural content height instead of full-height stretching.
+## Visual Technique Check
 
-## Responsive quick check completed
+- Layered background uses light base gradients, ambient blobs, and a subtle grid texture.
+- Glass cards use translucent surfaces, highlight borders, controlled backdrop blur, and readable contrast.
+- Shadow hierarchy separates board depth, primary card depth, secondary card depth, and pill/button depth.
+- Live micro-interactions remain subtle: live dot pulse, clock breathe, weather icon float, and hover lift.
 
-- Tablet/mobile stack rules remain intact because the fix only changes the problematic dashboard row and profile card sizing behavior.
-- The new avatar frame uses fixed bounded dimensions that collapse safely with the existing responsive dashboard layout.
+## Responsive Check
 
-## Manual follow-up still recommended
+- Desktop uses a 12-column dashboard-style composition.
+- Tablet stacks the canvas cards and keeps KPI cards readable.
+- Mobile stacks all cards vertically with visible login/register actions.
+- Workflow cards use equal-height card treatment and short text to reduce layout imbalance.
+- Gaps and card padding are reduced enough on small screens to avoid large empty spaces.
 
-- Open the dashboard in the browser and confirm the left profile card no longer stretches to the height of the right column.
-- Check desktop, tablet, and mobile widths once with real profile image and signature data.
-- Confirm there is no excessive empty vertical space below the profile card after the fix.
+## Real-Time Widget Check
+
+- Time/date widget remains scoped to the homepage live overview card.
+- Time updates every second using `Asia/Bangkok`.
+- Temperature fetch uses Open-Meteo without frontend secrets.
+- Weather has a safe fallback state if the request fails.
+
+## JavaScript / CSS Regression Check
+
+- No shared JavaScript files were changed.
+- Tailwind build regenerated [index-tailwind.css](C:/xampp/htdocs/staff-main/assets/css/index-tailwind.css).
+- Bootstrap 5 system pages are not migrated or modified by this homepage-only pass.
+- New visual effects are CSS-only and scoped to the homepage Tailwind entry file.
+
+## Manual Follow-Up Recommended
+
+- Open the homepage in a real browser and compare visually against Image A and Image B.
+- Check desktop, tablet, and mobile widths in browser dev tools.
+- Confirm weather data loads in the deployment network environment or shows fallback text cleanly.
+- Confirm login and register buttons route correctly in the installed base path.
