@@ -39,7 +39,14 @@
   }
 
   .home-frame {
-    @apply mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10;
+    @apply mx-auto max-w-[1720px] px-0;
+    width: min(calc(100% - 24px), 1720px);
+  }
+
+  @media (min-width: 768px) {
+    .home-frame {
+      width: min(calc(100% - 48px), 1720px);
+    }
   }
 
   .glass-nav {
@@ -76,7 +83,7 @@
   }
 
   .nav-action-outline {
-    @apply hidden border border-hospital-navy/10 bg-white/90 text-hospital-navy hover:bg-white sm:inline-flex;
+    @apply border border-hospital-navy/10 bg-white/90 text-hospital-navy hover:bg-white;
   }
 
   .nav-action-primary {
@@ -267,6 +274,286 @@
 
   .entrance-soft {
     animation: entrance-soft 700ms ease both;
+  }
+
+  .date-pill {
+    @apply min-h-12 items-center gap-3 rounded-[1rem] border border-hospital-navy/10 bg-white/75 px-5 text-sm font-bold text-hospital-navy shadow-soft backdrop-blur-xl;
+  }
+
+  .overtime-hero-grid {
+    @apply grid gap-5 lg:grid-cols-12 lg:items-stretch;
+  }
+
+  .ot-hero-card {
+    @apply relative min-h-[270px] overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/[0.88] p-6 shadow-soft backdrop-blur-xl sm:p-7;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 24px 60px rgba(16, 36, 59, 0.1);
+  }
+
+  .ot-hero-card::after {
+    content: '';
+    @apply pointer-events-none absolute inset-y-6 right-6 w-1/2 rounded-[1.6rem] opacity-80;
+    background:
+      radial-gradient(circle at 65% 38%, rgba(31, 154, 145, 0.16), transparent 15rem),
+      linear-gradient(135deg, rgba(223, 247, 239, 0.35), rgba(240, 249, 251, 0.72));
+  }
+
+  .ot-hospital-illustration {
+    @apply pointer-events-none absolute bottom-3 right-3 z-0 hidden w-[49%] max-w-[390px] select-none object-contain opacity-95 sm:block;
+    filter: drop-shadow(0 18px 34px rgba(16, 36, 59, 0.1));
+  }
+
+  .ot-hospital-fallback {
+    @apply pointer-events-none absolute bottom-8 right-8 z-0 hidden h-44 w-44 items-center justify-center rounded-full bg-hospital-mint text-7xl text-hospital-teal/50 sm:flex;
+  }
+
+  .ot-realtime-card {
+    @apply relative min-h-[270px] overflow-hidden rounded-[1.5rem] p-6 text-white shadow-glass sm:p-7;
+    background:
+      radial-gradient(circle at 18% 18%, rgba(111, 215, 232, 0.3), transparent 22rem),
+      radial-gradient(circle at 85% 20%, rgba(20, 184, 166, 0.32), transparent 20rem),
+      linear-gradient(135deg, #063b5a 0%, #085c6b 52%, #058f85 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 30px 76px rgba(8, 83, 103, 0.22);
+  }
+
+  .ot-realtime-card::before {
+    content: '';
+    @apply pointer-events-none absolute inset-0 opacity-25;
+    background-image:
+      radial-gradient(circle, rgba(255, 255, 255, 0.42) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(90deg, transparent 0%, black 45%, black 100%);
+  }
+
+  .ot-clock-card,
+  .ot-status-panel {
+    @apply rounded-[1.35rem] border border-white/[0.16] bg-white/[0.10] p-5 shadow-soft backdrop-blur-xl;
+  }
+
+  .ot-status-panel {
+    @apply p-4 sm:p-5;
+  }
+
+  .ot-status-metric {
+    @apply min-h-[118px] rounded-[1.15rem] border border-white/[0.10] bg-white/[0.08] p-4 text-center;
+  }
+
+  .ot-status-metric i {
+    @apply mx-auto mb-2 block text-3xl text-emerald-200;
+  }
+
+  .ot-status-metric strong {
+    @apply block font-prompt text-4xl font-extrabold tracking-[-0.05em] text-white;
+  }
+
+  .ot-status-metric span {
+    @apply mt-1 block text-xs font-semibold leading-5 text-white/70;
+  }
+
+  .ot-progress-ring {
+    @apply relative grid min-h-[118px] place-items-center rounded-[1.15rem] border border-white/[0.10] bg-white/[0.08] p-4 text-center;
+  }
+
+  .ot-progress-ring::before {
+    content: '';
+    @apply absolute inset-4 rounded-full;
+    background:
+      conic-gradient(#9df3db calc(var(--progress) * 1%), rgba(255, 255, 255, 0.16) 0),
+      radial-gradient(circle, rgba(6, 59, 90, 0.76) 58%, transparent 60%);
+  }
+
+  .ot-progress-ring span,
+  .ot-progress-ring small {
+    @apply relative z-10 block;
+  }
+
+  .ot-progress-ring span {
+    @apply font-prompt text-3xl font-extrabold text-white;
+  }
+
+  .ot-progress-ring small {
+    @apply mt-12 text-xs font-semibold leading-5 text-white/70;
+  }
+
+  .ot-metric-row {
+    @apply grid gap-5 lg:grid-cols-3;
+  }
+
+  .ot-summary-card,
+  .ot-table-card {
+    @apply relative rounded-[1.5rem] border border-white/80 bg-white/[0.86] p-5 shadow-soft backdrop-blur-xl;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 18px 48px rgba(16, 36, 59, 0.085);
+  }
+
+  .ot-summary-card {
+    @apply flex min-h-[220px] flex-col;
+  }
+
+  .ot-detail-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] bg-hospital-teal px-5 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .ot-tool-button {
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-[0.8rem] border border-hospital-navy/10 bg-white/80 px-3.5 text-xs font-bold text-hospital-navy shadow-[0_8px_18px_rgba(16,36,59,0.05)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .ot-compact-actions {
+    @apply mt-auto flex flex-wrap items-center gap-2 pt-4;
+  }
+
+  .active-preview-list {
+    @apply max-h-[118px] overflow-y-auto pr-1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.38) transparent;
+  }
+
+  .active-preview-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .active-preview-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .active-preview-list::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300/70;
+  }
+
+  .active-user-row {
+    @apply grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-2xl border-b border-hospital-navy/5 px-1.5 py-1.5 last:border-b-0 hover:bg-white;
+  }
+
+  .active-user-row img,
+  .active-user-avatar {
+    @apply h-8 w-8 shrink-0 rounded-full border border-white object-cover shadow-[0_6px_14px_rgba(16,36,59,0.12)];
+  }
+
+  .active-user-avatar {
+    @apply inline-flex items-center justify-center bg-hospital-mint text-xs font-extrabold text-hospital-teal;
+  }
+
+  .active-table-person {
+    @apply flex min-w-[170px] items-center gap-2.5;
+  }
+
+  .active-table-avatar {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white bg-hospital-mint object-cover text-xs font-extrabold text-hospital-teal shadow-[0_6px_14px_rgba(16,36,59,0.12)];
+  }
+
+  .ot-card-heading {
+    @apply mb-4 flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .ot-card-heading > div:first-child {
+    @apply flex items-center gap-3;
+  }
+
+  .ot-card-heading h2 {
+    @apply font-prompt text-xl font-extrabold text-hospital-ink;
+  }
+
+  .ot-section-icon {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-hospital-mint text-xl text-hospital-teal;
+  }
+
+  .ot-table-scroll {
+    @apply w-full overflow-x-auto rounded-[1.25rem] border border-hospital-navy/10 bg-white/60;
+  }
+
+  .ot-data-table {
+    @apply w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm;
+  }
+
+  .ot-data-table th {
+    @apply border-b border-hospital-navy/10 bg-slate-50/80 px-4 py-2.5 text-xs font-extrabold text-hospital-muted;
+  }
+
+  .ot-data-table td {
+    @apply border-b border-hospital-navy/5 px-4 py-2.5 font-semibold text-hospital-muted;
+  }
+
+  .ot-data-table tbody tr:hover {
+    @apply bg-hospital-mint/30;
+  }
+
+  .ot-status-badge {
+    @apply inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-emerald-50 px-3 text-xs font-extrabold text-emerald-700;
+  }
+
+  .ot-status-badge span {
+    @apply h-2 w-2 rounded-full bg-hospital-teal;
+  }
+
+  .ot-status-badge.is-muted {
+    @apply bg-amber-50 text-amber-700;
+  }
+
+  .ot-status-badge.is-muted span {
+    @apply bg-amber-500;
+  }
+
+  .ot-status-badge.is-ok {
+    @apply bg-emerald-50 text-emerald-700;
+  }
+
+  .ot-status-badge.is-ok span {
+    @apply bg-hospital-teal;
+  }
+
+  .ot-status-badge.is-warning {
+    @apply bg-orange-50 text-orange-700;
+  }
+
+  .ot-status-badge.is-warning span {
+    @apply bg-orange-500;
+  }
+
+  .ot-row-link {
+    @apply inline-flex items-center gap-2 rounded-full border border-hospital-navy/10 bg-white px-3 py-2 text-xs font-extrabold text-hospital-navy transition hover:bg-hospital-mint;
+  }
+
+  .ot-modal {
+    @apply fixed inset-0 m-auto max-h-[92vh] w-[min(1080px,calc(100vw-32px))] rounded-[1.75rem] border-0 bg-transparent p-0 shadow-none backdrop:bg-hospital-ink/45 backdrop:backdrop-blur-sm;
+  }
+
+  .ot-modal::backdrop {
+    @apply bg-hospital-ink/45 backdrop-blur-sm;
+  }
+
+  .ot-modal-card {
+    @apply max-h-[92vh] overflow-hidden rounded-[1.75rem] border border-white/80 bg-white shadow-glass;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.88),
+      0 34px 90px rgba(7, 41, 68, 0.28);
+  }
+
+  .ot-modal-head {
+    @apply flex items-start justify-between gap-4 border-b border-hospital-navy/10 bg-hospital-mist/70 p-5 sm:p-6;
+  }
+
+  .ot-modal-head p {
+    @apply text-xs font-extrabold uppercase tracking-[0.18em] text-hospital-teal;
+  }
+
+  .ot-modal-head h2 {
+    @apply mt-1 font-prompt text-2xl font-extrabold text-hospital-ink;
+  }
+
+  .ot-modal-close {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hospital-navy/10 bg-white text-xl font-bold text-hospital-navy shadow-soft transition hover:-translate-y-0.5 hover:bg-hospital-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal;
+  }
+
+  .ot-modal-body {
+    @apply max-h-[calc(92vh-92px)] overflow-auto p-5 sm:p-6;
+  }
+
+  .ot-modal-actions {
+    @apply mb-4 flex flex-wrap justify-end gap-2;
   }
 }
 

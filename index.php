@@ -13,10 +13,11 @@ require_once __DIR__ . '/config/db.php';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/staff-main/index.php')), '/');
 $basePath = $basePath === '' ? '' : $basePath;
 $today = date('Y-m-d');
-$monthStart = date('Y-m-01');
-$monthEnd = date('Y-m-t');
+$nowSql = date('Y-m-d H:i:s');
+$hospitalImagePath = __DIR__ . '/images/hopital.png';
+$hospitalImageUrl = is_file($hospitalImagePath) ? $basePath . '/images/hopital.png' : '';
 
-function homepage_query_value(PDO $conn, string $sql, array $params = [], $fallback = 0)
+function home_query_value(PDO $conn, string $sql, array $params = [], $fallback = 0)
 {
     try {
         $stmt = $conn->prepare($sql);
@@ -28,7 +29,18 @@ function homepage_query_value(PDO $conn, string $sql, array $params = [], $fallb
     }
 }
 
-function homepage_thai_date(string $date): string
+function home_query_rows(PDO $conn, string $sql, array $params = []): array
+{
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function home_thai_date(string $date, bool $withWeekday = false): string
 {
     $months = [
         1 => 'มกราคม',
@@ -44,47 +56,194 @@ function homepage_thai_date(string $date): string
         11 => 'พฤศจิกายน',
         12 => 'ธันวาคม',
     ];
+    $weekdays = [
+        0 => 'วันอาทิตย์',
+        1 => 'วันจันทร์',
+        2 => 'วันอังคาร',
+        3 => 'วันพุธ',
+        4 => 'วันพฤหัสบดี',
+        5 => 'วันศุกร์',
+        6 => 'วันเสาร์',
+    ];
 
-    $timestamp = strtotime($date);
-    return (int) date('j', $timestamp) . ' ' . $months[(int) date('n', $timestamp)] . ' ' . ((int) date('Y', $timestamp) + 543);
+    $timestamp = strtotime($date) ?: time();
+    $label = (int) date('j', $timestamp) . ' ' . $months[(int) date('n', $timestamp)] . ' ' . ((int) date('Y', $timestamp) + 543);
+    return $withWeekday ? $weekdays[(int) date('w', $timestamp)] . 'ที่ ' . $label : $label;
 }
 
-$todayShiftCount = (int) homepage_query_value($conn, 'SELECT COUNT(*) FROM time_logs WHERE work_date = ?', [$today]);
-$todayStaffCount = (int) homepage_query_value($conn, 'SELECT COUNT(DISTINCT user_id) FROM time_logs WHERE work_date = ?', [$today]);
-$pendingReviewCount = (int) homepage_query_value($conn, "SELECT COUNT(*) FROM time_logs WHERE checked_at IS NULL AND (status IS NULL OR status <> 'rejected')");
-$monthHours = (float) homepage_query_value($conn, 'SELECT COALESCE(SUM(work_hours), 0) FROM time_logs WHERE work_date BETWEEN ? AND ?', [$monthStart, $monthEnd], 0);
-$activeStaffCount = (int) homepage_query_value($conn, 'SELECT COUNT(*) FROM users WHERE COALESCE(is_active, 1) = 1');
-$departmentCount = (int) homepage_query_value($conn, 'SELECT COUNT(*) FROM departments');
-$coveragePercent = $activeStaffCount > 0 ? min(100, (int) round(($todayStaffCount / $activeStaffCount) * 100)) : 0;
+function home_time_label(?string $time): string
+{
+    if (!$time) {
+        return '-';
+    }
 
-$overviewCards = [
-    ['label' => 'เวรวันนี้', 'value' => number_format($todayShiftCount), 'note' => 'รายการประจำวันที่บันทึกไว้', 'icon' => 'bi-calendar2-check'],
-    ['label' => 'เจ้าหน้าที่วันนี้', 'value' => number_format($todayStaffCount), 'note' => 'คนที่มีเวรในวันนี้', 'icon' => 'bi-people'],
-    ['label' => 'รอตรวจสอบ', 'value' => number_format($pendingReviewCount), 'note' => 'รายการที่ยังไม่ผ่านการตรวจ', 'icon' => 'bi-patch-question'],
-    ['label' => 'ชั่วโมงสะสมเดือนนี้', 'value' => number_format($monthHours, 2), 'note' => 'ชั่วโมงรวมของเดือนปัจจุบัน', 'icon' => 'bi-activity'],
-];
+    $timestamp = strtotime($time);
+    return $timestamp ? date('H:i', $timestamp) . ' น.' : '-';
+}
 
-$featureCards = [
-    ['title' => 'ลงเวลาเวร', 'text' => 'บันทึกเข้าออกเวร', 'icon' => 'bi-clock-history'],
-    ['title' => 'ตรวจสอบรายการ', 'text' => 'จัดการคิวรอตรวจ', 'icon' => 'bi-shield-check'],
-    ['title' => 'รายงานและส่งออก', 'text' => 'พิมพ์และส่งออกเอกสาร', 'icon' => 'bi-file-earmark-arrow-down'],
-    ['title' => 'สิทธิ์ตามบทบาท', 'text' => 'แสดงข้อมูลตามหน้าที่', 'icon' => 'bi-person-lock'],
-];
+function home_shift_label(?string $timeIn, ?string $timeOut): string
+{
+    if (!$timeIn || !$timeOut) {
+        return '-';
+    }
 
-$miniCards = [
-    ['label' => 'บุคลากรที่ใช้งาน', 'value' => number_format($activeStaffCount), 'note' => 'บัญชีพร้อมใช้'],
-    ['label' => 'แผนกในระบบ', 'value' => number_format($departmentCount), 'note' => 'หน่วยงานที่บันทึก'],
-    ['label' => 'ครอบคลุมวันนี้', 'value' => number_format($coveragePercent) . '%', 'note' => 'เทียบกับบุคลากรทั้งหมด'],
-];
+    return date('H:i', strtotime($timeIn)) . ' - ' . date('H:i', strtotime($timeOut));
+}
 
+function home_profile_image_url(string $basePath, ?string $path): string
+{
+    $path = trim((string) $path);
+    if ($path === '') {
+        return '';
+    }
+
+    if (preg_match('/^https?:\/\//i', $path)) {
+        return $path;
+    }
+
+    if (str_starts_with($path, '/')) {
+        return $path;
+    }
+
+    $normalizedPath = str_replace('\\', '/', $path);
+    $relativeCandidates = [];
+
+    if (str_contains($normalizedPath, '/')) {
+        $relativeCandidates[] = ltrim($normalizedPath, '/');
+    } else {
+        $relativeCandidates[] = 'uploads/avatars/' . $normalizedPath;
+        $relativeCandidates[] = 'uploads/profiles/' . $normalizedPath;
+    }
+
+    foreach ($relativeCandidates as $relativePath) {
+        $absolutePath = __DIR__ . '/' . $relativePath;
+        if (is_file($absolutePath)) {
+            $segments = array_map('rawurlencode', explode('/', $relativePath));
+            return rtrim($basePath, '/') . '/' . implode('/', $segments);
+        }
+    }
+
+    return '';
+}
+
+function home_user_initial(?string $name): string
+{
+    $name = trim((string) $name);
+    if ($name === '' || $name === '-') {
+        return '-';
+    }
+
+    return function_exists('mb_substr')
+        ? mb_substr($name, 0, 1, 'UTF-8')
+        : substr($name, 0, 1);
+}
+
+function home_user_avatar_html(string $basePath, array $row, string $sizeClass = 'active-user-avatar'): string
+{
+    $name = (string) ($row['fullname'] ?? '-');
+    $avatarUrl = home_profile_image_url($basePath, $row['profile_image_path'] ?? '');
+
+    if ($avatarUrl !== '') {
+        return '<img class="' . htmlspecialchars($sizeClass) . '" src="' . htmlspecialchars($avatarUrl) . '" alt="' . htmlspecialchars($name) . '" loading="lazy">';
+    }
+
+    return '<span class="' . htmlspecialchars($sizeClass) . '">' . htmlspecialchars(home_user_initial($name)) . '</span>';
+}
+
+function home_department_status(int $count): array
+{
+    if ($count >= 5) {
+        return ['label' => 'เพียงพอ', 'class' => 'is-ok'];
+    }
+
+    if ($count > 0) {
+        return ['label' => 'ต่ำกว่าเป้า', 'class' => 'is-warning'];
+    }
+
+    return ['label' => 'รอข้อมูล', 'class' => 'is-muted'];
+}
+
+$activeUsersNow = home_query_rows(
+    $conn,
+    "SELECT
+        COALESCE(u.fullname, '-') AS fullname,
+        COALESCE(u.position_name, '-') AS position_name,
+        COALESCE(u.profile_image_path, '') AS profile_image_path,
+        COALESCE(d.department_name, '-') AS department_name,
+        t.time_in,
+        t.time_out,
+        COALESCE(t.status, 'submitted') AS status
+     FROM time_logs t
+     LEFT JOIN users u ON t.user_id = u.id
+     LEFT JOIN departments d ON t.department_id = d.id
+     WHERE t.time_in IS NOT NULL
+       AND t.time_out IS NOT NULL
+       AND t.time_in <= ?
+       AND t.time_out >= ?
+     ORDER BY t.time_in ASC, u.fullname ASC",
+    [$nowSql, $nowSql]
+);
+
+$todayAttendanceRows = home_query_rows(
+    $conn,
+    "SELECT
+        COALESCE(u.fullname, '-') AS fullname,
+        COALESCE(u.position_name, '-') AS position_name,
+        COALESCE(d.department_name, '-') AS department_name,
+        t.time_in,
+        t.time_out,
+        COALESCE(t.status, 'submitted') AS status
+     FROM time_logs t
+     LEFT JOIN users u ON t.user_id = u.id
+     LEFT JOIN departments d ON t.department_id = d.id
+     WHERE t.work_date = ?
+     ORDER BY t.time_in ASC, u.fullname ASC",
+    [$today]
+);
+
+$activeDepartments = home_query_rows(
+    $conn,
+    "SELECT
+        COALESCE(d.department_name, '-') AS department_name,
+        COUNT(DISTINCT t.user_id) AS staff_count
+     FROM time_logs t
+     LEFT JOIN departments d ON t.department_id = d.id
+     WHERE t.time_in IS NOT NULL
+       AND t.time_out IS NOT NULL
+       AND t.time_in <= ?
+       AND t.time_out >= ?
+     GROUP BY d.id, d.department_name
+     ORDER BY staff_count DESC, d.department_name ASC",
+    [$nowSql, $nowSql]
+);
+
+$todayAttendanceCount = (int) home_query_value($conn, 'SELECT COUNT(*) FROM time_logs WHERE work_date = ?', [$today]);
+$expectedTodayShiftCount = (int) home_query_value($conn, 'SELECT COUNT(*) FROM users WHERE COALESCE(is_active, 1) = 1');
+$attendanceRate = $expectedTodayShiftCount > 0 ? min(100, (int) round(($todayAttendanceCount / $expectedTodayShiftCount) * 100)) : 0;
+$activeUsersCount = count($activeUsersNow);
+$activeDepartmentsCount = count($activeDepartments);
+$latestUpdateLabel = date('H:i') . ' น.';
+
+$departmentTableRows = $activeDepartments;
+if (!$departmentTableRows) {
+    $departmentTableRows = home_query_rows(
+        $conn,
+        "SELECT department_name, 0 AS staff_count
+         FROM departments
+         ORDER BY department_name ASC
+         LIMIT 6"
+    );
+}
+
+$topDepartmentsByCount = $departmentTableRows;
 ?>
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ระบบลงเวลาเวร | โรงพยาบาลหนองพอก</title>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>หน้าแรกระบบ Over Time | โรงพยาบาลหนองพอก</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($basePath) ?>/assets/css/index-tailwind.css">
 </head>
@@ -92,281 +251,574 @@ $miniCards = [
     <main class="relative isolate min-h-screen py-4 sm:py-5">
         <div class="ambient-orb left-[-10rem] top-[-10rem] h-[30rem] w-[30rem] bg-hospital-aqua/40"></div>
         <div class="ambient-orb right-[-9rem] top-0 h-[34rem] w-[34rem] bg-hospital-mint/80"></div>
-        <div class="ambient-orb bottom-[-11rem] left-1/2 h-[30rem] w-[30rem] -translate-x-1/2 bg-cyan-100/75"></div>
 
         <header class="home-frame relative z-20">
-            <div class="glass-nav flex items-center justify-between gap-3 px-4 py-3">
-                <a href="<?= htmlspecialchars($basePath) ?>/index.php" class="group flex min-w-0 items-center gap-3 text-hospital-ink no-underline">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white p-2 shadow-soft transition group-hover:-translate-y-0.5">
-                        <img src="<?= htmlspecialchars($basePath) ?>/LOGO/nongphok_logo.png" alt="โลโก้โรงพยาบาลหนองพอก" class="h-full w-full object-contain">
+            <div class="glass-nav flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                <a href="<?= htmlspecialchars($basePath) ?>/index.php" class="group flex min-w-0 items-center gap-4 text-hospital-ink no-underline" aria-label="หน้าแรก Over Time">
+                    <span class="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-hospital-teal bg-white text-3xl text-hospital-teal shadow-soft transition group-hover:-translate-y-0.5 sm:h-16 sm:w-16">
+                        <i class="bi bi-clock-history"></i>
                     </span>
                     <span class="grid leading-tight">
-                        <span class="font-prompt text-base font-bold">StaffMain</span>
-                        <span class="hidden text-xs font-semibold text-hospital-muted sm:block">โรงพยาบาลหนองพอก</span>
+                        <span class="font-prompt text-2xl font-extrabold tracking-[-0.04em] text-hospital-teal sm:text-4xl">Over Time</span>
+                        <span class="text-xs font-semibold text-hospital-muted sm:text-sm">ระบบลงเวลางานสำหรับการโรงพยาบาล</span>
                     </span>
                 </a>
 
-                <nav class="home-nav-menu" aria-label="เมนูหน้าแรก">
-                    <a href="#overview-canvas" class="home-nav-link is-active">ภาพรวม</a>
-                    <a href="#workflow-board" class="home-nav-link">งานหลัก</a>
-                    <a href="#start-now" class="home-nav-link">เริ่มใช้งาน</a>
-                </nav>
-
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+                    <span class="date-pill hidden md:inline-flex"><i class="bi bi-calendar3"></i><?= htmlspecialchars(home_thai_date($today)) ?></span>
                     <a class="nav-action nav-action-outline" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">
-                        <i class="bi bi-person-plus"></i>
                         สมัครใช้งาน
                     </a>
-                    <a class="nav-action nav-action-primary" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">
-                        <i class="bi bi-box-arrow-in-right"></i>
+                    <a class="nav-action nav-action-primary bg-hospital-teal hover:bg-emerald-700" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">
                         เข้าสู่ระบบ
                     </a>
                 </div>
             </div>
         </header>
 
-        <div class="home-frame relative z-10 mt-6 sm:mt-7">
-            <section id="overview-canvas" class="dashboard-canvas entrance-soft" aria-label="ภาพรวมระบบวันนี้">
-                <article class="dashboard-card intro-action-card lg:col-span-4">
-                    <div>
+        <div class="home-frame relative z-10 mt-5">
+            <section class="overtime-hero-grid entrance-soft" aria-label="ภาพรวมหน้าแรก Over Time">
+                <article class="ot-hero-card lg:col-span-5">
+                    <div class="relative z-10 max-w-xl">
                         <span class="hero-kicker">
-                            <span class="live-dot" aria-hidden="true"></span>
+                            <i class="bi bi-bar-chart-fill text-hospital-teal"></i>
                             ภาพรวมการใช้งาน
                         </span>
-                        <h1 class="mt-4 max-w-sm font-prompt text-2xl font-bold leading-tight tracking-[-0.025em] text-hospital-ink sm:text-3xl">
-                            ภาพรวมระบบวันนี้
+                        <h1 class="mt-5 font-prompt text-3xl font-extrabold leading-tight tracking-[-0.035em] text-hospital-ink sm:text-4xl">
+                            หน้าแรกระบบ Over Time
                         </h1>
-                        <p class="mt-3 max-w-md text-sm leading-6 text-hospital-muted">
-                            ดูสถานะงานเวร เข้าสู่ระบบ และเริ่มงานประจำวันจากหน้าเดียว
+                        <p class="mt-4 text-base leading-7 text-hospital-muted">
+                            ติดตามสถานะการลงเวลางานของบุคลากรและแผนกต่าง ๆ แบบเรียลไทม์ เพื่อการบริหารที่มีประสิทธิภาพ
                         </p>
+
+                        <div class="mt-6 inline-flex items-center gap-3 rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3">
+                            <span class="grid h-10 w-10 place-items-center rounded-full bg-hospital-teal text-white">
+                                <i class="bi bi-check-lg"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-extrabold text-hospital-teal">ระบบพร้อมใช้งาน</p>
+                                <p class="text-xs font-semibold text-hospital-muted">อัปเดตข้อมูลล่าสุดเมื่อ <?= htmlspecialchars($latestUpdateLabel) ?></p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="mt-6 grid gap-4">
-                        <div class="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-                            <a class="overview-cta-primary flex-1" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">
-                                เข้าสู่ระบบ
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-                            <a class="overview-cta-secondary flex-1" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">
-                                สมัครใช้งาน
-                                <i class="bi bi-person-plus"></i>
-                            </a>
+                    <?php if ($hospitalImageUrl !== ''): ?>
+                        <img src="<?= htmlspecialchars($hospitalImageUrl) ?>" alt="ภาพประกอบโรงพยาบาล" class="ot-hospital-illustration">
+                    <?php else: ?>
+                        <div class="ot-hospital-fallback" aria-hidden="true"><i class="bi bi-hospital"></i></div>
+                    <?php endif; ?>
+                </article>
+
+                <article class="ot-realtime-card lg:col-span-7">
+                    <div class="relative z-10 flex flex-wrap items-start justify-between gap-5">
+                        <div>
+                            <div class="inline-flex items-center gap-3 text-white">
+                                <i class="bi bi-bar-chart-line-fill text-2xl"></i>
+                                <h2 class="font-prompt text-2xl font-extrabold tracking-[-0.03em]">ภาพรวมวันนี้</h2>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 text-right text-white">
+                            <i class="bi bi-geo-alt-fill text-2xl"></i>
+                            <div>
+                                <p class="font-extrabold">โรงพยาบาลหนองพอก</p>
+                                <p class="text-sm font-semibold text-white/75">อ.หนองพอก จ.ร้อยเอ็ด</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative z-10 mt-5 grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">
+                        <div class="ot-clock-card">
+                            <p class="inline-flex items-center gap-2 text-sm font-bold text-white/80">
+                                <i class="bi bi-clock"></i>
+                                เวลาปัจจุบัน
+                            </p>
+                            <strong id="homeLiveClock" class="mt-3 block font-prompt text-5xl font-extrabold tracking-[-0.06em] sm:text-6xl"><?= date('H:i:s') ?></strong>
+                            <p id="homeLiveDate" class="mt-4 text-base font-semibold text-white/85"><?= htmlspecialchars(home_thai_date($today, true)) ?></p>
                         </div>
 
-                        <div class="flex flex-wrap gap-2">
-                            <span class="intro-chip">ลงเวลาเวร</span>
-                            <span class="intro-chip">ตรวจสอบรายการ</span>
-                            <span class="intro-chip">รายงานพร้อมพิมพ์</span>
-                        </div>
-
-                        <div class="rounded-[1.5rem] border border-hospital-teal/10 bg-hospital-mint/70 p-4">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-bold text-hospital-teal">สถานะระบบ</p>
-                                    <p class="mt-1 font-prompt text-lg font-bold text-hospital-navy">พร้อมเริ่มงาน</p>
+                        <div class="ot-status-panel">
+                            <p class="mb-4 text-base font-extrabold text-white">สรุปสถานะการลงเวลาวันนี้</p>
+                            <div class="grid gap-3 sm:grid-cols-4">
+                                <div class="ot-status-metric">
+                                    <i class="bi bi-people-fill"></i>
+                                    <strong><?= number_format($activeUsersCount) ?></strong>
+                                    <span>บุคลากร<br>พร้อมทำงานที่ตอนนี้</span>
                                 </div>
-                                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-white text-lg text-hospital-teal shadow-soft">
-                                    <i class="bi bi-check2-circle"></i>
-                                </span>
+                                <div class="ot-status-metric">
+                                    <i class="bi bi-buildings-fill"></i>
+                                    <strong><?= number_format($activeDepartmentsCount) ?></strong>
+                                    <span>แผนก<br>ลงเวรตอนนี้</span>
+                                </div>
+                                <div class="ot-status-metric">
+                                    <i class="bi bi-clipboard2-check-fill"></i>
+                                    <strong><?= number_format($todayAttendanceCount) ?></strong>
+                                    <span>รายการ<br>ลงเวลาวันนี้</span>
+                                </div>
+                                <div class="ot-progress-ring" style="--progress: <?= (int) $attendanceRate ?>;">
+                                    <span><?= number_format($attendanceRate) ?>%</span>
+                                    <small>อัตราการลงเวลาภาพรวม</small>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </article>
+            </section>
 
-                <article class="dashboard-card live-overview-card lg:col-span-5" aria-label="เวลาและอุณหภูมิ">
+            <section class="ot-metric-row mt-4" aria-label="Realtime cards">
+                <article class="ot-summary-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/60">Nong Phok Hospital</p>
-                            <h2 class="mt-1 font-prompt text-2xl font-bold text-white">ภาพรวมวันนี้</h2>
+                            <p class="text-xs font-bold text-hospital-muted">User Active</p>
+                            <h2 class="mt-1 font-prompt text-[22px] font-extrabold leading-tight text-hospital-ink">บุคลากรที่พร้อมทำหน้าที่</h2>
                         </div>
-                        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/80">
-                            <span class="live-dot" aria-hidden="true"></span>
-                            Asia/Bangkok
+                        <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
+                            <span class="live-dot"></span> อัปเดตอัตโนมัติ
                         </span>
                     </div>
-
-                    <div class="mt-5 grid gap-4 sm:grid-cols-[1.1fr_0.9fr]">
-                        <div class="live-sub-card">
-                            <div class="flex items-center gap-2 text-sm font-semibold text-white/70">
-                                <i class="bi bi-clock clock-icon"></i>
-                                เวลาปัจจุบัน
-                            </div>
-                            <div id="bangkokTime" class="mt-2 font-prompt text-5xl font-bold tracking-[-0.06em] text-white sm:text-6xl">--:--</div>
-                            <div id="bangkokDate" class="mt-1 text-sm font-semibold text-white/60"><?= htmlspecialchars(homepage_thai_date($today)) ?></div>
-                        </div>
-
-                        <div class="weather-sub-card">
-                            <div class="flex items-center gap-2 text-sm font-bold text-hospital-muted">
-                                <i id="weatherIcon" class="bi bi-cloud-sun weather-icon text-hospital-teal"></i>
-                                อุณหภูมิ
-                            </div>
-                            <div class="mt-3 flex items-end gap-1 font-prompt text-5xl font-bold text-hospital-ink">
-                                <span id="weatherTemp">--</span>
-                                <span class="pb-2 text-base text-hospital-muted">°C</span>
-                            </div>
-                            <div id="weatherStatus" class="mt-1 text-xs font-semibold text-hospital-muted">กำลังโหลดสภาพอากาศ</div>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 rounded-[1.5rem] border border-white/10 bg-white/10 p-4">
-                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/50">Location</p>
-                        <p class="mt-1 text-sm font-semibold leading-6 text-white/80">โรงพยาบาลหนองพอก อำเภอหนองพอก จังหวัดร้อยเอ็ด ประเทศไทย</p>
-                    </div>
-                </article>
-
-                <aside class="grid gap-3 lg:col-span-3 lg:grid-rows-3" aria-label="สรุปข้อมูลสนับสนุน">
-                    <?php $miniIcons = ['bi-people', 'bi-buildings', 'bi-pie-chart']; ?>
-                    <?php foreach ($miniCards as $index => $card): ?>
-                        <article class="mini-stat-card">
-                            <span class="stat-icon-badge">
-                                <i class="bi <?= htmlspecialchars($miniIcons[$index] ?? 'bi-activity') ?>"></i>
-                            </span>
-                            <div class="min-w-0">
-                                <p class="home-label"><?= htmlspecialchars($card['label']) ?></p>
-                                <div class="home-value mt-1"><?= htmlspecialchars($card['value']) ?></div>
-                                <p class="text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                </aside>
-            </section>
-
-            <section class="dashboard-subgrid mt-5" aria-label="ตัวชี้วัดภาพรวม">
-                <?php foreach ($overviewCards as $card): ?>
-                    <article class="metric-tile lg:col-span-3">
-                        <div class="flex items-start justify-between gap-4">
+                    <div class="mt-4 grid gap-4 sm:grid-cols-[142px_1fr]">
+                        <div class="flex items-center gap-4">
+                            <span class="stat-icon-badge"><i class="bi bi-people-fill"></i></span>
                             <div>
-                                <p class="home-label"><?= htmlspecialchars($card['label']) ?></p>
-                                <div class="home-value mt-3"><?= htmlspecialchars($card['value']) ?></div>
+                                <strong class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeUsersCount) ?></strong>
+                                <span class="ml-1 font-bold text-hospital-teal">คน</span>
                             </div>
-                            <span class="icon-badge">
-                                <i class="bi <?= htmlspecialchars($card['icon']) ?>"></i>
-                            </span>
                         </div>
-                        <div class="mt-4 flex items-center justify-between gap-4">
-                            <p class="text-sm text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
-                            <span class="tile-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                        <div class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-2.5">
+                            <?php if ($activeUsersNow): ?>
+                                <?php foreach ($activeUsersNow as $row): ?>
+                                    <div class="active-user-row">
+                                        <?= home_user_avatar_html($basePath, $row) ?>
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-[13px] font-extrabold leading-snug text-hospital-ink"><?= htmlspecialchars($row['fullname']) ?></span>
+                                            <span class="block truncate text-[11px] font-semibold leading-snug text-hospital-muted"><?= htmlspecialchars($row['position_name']) ?></span>
+                                        </span>
+                                        <span class="max-w-[92px] truncate text-[11px] font-semibold text-hospital-muted"><?= htmlspecialchars($row['department_name']) ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="py-5 text-sm font-semibold text-hospital-muted">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</p>
+                            <?php endif; ?>
                         </div>
-                    </article>
-                <?php endforeach; ?>
-            </section>
-
-            <section id="workflow-board" class="section-board mt-5 grid gap-4 lg:grid-cols-12" aria-label="งานหลักในระบบ">
-                <article class="workflow-intro-card lg:col-span-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-hospital-teal">Core workflow</p>
-                    <h2 class="mt-3 font-prompt text-2xl font-bold leading-tight text-hospital-ink">งานหลักในระบบ</h2>
-                    <p class="mt-3 max-w-sm text-sm leading-6 text-hospital-muted">เข้าสู่ระบบแล้วเริ่มงานประจำวันได้ทันทีตามสิทธิ์ของหน่วยงาน</p>
-                    <div class="mt-5 grid gap-2">
-                        <div class="workflow-check"><i class="bi bi-check2"></i><span>ลงเวลาและตรวจรายการในระบบเดียว</span></div>
-                        <div class="workflow-check"><i class="bi bi-check2"></i><span>รายงานพร้อมพิมพ์และส่งออก</span></div>
-                        <div class="workflow-check"><i class="bi bi-check2"></i><span>แยกข้อมูลตามบทบาทผู้ใช้</span></div>
+                    </div>
+                    <div class="ot-compact-actions">
+                        <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-printer"></i>Print</button>
+                        <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                        <button type="button" class="ot-tool-button" data-csv-target="activeUsersTable" data-filename="active-users-now.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
                     </div>
                 </article>
 
-                <div class="grid gap-4 sm:grid-cols-2 lg:col-span-8">
-                    <?php foreach ($featureCards as $index => $feature): ?>
-                        <article class="workflow-card">
-                            <div class="flex h-full items-start gap-3">
-                                <span class="workflow-icon-badge">
-                                    <i class="bi <?= htmlspecialchars($feature['icon']) ?>"></i>
-                                </span>
-                                <div>
-                                    <div class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-hospital-teal">0<?= $index + 1 ?></div>
-                                    <h3 class="mt-1 font-prompt text-lg font-bold text-hospital-ink"><?= htmlspecialchars($feature['title']) ?></h3>
-                                    <p class="mt-1 text-sm text-hospital-muted"><?= htmlspecialchars($feature['text']) ?></p>
-                                </div>
-                                <span class="workflow-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                <article class="ot-summary-card">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold text-hospital-muted">Department Active</p>
+                            <h2 class="mt-1 font-prompt text-2xl font-extrabold text-hospital-ink">แผนกที่ลงเวรตอนนี้</h2>
+                        </div>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
+                            <span class="live-dot"></span> อัปเดตอัตโนมัติ
+                        </span>
+                    </div>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-[142px_1fr]">
+                        <div class="flex items-center gap-4">
+                            <span class="stat-icon-badge"><i class="bi bi-buildings-fill"></i></span>
+                            <div>
+                                <strong class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeDepartmentsCount) ?></strong>
+                                <span class="ml-1 font-bold text-hospital-teal">แผนก</span>
                             </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
+                        </div>
+                        <div class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-3">
+                            <?php if ($topDepartmentsByCount): ?>
+                                <?php foreach ($topDepartmentsByCount as $row): ?>
+                                    <div class="flex items-center justify-between border-b border-hospital-navy/5 py-2 last:border-b-0">
+                                        <span class="font-bold text-hospital-ink"><?= htmlspecialchars($row['department_name']) ?></span>
+                                        <span class="font-semibold text-hospital-muted"><?= number_format((int) $row['staff_count']) ?> คน</span>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="py-5 text-sm font-semibold text-hospital-muted">ยังไม่มีแผนกที่กำลังปฏิบัติงาน</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="ot-compact-actions">
+                        <button type="button" class="ot-tool-button" data-print-target="departmentsModal"><i class="bi bi-printer"></i>Print</button>
+                        <button type="button" class="ot-tool-button" data-print-target="departmentsModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                        <button type="button" class="ot-tool-button" data-csv-target="departmentsTable" data-filename="active-departments.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                    </div>
+                </article>
+
+                <article class="ot-summary-card">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold text-hospital-muted">Today Attendance</p>
+                            <h2 class="mt-1 font-prompt text-2xl font-extrabold text-hospital-ink">ลงเวลาวันนี้</h2>
+                        </div>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
+                            <span class="live-dot"></span> อัปเดตอัตโนมัติ
+                        </span>
+                    </div>
+                    <div class="mt-5 grid gap-4 sm:grid-cols-[150px_1fr]">
+                        <div class="flex items-center gap-4">
+                            <span class="stat-icon-badge"><i class="bi bi-calendar2-check-fill"></i></span>
+                            <div>
+                                <strong class="font-prompt text-6xl font-extrabold text-hospital-teal"><?= number_format($todayAttendanceCount) ?></strong>
+                                <p class="font-bold text-hospital-teal">รายการ</p>
+                            </div>
+                        </div>
+                        <div class="rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-5">
+                            <p class="text-sm font-semibold text-hospital-muted">อัตราการลงเวลาภาพรวม</p>
+                            <strong class="mt-1 block font-prompt text-4xl font-extrabold text-hospital-ink"><?= number_format($attendanceRate) ?>%</strong>
+                            <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                                <span class="block h-full rounded-full bg-gradient-to-r from-hospital-teal to-emerald-400" style="width: <?= (int) $attendanceRate ?>%"></span>
+                            </div>
+                            <p class="mt-2 text-xs font-semibold text-hospital-muted">เสร็จสิ้น <?= number_format($todayAttendanceCount) ?> จาก <?= number_format(max($expectedTodayShiftCount, 1)) ?> เวร</p>
+                        </div>
+                    </div>
+                    <div class="ot-compact-actions">
+                        <button type="button" class="ot-tool-button" data-print-target="attendanceModal"><i class="bi bi-printer"></i>Print</button>
+                        <button type="button" class="ot-tool-button" data-print-target="attendanceModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                        <button type="button" class="ot-tool-button" data-csv-target="attendanceTable" data-filename="today-attendance.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                    </div>
+                </article>
             </section>
 
-            <section id="start-now" class="compact-cta-board mt-5">
-                <div class="cta-copy-block">
-                    <span class="cta-icon-badge" aria-hidden="true"><i class="bi bi-rocket-takeoff"></i></span>
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-hospital-teal">Next step</p>
-                        <h2 class="mt-1 font-prompt text-2xl font-bold text-white">พร้อมเริ่มใช้งานระบบ</h2>
-                        <p class="mt-1 text-sm text-white/70">เข้าสู่ระบบหรือสมัครบัญชีใหม่เพื่อใช้งานตามสิทธิ์ของหน่วยงาน</p>
+            <section id="operations-table" class="mt-4 grid gap-5 lg:grid-cols-[1.18fr_0.82fr]">
+                <article class="ot-table-card">
+                    <div class="ot-card-heading">
+                        <div>
+                            <span class="ot-section-icon"><i class="bi bi-people-fill"></i></span>
+                            <h2>รายการบุคลากรที่ลงเวรตอนนี้</h2>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" class="ot-tool-button" data-csv-target="activeUsersTable" data-filename="active-users-now.csv"><i class="bi bi-download"></i>Export</button>
+                            <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-printer"></i>Print</button>
+                            <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                            <button type="button" class="ot-tool-button" data-csv-target="activeUsersTable" data-filename="active-users-now.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                        </div>
                     </div>
-                </div>
-                <div class="flex flex-col gap-3 sm:flex-row">
-                    <a class="cta-button cta-button-light" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">เข้าสู่ระบบ <i class="bi bi-arrow-right"></i></a>
-                    <a class="cta-button cta-button-teal" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">สมัครใช้งาน <i class="bi bi-arrow-right"></i></a>
-                </div>
+                    <div class="ot-table-scroll">
+                        <table class="ot-data-table" id="activeUsersTable">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อ</th>
+                                    <th>ตำแหน่ง</th>
+                                    <th>แผนก</th>
+                                    <th>เวร</th>
+                                    <th>เวลาเริ่ม</th>
+                                    <th>สถานะ</th>
+                                    <th class="text-right">เมนู</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($activeUsersNow): ?>
+                                    <?php foreach (array_slice($activeUsersNow, 0, 5) as $row): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="active-table-person">
+                                                    <?= home_user_avatar_html($basePath, $row, 'active-table-avatar') ?>
+                                                    <span class="min-w-0">
+                                                        <span class="block truncate text-[13px] font-extrabold text-hospital-ink"><?= htmlspecialchars($row['fullname']) ?></span>
+                                                        <span class="block truncate text-[11px] font-semibold text-hospital-muted"><?= htmlspecialchars($row['position_name']) ?></span>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td><?= htmlspecialchars($row['position_name']) ?></td>
+                                            <td><?= htmlspecialchars($row['department_name']) ?></td>
+                                            <td><?= htmlspecialchars(home_shift_label($row['time_in'], $row['time_out'])) ?></td>
+                                            <td><?= htmlspecialchars(home_time_label($row['time_in'])) ?></td>
+                                            <td><span class="ot-status-badge"><span></span>ปฏิบัติงาน</span></td>
+                                            <td class="text-right"><button type="button" class="ot-row-link" data-modal-open="activeUsersModal">⋮</button></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="7" class="py-10 text-center">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-hospital-muted">
+                        <span>แสดง 1-<?= number_format(min(5, $activeUsersCount)) ?> จาก <?= number_format($activeUsersCount) ?> รายการ</span>
+                        <span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>
+                    </div>
+                </article>
+
+                <article class="ot-table-card">
+                    <div class="ot-card-heading">
+                        <div>
+                            <span class="ot-section-icon"><i class="bi bi-buildings-fill"></i></span>
+                            <h2>แผนกที่กำลังปฏิบัติงาน</h2>
+                        </div>
+                    </div>
+                    <div class="ot-table-scroll">
+                        <table class="ot-data-table" id="departmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>แผนก</th>
+                                    <th>บุคลากรที่ปฏิบัติงาน</th>
+                                    <th>สถานะ</th>
+                                    <th>รายละเอียด</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($departmentTableRows): ?>
+                                    <?php foreach ($departmentTableRows as $row): ?>
+                                        <?php $deptStatus = home_department_status((int) $row['staff_count']); ?>
+                                        <tr>
+                                            <td class="font-extrabold text-hospital-ink"><?= htmlspecialchars($row['department_name']) ?></td>
+                                            <td><?= number_format((int) $row['staff_count']) ?> คน</td>
+                                            <td><span class="ot-status-badge <?= htmlspecialchars($deptStatus['class']) ?>"><span></span><?= htmlspecialchars($deptStatus['label']) ?></span></td>
+                                            <td><button type="button" class="ot-row-link" data-modal-open="departmentsModal">รายละเอียด <i class="bi bi-chevron-right"></i></button></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="4" class="py-10 text-center">ยังไม่มีข้อมูลแผนก</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
             </section>
         </div>
     </main>
 
+    <dialog class="ot-modal" id="activeUsersModal">
+        <div class="ot-modal-card">
+            <header class="ot-modal-head">
+                <div>
+                    <p>User Active</p>
+                    <h2>บุคลากรที่กำลังปฏิบัติงานตอนนี้</h2>
+                </div>
+                <button type="button" class="ot-modal-close" data-modal-close aria-label="ปิดหน้าต่าง"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="ot-modal-body">
+                <div class="ot-modal-actions">
+                    <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-printer"></i>Print</button>
+                    <button type="button" class="ot-tool-button" data-print-target="activeUsersModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                    <button type="button" class="ot-tool-button" data-csv-target="activeUsersModalTable" data-filename="active-users-now.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                </div>
+                <div class="ot-table-scroll">
+                    <table class="ot-data-table" id="activeUsersModalTable">
+                        <thead>
+                            <tr>
+                                <th>ชื่อ</th>
+                                <th>ตำแหน่ง</th>
+                                <th>แผนก</th>
+                                <th>เวร</th>
+                                <th>เวลาเริ่ม</th>
+                                <th>สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($activeUsersNow): ?>
+                                <?php foreach ($activeUsersNow as $row): ?>
+                                    <tr>
+                                        <td>
+                                            <div class="active-table-person">
+                                                <?= home_user_avatar_html($basePath, $row, 'active-table-avatar') ?>
+                                                <span class="min-w-0">
+                                                    <span class="block truncate text-[13px] font-extrabold text-hospital-ink"><?= htmlspecialchars($row['fullname']) ?></span>
+                                                    <span class="block truncate text-[11px] font-semibold text-hospital-muted"><?= htmlspecialchars($row['position_name']) ?></span>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td><?= htmlspecialchars($row['position_name']) ?></td>
+                                        <td><?= htmlspecialchars($row['department_name']) ?></td>
+                                        <td><?= htmlspecialchars(home_shift_label($row['time_in'], $row['time_out'])) ?></td>
+                                        <td><?= htmlspecialchars(home_time_label($row['time_in'])) ?></td>
+                                        <td><span class="ot-status-badge"><span></span>ปฏิบัติงาน</span></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6" class="py-10 text-center">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="ot-modal" id="departmentsModal">
+        <div class="ot-modal-card">
+            <header class="ot-modal-head">
+                <div>
+                    <p>Department Active</p>
+                    <h2>แผนกทั้งหมดที่กำลังปฏิบัติงาน</h2>
+                </div>
+                <button type="button" class="ot-modal-close" data-modal-close aria-label="ปิดหน้าต่าง"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="ot-modal-body">
+                <div class="ot-modal-actions">
+                    <button type="button" class="ot-tool-button" data-print-target="departmentsModal"><i class="bi bi-printer"></i>Print</button>
+                    <button type="button" class="ot-tool-button" data-print-target="departmentsModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                    <button type="button" class="ot-tool-button" data-csv-target="departmentsModalTable" data-filename="active-departments.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                </div>
+                <div class="ot-table-scroll">
+                    <table class="ot-data-table" id="departmentsModalTable">
+                        <thead>
+                            <tr>
+                                <th>แผนก</th>
+                                <th>จำนวนบุคลากรที่ปฏิบัติงาน</th>
+                                <th>สถานะ</th>
+                                <th>รายละเอียด</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($departmentTableRows): ?>
+                                <?php foreach ($departmentTableRows as $row): ?>
+                                    <?php $deptStatus = home_department_status((int) $row['staff_count']); ?>
+                                    <tr>
+                                        <td class="font-extrabold text-hospital-ink"><?= htmlspecialchars($row['department_name']) ?></td>
+                                        <td><?= number_format((int) $row['staff_count']) ?> คน</td>
+                                        <td><span class="ot-status-badge <?= htmlspecialchars($deptStatus['class']) ?>"><span></span><?= htmlspecialchars($deptStatus['label']) ?></span></td>
+                                        <td>ข้อมูลจากช่วงเวลาปัจจุบัน</td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="4" class="py-10 text-center">ยังไม่มีข้อมูลแผนก</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="ot-modal" id="attendanceModal">
+        <div class="ot-modal-card">
+            <header class="ot-modal-head">
+                <div>
+                    <p>Today Attendance</p>
+                    <h2>รายการลงเวลาวันนี้</h2>
+                </div>
+                <button type="button" class="ot-modal-close" data-modal-close aria-label="ปิดหน้าต่าง"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="ot-modal-body">
+                <div class="ot-modal-actions">
+                    <button type="button" class="ot-tool-button" data-print-target="attendanceModal"><i class="bi bi-printer"></i>Print</button>
+                    <button type="button" class="ot-tool-button" data-print-target="attendanceModal"><i class="bi bi-file-earmark-pdf-fill text-red-500"></i>PDF</button>
+                    <button type="button" class="ot-tool-button" data-csv-target="attendanceTable" data-filename="today-attendance.csv"><i class="bi bi-file-earmark-spreadsheet text-emerald-600"></i>CSV</button>
+                </div>
+                <div class="ot-table-scroll">
+                    <table class="ot-data-table" id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>ชื่อ</th>
+                                <th>ตำแหน่ง</th>
+                                <th>แผนก</th>
+                                <th>เวร</th>
+                                <th>เวลาเริ่ม</th>
+                                <th>สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($todayAttendanceRows): ?>
+                                <?php foreach ($todayAttendanceRows as $row): ?>
+                                    <tr>
+                                        <td class="font-extrabold text-hospital-ink"><?= htmlspecialchars($row['fullname']) ?></td>
+                                        <td><?= htmlspecialchars($row['position_name']) ?></td>
+                                        <td><?= htmlspecialchars($row['department_name']) ?></td>
+                                        <td><?= htmlspecialchars(home_shift_label($row['time_in'], $row['time_out'])) ?></td>
+                                        <td><?= htmlspecialchars(home_time_label($row['time_in'])) ?></td>
+                                        <td><span class="ot-status-badge"><span></span>บันทึกแล้ว</span></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6" class="py-10 text-center">ยังไม่มีรายการลงเวลาวันนี้</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
     <script>
-        const timeNode = document.getElementById('bangkokTime');
-        const dateNode = document.getElementById('bangkokDate');
-        const tempNode = document.getElementById('weatherTemp');
-        const weatherStatusNode = document.getElementById('weatherStatus');
-        const weatherIconNode = document.getElementById('weatherIcon');
+        (() => {
+            const clock = document.getElementById('homeLiveClock');
+            const dateLabel = document.getElementById('homeLiveDate');
+            const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            const thaiWeekdays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
 
-        function updateBangkokTime() {
-            const now = new Date();
-            if (timeNode) {
-                timeNode.textContent = new Intl.DateTimeFormat('th-TH', {
-                    timeZone: 'Asia/Bangkok',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                }).format(now);
-            }
+            const pad = (value) => String(value).padStart(2, '0');
+            const tick = () => {
+                const now = new Date();
+                if (clock) {
+                    clock.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                }
+                if (dateLabel) {
+                    dateLabel.textContent = `${thaiWeekdays[now.getDay()]}ที่ ${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+                }
+            };
 
-            if (dateNode) {
-                dateNode.textContent = new Intl.DateTimeFormat('th-TH', {
-                    timeZone: 'Asia/Bangkok',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                }).format(now);
-            }
-        }
+            tick();
+            window.setInterval(tick, 1000);
 
-        function updateWeatherIcon(temp) {
-            if (!weatherIconNode) {
-                return;
-            }
-            weatherIconNode.className = 'bi weather-icon text-hospital-teal ' + (temp >= 34 ? 'bi-sun' : temp >= 27 ? 'bi-cloud-sun' : 'bi-cloud');
-        }
-
-        async function loadWeather() {
-            if (!tempNode || !weatherStatusNode || !weatherIconNode) {
-                return;
-            }
-
-            try {
-                weatherStatusNode.textContent = 'กำลังอัปเดตอุณหภูมิ';
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=16.316&longitude=104.209&current=temperature_2m&timezone=Asia%2FBangkok', {
-                    headers: { 'Accept': 'application/json' }
+            document.querySelectorAll('[data-modal-open]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const modal = document.getElementById(button.dataset.modalOpen);
+                    if (modal && typeof modal.showModal === 'function') {
+                        modal.showModal();
+                    }
                 });
-                if (!response.ok) {
-                    throw new Error('Weather request failed');
-                }
-                const data = await response.json();
-                const temp = data && data.current ? data.current.temperature_2m : null;
-                if (typeof temp !== 'number') {
-                    throw new Error('Temperature missing');
-                }
-                tempNode.textContent = Math.round(temp).toString();
-                updateWeatherIcon(temp);
-                weatherStatusNode.textContent = 'อำเภอหนองพอก จ.ร้อยเอ็ด';
-            } catch (error) {
-                tempNode.textContent = '--';
-                weatherIconNode.className = 'bi bi-cloud-slash weather-icon text-hospital-teal';
-                weatherStatusNode.textContent = 'ยังไม่สามารถดึงอุณหภูมิได้';
-            }
-        }
+            });
 
-        updateBangkokTime();
-        setInterval(updateBangkokTime, 1000);
-        loadWeather();
-        setInterval(loadWeather, 600000);
+            document.querySelectorAll('[data-modal-close]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const modal = button.closest('dialog');
+                    if (modal) modal.close();
+                });
+            });
+
+            document.querySelectorAll('.ot-modal').forEach((modal) => {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) modal.close();
+                });
+            });
+
+            const tableToCsv = (table) => {
+                const rows = Array.from(table.querySelectorAll('tr'));
+                return rows.map((row) => {
+                    const cells = Array.from(row.querySelectorAll('th,td'));
+                    return cells.map((cell) => `"${cell.innerText.replace(/\s+/g, ' ').trim().replace(/"/g, '""')}"`).join(',');
+                }).join('\n');
+            };
+
+            document.querySelectorAll('[data-csv-target]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const table = document.getElementById(button.dataset.csvTarget);
+                    if (!table) return;
+                    const blob = new Blob(['\ufeff' + tableToCsv(table)], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = button.dataset.filename || 'export.csv';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(url);
+                });
+            });
+
+            document.querySelectorAll('[data-print-target]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const target = document.getElementById(button.dataset.printTarget);
+                    if (!target) {
+                        window.print();
+                        return;
+                    }
+                    const content = target.innerHTML;
+                    const printWindow = window.open('', '_blank', 'width=1100,height=720');
+                    if (!printWindow) return;
+                    printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Print</title><style>body{font-family:Sarabun,Arial,sans-serif;padding:24px;color:#10243b}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d9e7ec;padding:10px;text-align:left}th{background:#eef8f8}.ot-modal-close,.ot-modal-actions{display:none}</style></head><body>${content}</body></html>`);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    printWindow.print();
+                });
+            });
+        })();
     </script>
 </body>
 </html>
