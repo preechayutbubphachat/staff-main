@@ -219,9 +219,9 @@
         }
 
         const summaryBlock = container.querySelector('[data-results-summary]');
-        mount.innerHTML = '';
 
         if (summaryBlock) {
+            mount.innerHTML = '';
             mount.appendChild(summaryBlock);
         }
     }

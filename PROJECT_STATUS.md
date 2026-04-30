@@ -1,6 +1,32 @@
-﻿# PROJECT_STATUS.md
+# PROJECT_STATUS.md
 
 > à¹„à¸Ÿà¸¥à¹Œà¸™à¸µà¹‰à¹€à¸›à¹‡à¸™à¹€à¸­à¸à¸ªà¸²à¸£à¸ªà¸–à¸²à¸™à¸°à¸à¸¥à¸²à¸‡à¸‚à¸­à¸‡à¹‚à¸›à¸£à¹€à¸ˆà¸à¸•à¹Œà¸ªà¸³à¸«à¸£à¸±à¸šà¹ƒà¸«à¹‰ AI Codex / à¸™à¸±à¸à¸žà¸±à¸’à¸™à¸² / à¸œà¸¹à¹‰à¸”à¸¹à¹à¸¥à¸£à¸°à¸šà¸š à¸­à¹ˆà¸²à¸™à¸à¹ˆà¸­à¸™à¹€à¸£à¸´à¹ˆà¸¡à¸‡à¸²à¸™à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡ à¹à¸¥à¸°à¸•à¹‰à¸­à¸‡à¸­à¸±à¸›à¹€à¸”à¸•à¸«à¸¥à¸±à¸‡à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆà¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡
+
+---
+
+## Deployment / Git Status
+
+- Active branch: `codex/strict-monthly-matrix-mapping`
+- Rule: All Codex work must stay on this branch unless instructed otherwise.
+- Latest task: Build Tailwind/frontend and push UI fixes.
+- Build command used: `npm ci`; `npm run build:tailwind`
+- Deployment target: Plesk
+- Plesk issue checked:
+  - branch mapping: must point to `codex/strict-monthly-matrix-mapping`
+  - document root: must point to the live PHP project root that serves `index.php`
+  - frontend build output: `assets/css/index-tailwind.css` and `assets/css/dashboard-tailwind.output.css`
+  - cache clearing: clear browser/server cache and restart PHP-FPM/OPcache if stale assets remain
+  - server pull status: server must show the latest commit from `codex/strict-monthly-matrix-mapping`
+- Files changed:
+  - UI/PHP/CSS/JS files in the current UI update set
+  - `scripts/deploy-plesk.sh`
+  - `PROJECT_STATUS.md`
+- Verification:
+  - local build passed with `npm run build:tailwind`
+  - pushed to origin branch after local verification
+  - server updated: pending manual Plesk deploy confirmation
+- Next action:
+  - On Plesk, run `scripts/deploy-plesk.sh` or the equivalent fetch/pull/build commands, then hard refresh the browser.
 
 ---
 
@@ -237,6 +263,14 @@
 
 ## 10. Work Log
 
+### 2026-04-30 09:43
+**Task:** Fix Thai text rendering on the authenticated ลงเวลาเวร page.
+**Files changed:** pages/time.php, PROJECT_STATUS.md
+**Root cause:** pages/time.php contained corrupted question-mark UI strings and invalid non-UTF-8 bytes, so labels, placeholders, buttons, cards, hero copy, PHP messages, and JS labels rendered incorrectly in the browser. Other pages were not the source of this issue.
+**What changed:** Restored Thai copy for the Topbar, hero, KPI cards, Today Entry form, preset shifts, time summary, History & Review filters/list controls, bottom summary, PHP flash/audit messages, and page JavaScript labels while preserving route, SQL, permissions, form names, POST flow, layout classes, and design-system styling. Re-saved pages/time.php as UTF-8.
+**Verification:** Ran ripgrep for repeated question marks, replacement characters, and mojibake bullets in pages/time.php and found no corrupted placeholders; ran C:\xampp\php\php.exe -l pages\time.php and it passed.
+**Remaining issues:** Needs logged-in browser hard refresh on pages/time.php to visually confirm all strings after runtime data loads. If department/status/note data from the database still appears as question marks, the next fix is database/connection charset, not this page template.
+**Next recommended task:** Hard refresh the ลงเวลาเวร page at desktop and mobile widths, verify no question-mark placeholders remain, then test save/filter/history interactions once.
 > à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆ Codex à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆ à¹ƒà¸«à¹‰à¹€à¸žà¸´à¹ˆà¸¡ entry à¹ƒà¸«à¸¡à¹ˆà¹„à¸§à¹‰à¸šà¸™à¸ªà¸¸à¸”à¸‚à¸­à¸‡à¸£à¸²à¸¢à¸à¸²à¸£à¸™à¸µà¹‰
 
 ### 2026-04-29 09:02

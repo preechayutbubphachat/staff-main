@@ -106,15 +106,21 @@ $miniCards = [
                     </span>
                 </a>
 
-                <nav class="hidden items-center gap-1 rounded-full bg-white/60 p-1 md:flex" aria-label="เมนูหน้าแรก">
-                    <a href="#overview-canvas" class="rounded-full px-4 py-2 text-sm font-bold text-hospital-muted transition hover:bg-white hover:text-hospital-navy">ภาพรวม</a>
-                    <a href="#workflow-board" class="rounded-full px-4 py-2 text-sm font-bold text-hospital-muted transition hover:bg-white hover:text-hospital-navy">งานหลัก</a>
-                    <a href="#start-now" class="rounded-full px-4 py-2 text-sm font-bold text-hospital-muted transition hover:bg-white hover:text-hospital-navy">เริ่มใช้งาน</a>
+                <nav class="home-nav-menu" aria-label="เมนูหน้าแรก">
+                    <a href="#overview-canvas" class="home-nav-link is-active">ภาพรวม</a>
+                    <a href="#workflow-board" class="home-nav-link">งานหลัก</a>
+                    <a href="#start-now" class="home-nav-link">เริ่มใช้งาน</a>
                 </nav>
 
                 <div class="flex shrink-0 items-center gap-2">
-                    <a class="hidden min-h-11 items-center rounded-full border border-hospital-navy/10 bg-white/80 px-4 py-2 text-sm font-bold text-hospital-navy shadow-soft transition hover:-translate-y-0.5 hover:bg-white sm:inline-flex" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">สมัครใช้งาน</a>
-                    <a class="inline-flex min-h-11 items-center rounded-full bg-hospital-navy px-5 py-2 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-hospital-ink" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">เข้าสู่ระบบ</a>
+                    <a class="nav-action nav-action-outline" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">
+                        <i class="bi bi-person-plus"></i>
+                        สมัครใช้งาน
+                    </a>
+                    <a class="nav-action nav-action-primary" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        เข้าสู่ระบบ
+                    </a>
                 </div>
             </div>
         </header>
@@ -209,13 +215,17 @@ $miniCards = [
                 </article>
 
                 <aside class="grid gap-3 lg:col-span-3 lg:grid-rows-3" aria-label="สรุปข้อมูลสนับสนุน">
-                    <?php foreach ($miniCards as $card): ?>
+                    <?php $miniIcons = ['bi-people', 'bi-buildings', 'bi-pie-chart']; ?>
+                    <?php foreach ($miniCards as $index => $card): ?>
                         <article class="mini-stat-card">
-                            <div>
+                            <span class="stat-icon-badge">
+                                <i class="bi <?= htmlspecialchars($miniIcons[$index] ?? 'bi-activity') ?>"></i>
+                            </span>
+                            <div class="min-w-0">
                                 <p class="home-label"><?= htmlspecialchars($card['label']) ?></p>
                                 <div class="home-value mt-1"><?= htmlspecialchars($card['value']) ?></div>
+                                <p class="text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
                             </div>
-                            <p class="text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
                         </article>
                     <?php endforeach; ?>
                 </aside>
@@ -233,7 +243,10 @@ $miniCards = [
                                 <i class="bi <?= htmlspecialchars($card['icon']) ?>"></i>
                             </span>
                         </div>
-                        <p class="mt-4 text-sm text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
+                        <div class="mt-4 flex items-center justify-between gap-4">
+                            <p class="text-sm text-hospital-muted"><?= htmlspecialchars($card['note']) ?></p>
+                            <span class="tile-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                        </div>
                     </article>
                 <?php endforeach; ?>
             </section>
@@ -254,7 +267,7 @@ $miniCards = [
                     <?php foreach ($featureCards as $index => $feature): ?>
                         <article class="workflow-card">
                             <div class="flex h-full items-start gap-3">
-                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hospital-navy text-lg text-white">
+                                <span class="workflow-icon-badge">
                                     <i class="bi <?= htmlspecialchars($feature['icon']) ?>"></i>
                                 </span>
                                 <div>
@@ -262,6 +275,7 @@ $miniCards = [
                                     <h3 class="mt-1 font-prompt text-lg font-bold text-hospital-ink"><?= htmlspecialchars($feature['title']) ?></h3>
                                     <p class="mt-1 text-sm text-hospital-muted"><?= htmlspecialchars($feature['text']) ?></p>
                                 </div>
+                                <span class="workflow-chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
                             </div>
                         </article>
                     <?php endforeach; ?>
@@ -269,14 +283,17 @@ $miniCards = [
             </section>
 
             <section id="start-now" class="compact-cta-board mt-5">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-white/60">Next step</p>
-                    <h2 class="mt-1 font-prompt text-2xl font-bold text-white">พร้อมเริ่มใช้งานระบบ</h2>
-                    <p class="mt-1 text-sm text-white/70">เข้าสู่ระบบหรือสมัครบัญชีใหม่เพื่อใช้งานตามสิทธิ์ของหน่วยงาน</p>
+                <div class="cta-copy-block">
+                    <span class="cta-icon-badge" aria-hidden="true"><i class="bi bi-rocket-takeoff"></i></span>
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-hospital-teal">Next step</p>
+                        <h2 class="mt-1 font-prompt text-2xl font-bold text-white">พร้อมเริ่มใช้งานระบบ</h2>
+                        <p class="mt-1 text-sm text-white/70">เข้าสู่ระบบหรือสมัครบัญชีใหม่เพื่อใช้งานตามสิทธิ์ของหน่วยงาน</p>
+                    </div>
                 </div>
                 <div class="flex flex-col gap-3 sm:flex-row">
-                    <a class="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 py-2 font-bold text-hospital-navy transition hover:-translate-y-0.5" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">เข้าสู่ระบบ</a>
-                    <a class="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-2 font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/20" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">สมัครใช้งาน</a>
+                    <a class="cta-button cta-button-light" href="<?= htmlspecialchars($basePath) ?>/auth/login.php">เข้าสู่ระบบ <i class="bi bi-arrow-right"></i></a>
+                    <a class="cta-button cta-button-teal" href="<?= htmlspecialchars($basePath) ?>/auth/register.php">สมัครใช้งาน <i class="bi bi-arrow-right"></i></a>
                 </div>
             </section>
         </div>

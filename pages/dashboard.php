@@ -274,13 +274,7 @@ $heroSecondaryAction = app_can('can_approve_logs')
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาเมนูหรือรายงาน">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
-            <i class="bi bi-bell"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
             <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
@@ -502,5 +496,6 @@ $heroSecondaryAction = app_can('can_approve_logs')
         });
     })();
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

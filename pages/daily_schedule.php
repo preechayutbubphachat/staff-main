@@ -108,15 +108,7 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -392,5 +384,6 @@ syncDailyScheduleLayout({
     container: document.getElementById('dailyScheduleResults')
 });
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

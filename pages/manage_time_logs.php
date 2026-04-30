@@ -57,7 +57,7 @@ $filters = $reportData['filters'];
 $summary = $reportData['summary'];
 $departments = $filters['scope']['departments'];
 $page = app_parse_table_page($_GET);
-$perPage = app_parse_table_page_size($_GET, 20);
+$perPage = app_parse_table_page_size($_GET, 10);
 $totalRows = (int) ($summary['total_rows'] ?? 0);
 $totalPages = max(1, (int) ceil($totalRows / $perPage));
 $page = min($page, $totalPages);
@@ -163,15 +163,7 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -437,9 +429,7 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
 <script>
 StaffProfileModal.init({ modalId: 'staffProfileModal', bodyId: 'staffProfileModalBody', endpoint: '../ajax/profile/get_staff_profile.php' });
 ManageTimeLogsPage.init({ filterFormId: 'manageTimeLogsFilterForm', resultsId: 'manageTimeLogsResults', summaryId: 'manageTimeLogsSummary', modalId: 'manageTimeLogModal', modalContentId: 'manageTimeLogModalContent', messageId: 'manageTimeLogsMessage' });
-if (window.TableFilters && typeof window.TableFilters.syncSummaryBlock === 'function') {
-    window.TableFilters.syncSummaryBlock('manageTimeLogsResults', 'manageTimeLogsSummary');
-}
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

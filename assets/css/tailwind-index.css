@@ -25,7 +25,7 @@
 
 @layer components {
   .home-shell {
-    @apply min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_10%_6%,rgba(112,213,226,0.36),transparent_23%),radial-gradient(circle_at_88%_4%,rgba(204,246,232,0.82),transparent_29%),radial-gradient(circle_at_50%_92%,rgba(125,211,252,0.22),transparent_28%),linear-gradient(180deg,#fbfdff_0%,#f3fbfc_50%,#eef8f5_100%)] text-hospital-ink antialiased;
+    @apply min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_8%_0%,rgba(112,213,226,0.36),transparent_28rem),radial-gradient(circle_at_96%_8%,rgba(204,246,232,0.86),transparent_30rem),radial-gradient(circle_at_52%_92%,rgba(125,211,252,0.22),transparent_30rem),linear-gradient(135deg,#f7fbff_0%,#eef8fb_48%,#f0faf5_100%)] text-hospital-ink antialiased;
   }
 
   .home-shell::before {
@@ -39,26 +39,60 @@
   }
 
   .home-frame {
-    @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10;
   }
 
   .glass-nav {
-    @apply rounded-full border border-white/70 bg-white/75 shadow-soft backdrop-blur-2xl;
+    @apply rounded-[1.75rem] border border-white/70 bg-white/[0.82] shadow-soft backdrop-blur-2xl;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.92),
-      0 18px 44px rgba(16, 36, 59, 0.08);
+      0 22px 56px rgba(16, 36, 59, 0.1);
+  }
+
+  .home-nav-menu {
+    @apply hidden items-center gap-12 md:flex;
+  }
+
+  .home-nav-link {
+    @apply relative inline-flex min-h-12 items-center px-1 text-base font-bold text-hospital-muted transition hover:text-hospital-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .home-nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-hospital-teal transition-all duration-200;
+  }
+
+  .home-nav-link:hover::after,
+  .home-nav-link.is-active::after {
+    @apply w-10;
+  }
+
+  .home-nav-link.is-active {
+    @apply text-hospital-navy;
+  }
+
+  .nav-action {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-[1rem] px-5 py-2 text-sm font-bold shadow-soft transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .nav-action-outline {
+    @apply hidden border border-hospital-navy/10 bg-white/90 text-hospital-navy hover:bg-white sm:inline-flex;
+  }
+
+  .nav-action-primary {
+    @apply bg-hospital-navy text-white hover:bg-hospital-ink;
   }
 
   .dashboard-canvas {
-    @apply grid gap-4 bg-transparent p-0 lg:grid-cols-12 lg:items-stretch;
+    @apply grid gap-5 bg-transparent p-0 lg:grid-cols-12 lg:items-stretch;
   }
 
   .dashboard-subgrid {
-    @apply grid gap-4 md:grid-cols-2 lg:grid-cols-12;
+    @apply grid gap-5 md:grid-cols-2 lg:grid-cols-12;
   }
 
   .dashboard-card {
-    @apply relative rounded-[1.8rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl sm:p-6;
+    @apply relative rounded-[1.9rem] border border-white/80 bg-white/[0.82] p-6 shadow-soft backdrop-blur-xl sm:p-7;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.9),
       0 20px 52px rgba(16, 36, 59, 0.09);
@@ -69,59 +103,66 @@
   }
 
   .live-overview-card {
-    @apply overflow-hidden bg-hospital-navy p-5 text-white shadow-glass sm:p-6;
+    @apply overflow-hidden bg-hospital-navy p-6 text-white shadow-glass sm:p-7;
     background:
       radial-gradient(circle at 24% 18%, rgba(111, 215, 232, 0.34), transparent 26%),
       radial-gradient(circle at 72% 64%, rgba(34, 211, 238, 0.14), transparent 28%),
       radial-gradient(circle at 86% 0%, rgba(223, 247, 239, 0.16), transparent 30%),
-      linear-gradient(135deg, #12385a 0%, #0f2f4f 100%);
+      linear-gradient(135deg, #0b3a63 0%, #0b2f4a 54%, #092842 100%);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
       0 28px 74px rgba(18, 56, 90, 0.2);
   }
 
   .live-sub-card {
-    @apply rounded-[1.5rem] border border-white/10 bg-white/10 p-4 shadow-soft backdrop-blur-xl;
+    @apply rounded-[1.5rem] border border-white/[0.14] bg-white/10 p-5 shadow-soft backdrop-blur-xl;
   }
 
   .weather-sub-card {
-    @apply rounded-[1.5rem] border border-white/80 bg-white p-4 text-hospital-ink shadow-soft;
+    @apply rounded-[1.5rem] border border-white/80 bg-white p-5 text-hospital-ink shadow-soft;
   }
 
   .mini-stat-card {
-    @apply relative flex min-h-[118px] flex-1 flex-col justify-between rounded-[1.65rem] border border-white/75 bg-white/75 p-4 shadow-soft backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/90;
+    @apply relative flex min-h-[136px] flex-1 items-center gap-5 rounded-[1.65rem] border border-white/80 bg-white/[0.82] p-5 shadow-soft backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/95;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.86),
       0 16px 40px rgba(16, 36, 59, 0.075);
   }
 
   .section-board {
-    @apply grid gap-4 bg-transparent p-0 lg:grid-cols-12;
+    @apply grid gap-5 bg-transparent p-0 lg:grid-cols-12;
   }
 
   .workflow-intro-card {
-    @apply relative rounded-[1.8rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl sm:p-6;
+    @apply relative rounded-[1.8rem] border border-white/80 bg-white/[0.82] p-6 shadow-soft backdrop-blur-xl sm:p-7;
   }
 
   .workflow-card {
-    @apply relative min-h-[132px] overflow-hidden rounded-[1.65rem] border border-white/75 bg-white/75 p-4 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/90;
+    @apply relative min-h-[136px] overflow-hidden rounded-[1.65rem] border border-white/80 bg-white/[0.82] p-6 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/95;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.86),
       0 16px 40px rgba(16, 36, 59, 0.075);
   }
 
   .metric-tile {
-    @apply relative min-h-[142px] rounded-[1.65rem] border border-white/75 bg-white/75 p-5 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/90;
+    @apply relative min-h-[132px] rounded-[1.65rem] border border-white/80 bg-white/[0.82] p-6 shadow-soft backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/95;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.86),
       0 16px 40px rgba(16, 36, 59, 0.075);
   }
 
   .compact-cta-board {
-    @apply rounded-[2rem] bg-hospital-navy p-5 text-white shadow-glass sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8;
+    @apply relative overflow-hidden rounded-[2rem] bg-hospital-navy p-6 text-white shadow-glass sm:p-8 lg:flex lg:items-center lg:justify-between lg:gap-8;
     background:
-      radial-gradient(circle at 14% 20%, rgba(111, 215, 232, 0.32), transparent 26%),
-      linear-gradient(135deg, #12385a 0%, #10243b 100%);
+      radial-gradient(circle at 12% 20%, rgba(25, 185, 154, 0.42), transparent 20rem),
+      radial-gradient(circle at 92% 88%, rgba(111, 215, 232, 0.2), transparent 20rem),
+      linear-gradient(135deg, #0b3a63 0%, #0b2f4a 58%, #092842 100%);
+  }
+
+  .compact-cta-board::after {
+    content: '';
+    @apply pointer-events-none absolute bottom-[-4rem] right-[-3rem] h-44 w-72 opacity-20;
+    background: url('../../LOGO/nongphok_logo.png') center/contain no-repeat;
   }
 
   .hero-kicker {
@@ -129,11 +170,11 @@
   }
 
   .overview-cta-primary {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-hospital-navy px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-hospital-ink focus:outline-none focus:ring-4 focus:ring-hospital-aqua/30;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-[1rem] bg-hospital-navy px-6 py-3 text-sm font-bold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-hospital-ink focus:outline-none focus:ring-4 focus:ring-hospital-aqua/30;
   }
 
   .overview-cta-secondary {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-hospital-navy/10 bg-white/90 px-5 py-2.5 text-sm font-bold text-hospital-navy shadow-soft transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-hospital-aqua/25;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-[1rem] border border-hospital-navy/10 bg-white/90 px-6 py-3 text-sm font-bold text-hospital-navy shadow-soft transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-hospital-aqua/25;
   }
 
   .intro-chip {
@@ -149,7 +190,49 @@
   }
 
   .icon-badge {
-    @apply grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hospital-mint text-lg text-hospital-teal;
+    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-hospital-mint text-xl text-hospital-teal;
+  }
+
+  .stat-icon-badge {
+    @apply inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-hospital-mint text-3xl text-hospital-teal;
+  }
+
+  .tile-chevron,
+  .workflow-chevron {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hospital-navy/10 bg-white/80 text-hospital-navy transition;
+  }
+
+  .metric-tile:hover .tile-chevron,
+  .workflow-card:hover .workflow-chevron {
+    @apply translate-x-1 bg-hospital-navy text-white;
+  }
+
+  .workflow-icon-badge {
+    @apply inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-hospital-mint text-3xl text-hospital-teal;
+  }
+
+  .workflow-chevron {
+    @apply ml-auto;
+  }
+
+  .cta-copy-block {
+    @apply relative z-10 flex items-center gap-6;
+  }
+
+  .cta-icon-badge {
+    @apply hidden h-24 w-24 shrink-0 items-center justify-center rounded-full bg-hospital-teal text-5xl text-white shadow-glass sm:inline-flex;
+  }
+
+  .cta-button {
+    @apply relative z-10 inline-flex min-h-14 items-center justify-center gap-3 rounded-[1rem] px-7 py-3 font-bold shadow-soft transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
+  }
+
+  .cta-button-light {
+    @apply bg-white text-hospital-navy hover:bg-hospital-mist;
+  }
+
+  .cta-button-teal {
+    @apply bg-hospital-teal text-white hover:bg-emerald-600;
   }
 
   .workflow-check {

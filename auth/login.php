@@ -114,47 +114,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-family: 'Sarabun', sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at 15% 15%, rgba(211, 164, 72, 0.18), transparent 28%),
-                radial-gradient(circle at 85% 80%, rgba(28, 107, 99, 0.14), transparent 32%),
-                linear-gradient(135deg, #f7fafc 0%, #edf3f5 46%, #f8fbfb 100%);
+                radial-gradient(circle at 12% 10%, rgba(39, 193, 184, 0.18), transparent 30rem),
+                radial-gradient(circle at 88% 88%, rgba(15, 105, 161, 0.12), transparent 28rem),
+                linear-gradient(135deg, #eef8fb 0%, #f8fcff 50%, #edf7f4 100%);
             display: grid;
             place-items: center;
-            padding: 24px;
+            padding: 40px 28px;
         }
 
         .login-shell {
-            width: min(1120px, 100%);
+            width: min(1260px, 100%);
+            min-height: min(760px, calc(100vh - 80px));
             display: grid;
-            grid-template-columns: 1.08fr 0.92fr;
-            border-radius: 34px;
+            grid-template-columns: minmax(480px, 1fr) minmax(460px, 0.95fr);
+            border-radius: 32px;
             overflow: hidden;
-            background: rgba(255,255,255,0.72);
-            border: 1px solid rgba(255,255,255,0.75);
-            backdrop-filter: blur(18px);
-            box-shadow: 0 28px 70px rgba(16, 36, 59, 0.14);
+            background: #fff;
+            border: 1px solid rgba(221, 234, 241, 0.92);
+            box-shadow: 0 30px 90px rgba(13, 48, 78, 0.16);
         }
 
         .visual-side {
-            min-height: 740px;
-            padding: 54px;
+            min-height: 720px;
+            padding: 48px 54px;
             background:
-                linear-gradient(160deg, rgba(16, 36, 59, 0.98), rgba(24, 80, 92, 0.94)),
-                url('../LOGO/nongphok_logo.png') center 28%/240px no-repeat;
+                radial-gradient(circle at 82% 18%, rgba(12, 113, 189, 0.52), transparent 28rem),
+                radial-gradient(circle at 18% 86%, rgba(25, 189, 173, 0.34), transparent 24rem),
+                linear-gradient(150deg, #052b55 0%, #063f78 45%, #007a9c 100%);
             color: #f6fbff;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
+            isolation: isolate;
         }
 
         .visual-side::after {
             content: "";
             position: absolute;
-            inset: auto -12% -16% auto;
-            width: 360px;
+            right: -72px;
+            bottom: -92px;
+            width: 460px;
             height: 360px;
-            background: radial-gradient(circle, rgba(211, 164, 72, 0.46), transparent 68%);
-            filter: blur(10px);
+            background:
+                linear-gradient(rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+                url('../LOGO/nongphok_logo.png') center/230px no-repeat;
+            opacity: 0.32;
+            filter: saturate(0.75);
+            z-index: -1;
         }
 
         .brand-line {
@@ -176,6 +183,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: rgba(255,255,255,0.08);
         }
 
+        .brand-top {
+            display: flex;
+            flex-direction: column;
+            gap: 42px;
+            align-items: flex-start;
+        }
+
         .visual-copy {
             max-width: 520px;
             position: relative;
@@ -195,35 +209,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .visual-copy h1 {
             font-family: 'Prompt', sans-serif;
-            font-size: clamp(2.3rem, 4.2vw, 4.4rem);
-            line-height: 1.06;
-            margin: 18px 0 16px;
+            font-size: clamp(2.35rem, 3.55vw, 3.95rem);
+            line-height: 1.12;
+            letter-spacing: -0.055em;
+            margin: 28px 0 18px;
         }
 
         .visual-copy p {
-            max-width: 470px;
-            font-size: 1.02rem;
-            line-height: 1.85;
-            color: rgba(246,251,255,0.82);
+            max-width: 440px;
+            font-size: 1.03rem;
+            line-height: 1.72;
+            color: rgba(246,251,255,0.84);
         }
 
         .mini-grid {
             display: grid;
-            gap: 14px;
-            margin-top: 30px;
+            gap: 18px;
+            margin-top: 34px;
+            padding-top: 26px;
+            border-top: 1px solid rgba(255,255,255,0.14);
         }
 
         .mini-grid div {
             display: flex;
-            gap: 12px;
+            gap: 16px;
             align-items: start;
             color: rgba(246,251,255,0.82);
         }
 
-        .mini-grid i { color: var(--gold); }
+        .mini-grid i {
+            width: 54px;
+            height: 54px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 54px;
+            color: #fff;
+            font-size: 1.5rem;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 16px 34px rgba(0,0,0,0.12);
+        }
+
+        .mini-grid strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .brand-login-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 20px 22px;
+            border-radius: 22px;
+            color: rgba(255,255,255,0.84);
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 18px 42px rgba(0,0,0,0.12);
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-login-cta strong {
+            display: block;
+            color: #fff;
+            font-size: 1.05rem;
+        }
 
         .login-side {
-            padding: 42px;
+            padding: 58px 58px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -231,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .login-panel {
             width: 100%;
-            max-width: 430px;
+            max-width: 520px;
         }
 
         .panel-badge {
@@ -252,8 +310,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .login-panel h2 {
-            font-size: 2.1rem;
-            margin: 20px 0 8px;
+            font-size: clamp(2.55rem, 4vw, 3.2rem);
+            line-height: 1.08;
+            letter-spacing: -0.055em;
+            margin: 22px 0 12px;
+            color: #092d4c;
         }
 
         .login-panel p,
@@ -263,7 +324,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .login-panel p {
-            margin-bottom: 28px;
+            margin-bottom: 30px;
+            font-size: 1.04rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .field-label {
@@ -284,10 +350,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .form-control {
-            border-radius: 18px;
+            min-height: 58px;
+            border-radius: 17px;
             border: 1px solid var(--line);
-            padding: 15px 50px 15px 16px;
+            padding: 15px 50px 15px 18px;
             background: rgba(255,255,255,0.88);
+            font-weight: 700;
         }
 
         .form-control:focus {
@@ -315,19 +383,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-submit,
         .btn-outline-action {
             border-radius: 18px;
-            padding: 15px 18px;
+            min-height: 58px;
+            padding: 15px 20px;
             font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
         }
 
         .btn-submit {
             border: 0;
             width: 100%;
-            background: linear-gradient(135deg, var(--ink), #24586a);
+            background: linear-gradient(135deg, #063d78 0%, #0078ee 100%);
             color: #fff;
-            box-shadow: 0 18px 34px rgba(16, 36, 59, 0.16);
+            box-shadow: 0 18px 34px rgba(10, 86, 174, 0.2);
         }
 
-        .btn-submit:hover { color: #fff; }
+        .btn-submit:hover,
+        .btn-outline-action:hover,
+        .btn-back:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:hover {
+            color: #fff;
+            box-shadow: 0 22px 42px rgba(10, 86, 174, 0.26);
+        }
 
         .btn-outline-action {
             border: 1px solid rgba(16, 36, 59, 0.16);
@@ -335,24 +418,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: var(--ink);
         }
 
-        .page-back {
-            position: fixed;
-            top: 18px;
-            left: 18px;
-            z-index: 10;
+        .page-back { display: none; }
+
+        /* SSO is hidden until the organization SSO flow is implemented. */
+        .login-divider,
+        .sso-button {
+            display: none !important;
         }
 
         .btn-back {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
+            justify-content: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 0 20px;
             border-radius: 999px;
-            border: 1px solid rgba(16, 36, 59, 0.12);
-            background: rgba(255,255,255,0.92);
-            color: var(--ink);
-            font-weight: 700;
-            box-shadow: 0 12px 26px rgba(16, 36, 59, 0.08);
+            border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+            align-self: flex-start;
+            width: auto;
         }
 
         .quick-links {
@@ -409,18 +498,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         @media (max-width: 980px) {
             .login-shell {
                 grid-template-columns: 1fr;
+                min-height: 0;
             }
 
             .visual-side {
-                min-height: 380px;
+                min-height: 460px;
                 padding: 34px 28px;
             }
+
+            .login-side { padding: 36px 28px; }
         }
 
         @media (max-width: 640px) {
             body { padding: 12px; }
-            .login-side { padding: 22px; }
-            .visual-side { min-height: 320px; }
+            .login-shell { border-radius: 24px; }
+            .login-side { padding: 24px 20px; }
+            .visual-side { min-height: 420px; }
+            .brand-login-cta { flex-direction: column; align-items: flex-start; }
+            .mini-grid i { width: 48px; height: 48px; flex-basis: 48px; }
             .modal-header,
             .modal-body,
             .modal-footer {
@@ -439,6 +534,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="login-shell">
         <section class="visual-side">
+            <button type="button" class="btn btn-back" data-simple-back data-fallback-href="/staff-main/">
+                <i class="bi bi-arrow-left"></i>หน้าแรก
+            </button>
+
             <div class="brand-line">
                 <img src="../LOGO/nongphok_logo.png" alt="Logo">
                 <span>Nong Phok Hospital</span>
@@ -456,7 +555,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <div class="text-white-50 small">Role-driven sign in for attendance, reports, and approvals</div>
+            <div class="brand-login-cta">
+                <div>
+                    <strong>ระบบลงเวลาโรงพยาบาล</strong>
+                    <span>ลงเวลาเวร รายงาน และตรวจสอบสิทธิ์ในจุดเดียว</span>
+                </div>
+                <i class="bi bi-shield-check fs-3"></i>
+            </div>
         </section>
 
         <section class="login-side">
@@ -509,6 +614,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <button type="submit" class="btn btn-submit">เข้าสู่ระบบและไปยัง Dashboard</button>
                 </form>
+
+                <div class="login-divider">หรือ</div>
+
+                <button type="button" class="btn sso-button" aria-disabled="true" title="ยังไม่ได้เชื่อมต่อ SSO ในระบบนี้">
+                    <i class="bi bi-shield-check"></i>
+                    เข้าสู่ระบบด้วย SSO (องค์กร)
+                </button>
 
                 <div class="support-note">
                     ยังไม่มีบัญชี?

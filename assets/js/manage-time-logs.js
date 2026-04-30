@@ -55,8 +55,21 @@
         }
 
         function syncSummary() {
-            if (window.TableFilters && typeof window.TableFilters.syncSummaryBlock === 'function') {
+            const resultsSummary = resultsContainer
+                ? resultsContainer.querySelector('[data-results-summary]')
+                : null;
+
+            if (resultsSummary && window.TableFilters && typeof window.TableFilters.syncSummaryBlock === 'function') {
                 window.TableFilters.syncSummaryBlock(resultsContainer, summaryContainer);
+            }
+
+            if (summaryContainer) {
+                const activeSummary = summaryContainer.querySelector('.manage-time-summary-row');
+                if (activeSummary) {
+                    activeSummary.hidden = false;
+                    activeSummary.removeAttribute('aria-hidden');
+                    activeSummary.style.removeProperty('display');
+                }
             }
         }
 
