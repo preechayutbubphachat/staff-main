@@ -23,18 +23,18 @@ module.exports = {
     extend: {
       colors: {
         hospital: {
-          ink: '#10243b',
-          muted: '#63768a',
-          teal: '#1f9a91',
+          ink: '#082B45',
+          muted: '#64748B',
+          teal: '#0F9F95',
           aqua: '#6fd7e8',
-          mint: '#dff7ef',
-          mist: '#f4f9fb',
-          navy: '#12385a',
+          mint: '#DDF8F3',
+          mist: '#EAF7F8',
+          navy: '#063B4F',
         },
       },
       boxShadow: {
-        glass: '0 28px 70px rgba(16, 36, 59, 0.12)',
-        soft: '0 18px 44px rgba(16, 36, 59, 0.08)',
+        glass: '0 28px 70px rgba(6, 59, 79, 0.13)',
+        soft: '0 18px 44px rgba(6, 59, 79, 0.08)',
       },
       fontFamily: {
         prompt: ['Prompt', 'sans-serif'],

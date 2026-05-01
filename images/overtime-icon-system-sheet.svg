@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+<title id="title">Over Time Icon System</title>
+<desc id="desc">Hospital attendance and overtime UI icon sheet recreated as clean SVG icons.</desc>
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0B4F86" flood-opacity=".12"/>
+  </filter>
+</defs>
+<rect width="1200" height="900" fill="#effafa"/>
+<text x="78" y="82" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#0BA7A5">Over Time</text>
+<text x="395" y="82" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#0B4F86">– Icon System</text>
+<text x="80" y="125" font-family="Arial, sans-serif" font-size="20" fill="#446d8f">Hospital attendance &amp; overtime UI icons</text>
+
+<g transform="translate(80,170)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <rect x="8" y="8" width="16" height="16" rx="3"/>
+    <rect x="30" y="8" width="16" height="16" rx="3"/>
+    <rect x="8" y="30" width="16" height="16" rx="3"/>
+    <path d="M47 46a14 14 0 1 1-14-14v14z" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M47 32a14 14 0 0 1 14 14H47z" stroke="#0BA7A5"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Dashboard</text>
+</g>
+<g transform="translate(295,170)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M12 22v-8a6 6 0 0 1 6-6h8"/>
+    <path d="M38 8h8a6 6 0 0 1 6 6v8"/>
+    <path d="M12 42v8a6 6 0 0 0 6 6h8"/>
+    <path d="M34 55a16 16 0 1 0 0-32"/>
+    <path d="M28 52a20 20 0 0 1 0-40"/>
+    <path d="M22 46a14 14 0 0 1 0-28"/>
+    <circle cx="45" cy="43" r="12"/>
+    <path d="M45 36v8l6 3"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Time Attendance</text>
+</g>
+<g transform="translate(510,170)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <rect x="10" y="12" width="38" height="36" rx="5"/>
+    <path d="M18 8v9M40 8v9"/>
+    <path d="M10 24h38"/>
+    <rect x="18" y="30" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <rect x="31" y="30" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <rect x="18" y="41" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <rect x="31" y="41" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <circle cx="48" cy="47" r="12" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M42.5 47l3.8 3.8 7.2-8" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Shift Schedule</text>
+</g>
+<g transform="translate(725,170)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <rect x="15" y="10" width="34" height="44" rx="5"/>
+    <path d="M25 10a7 7 0 0 1 14 0"/>
+    <path d="M23 22l3 3 6-7M23 34l3 3 6-7M23 46l3 3 6-7"/>
+    <path d="M38 23h8M38 35h8M38 47h4"/>
+    <circle cx="49" cy="49" r="11" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M43.5 49l3.5 3.5 7-8" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Review / Verification</text>
+</g>
+<g transform="translate(940,170)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <rect x="10" y="12" width="38" height="36" rx="5"/>
+    <path d="M18 8v9M40 8v9M10 24h38"/>
+    <rect x="18" y="31" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <rect x="31" y="31" width="7" height="7" rx="1" fill="#0B4F86" opacity=".35" stroke="none"/>
+    <circle cx="48" cy="45" r="12"/>
+    <path d="M48 38v8l6 3"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Today Shift</text>
+</g>
+<g transform="translate(80,365)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <circle cx="30" cy="25" r="10"/>
+    <path d="M13 53a18 18 0 0 1 34 0"/>
+    <circle cx="30" cy="32" r="26"/>
+    <circle cx="50" cy="48" r="8" fill="#0BA7A5" stroke="#0BA7A5"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">User Active</text>
+</g>
+<g transform="translate(295,365)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M11 49c2-9 16-9 18 0"/>
+    <circle cx="20" cy="31" r="7"/>
+    <path d="M35 49c2-9 16-9 18 0"/>
+    <circle cx="44" cy="31" r="7"/>
+    <path d="M22 51c2.5-12 22.5-12 25 0"/>
+    <circle cx="34.5" cy="25" r="8"/>
+    <circle cx="34" cy="12" r="9" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M34 7v10M29 12h10" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Department Active</text>
+</g>
+<g transform="translate(510,365)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M18 8h23l9 9v39H18z"/>
+    <path d="M41 8v10h10"/>
+    <path d="M25 45V33M34 45V26M43 45V37"/>
+    <path d="M24 50h22"/>
+    <path d="M25 20h10M25 27h6"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Reports</text>
+</g>
+<g transform="translate(725,365)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M32 9v31"/>
+    <path d="M20 21l12-12 12 12"/>
+    <path d="M15 36v12a6 6 0 0 0 6 6h22a6 6 0 0 0 6-6V36"/>
+    <path d="M25 44h14"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Export</text>
+</g>
+<g transform="translate(940,365)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M20 23V9h28l6 6v8"/>
+    <path d="M48 9v9h9"/>
+    <rect x="12" y="23" width="42" height="25" rx="5"/>
+    <path d="M22 43h24v12H22z"/>
+    <path d="M22 31h1M28 31h14"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Print</text>
+</g>
+<g transform="translate(80,560)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M18 8h24l9 9v39H18z"/>
+    <path d="M42 8v10h10"/>
+    <rect x="10" y="31" width="28" height="16" rx="3" fill="#E6495C" stroke="#E6495C"/>
+    <path d="M15 42v-7h4a2.5 2.5 0 0 1 0 5h-4M24 42v-7h3c5 0 5 7 0 7h-3M35 35h-6v7M29 39h5" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">PDF</text>
+</g>
+<g transform="translate(295,560)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M18 8h24l9 9v39H18z"/>
+    <path d="M42 8v10h10"/>
+    <rect x="10" y="31" width="29" height="16" rx="3" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M18 36c-5-2-6 8 0 6M22 42c3 1 5 0 5-2 0-4-6-1-6-4 0-2 3-3 6-1M31 35l4 8 4-8" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">CSV</text>
+</g>
+<g transform="translate(510,560)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <circle cx="28" cy="28" r="17"/>
+    <path d="M41 41l13 13"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Search</text>
+</g>
+<g transform="translate(725,560)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M18 45h32"/>
+    <path d="M24 45V29a12 12 0 0 1 24 0v16"/>
+    <path d="M29 51a6 6 0 0 0 12 0"/>
+    <path d="M32 14a5 5 0 0 1 10 0"/>
+    <circle cx="48" cy="17" r="9" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <text x="48" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="white" stroke="none">1</text>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Notifications</text>
+</g>
+<g transform="translate(940,560)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <circle cx="32" cy="31" r="26"/>
+    <circle cx="32" cy="25" r="9" fill="#1677C8" stroke="#1677C8"/>
+    <path d="M15 53c4-12 30-12 34 0" fill="#1677C8" stroke="#1677C8"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Profile</text>
+</g>
+<g transform="translate(80,755)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M12 32h28"/>
+    <path d="M29 20l12 12-12 12"/>
+    <path d="M41 12h11v40H41"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Login</text>
+</g>
+<g transform="translate(295,755)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <circle cx="28" cy="22" r="12"/>
+    <path d="M9 55a20 20 0 0 1 38 0"/>
+    <circle cx="49" cy="43" r="10" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M49 37v12M43 43h12" stroke="white"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Register</text>
+</g>
+<g transform="translate(510,755)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M10 54h44"/>
+    <path d="M14 54V26h36v28"/>
+    <path d="M22 26V17h20v9"/>
+    <rect x="26" y="8" width="12" height="12" rx="2" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M32 11v6M29 14h6" stroke="white"/>
+    <path d="M22 36h6M36 36h6M22 44h6M36 44h6M29 54V43h6v11"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Hospital / Facility</text>
+</g>
+<g transform="translate(725,755)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M12 52h42"/>
+    <path d="M18 52V35M29 52V24M40 52V12"/>
+    <path d="M40 42a14 14 0 1 0 14-14v14z" fill="#0BA7A5" stroke="#0BA7A5"/>
+    <path d="M54 28a14 14 0 0 1 14 14H54z" stroke="#0BA7A5"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Analytics / Summary</text>
+</g>
+<g transform="translate(940,755)">
+  <rect width="160" height="160" rx="24" fill="#fff" filter="url(#shadow)"/>
+  <g transform="translate(48,24) scale(1.0)" fill="none" stroke="#0B4F86" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <path d="M36 8l3 8 8 2 6-5 7 7-5 6 2 8 8 3v10l-8 3-2 8 5 6-7 7-6-5-8 2-3 8H26l-3-8-8-2-6 5-7-7 5-6-2-8-8-3V37l8-3 2-8-5-6 7-7 6 5 8-2 3-8z"/>
+    <circle cx="31" cy="42" r="12"/>
+
+  </g>
+  <text x="80.0" y="136" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#0B4F86">Settings</text>
+</g>
+</svg>

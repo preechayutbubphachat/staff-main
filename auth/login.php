@@ -99,12 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --ink: #0f2544;
-            --teal: #0f9f94;
-            --teal-dark: #062f4f;
-            --teal-mid: #07857c;
-            --fog: #eaf8f8;
-            --line: rgba(15, 37, 68, 0.13);
+            --ink: #082B45;
+            --teal: #0F9F95;
+            --teal-dark: #063B4F;
+            --teal-mid: #075D6E;
+            --fog: #EAF7F8;
+            --line: rgba(8, 43, 69, 0.13);
         }
 
         * { box-sizing: border-box; }
@@ -115,9 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-family: 'Prompt', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at 10% 8%,  rgba(15, 159, 148, 0.14), transparent 28rem),
-                radial-gradient(circle at 90% 90%, rgba(6,  47,  79,  0.10), transparent 26rem),
-                linear-gradient(135deg, #eaf8f7 0%, #f4fbfb 55%, #edf7f5 100%);
+                radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 35%),
+                radial-gradient(circle at top right, rgba(125, 211, 252, 0.18), transparent 35%),
+                linear-gradient(135deg, #F7FEFF 0%, #EAF7F8 100%);
             display: grid;
             place-items: center;
             padding: 24px 20px;
@@ -127,13 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .login-shell {
             width: min(1180px, 100%);
             max-height: calc(100vh - 48px);
+            max-height: min(820px, calc(100vh - 48px));
             display: grid;
             grid-template-columns: 55% 45%;
-            border-radius: 28px;
+            border-radius: 32px;
             overflow: hidden;
             background: #fff;
-            border: 1px solid #d7eeee;
-            box-shadow: 0 24px 72px rgba(6, 47, 79, 0.14);
+            border: 1px solid #D8E7EA;
+            box-shadow: 0 24px 72px rgba(6, 59, 79, 0.14);
         }
 
         /* ── Left (Brand) Panel ── */
@@ -142,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background:
                 radial-gradient(circle at 80% 15%, rgba(20, 184, 166, 0.45), transparent 26rem),
                 radial-gradient(circle at 15% 85%, rgba(15, 159, 148, 0.30), transparent 22rem),
-                linear-gradient(148deg, #062f4f 0%, #073b5c 48%, #0b706a 100%);
+                linear-gradient(145deg, #073B5A 0%, #075D6E 45%, #0F9F95 100%);
             color: #f0fafa;
             display: flex;
             flex-direction: column;
@@ -343,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             line-height: 1.1;
             letter-spacing: -0.04em;
             margin: 16px 0 10px;
-            color: #062f4f;
+            color: #082B45;
         }
 
         .login-panel > p,
@@ -426,16 +427,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-submit {
             border: 0;
             width: 100%;
-            background: linear-gradient(135deg, #062f4f 0%, #0f9f94 100%);
+            background: linear-gradient(135deg, #073B5A 0%, #0F9F95 100%);
             color: #fff;
-            box-shadow: 0 14px 30px rgba(6, 47, 79, 0.20);
+            box-shadow: 0 14px 30px rgba(6, 59, 79, 0.22);
             font-size: 0.97rem;
         }
 
         .btn-submit:hover {
             color: #fff;
             transform: translateY(-1px);
-            box-shadow: 0 18px 38px rgba(6, 47, 79, 0.26);
+            box-shadow: 0 18px 38px rgba(6, 59, 79, 0.30);
         }
 
         .btn-outline-action {
@@ -728,4 +729,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const showPassword = passwordInput.type === 'password';
                 passwordInput.type = showPassword ? 'text' : 'password';
                 eyeOpen.classList.toggle('d-none', showPassword);
-                eyeClosed.classList.toggle('d-none', !showPa
+                eyeClosed.classList.toggle('d-none', !showPassword);
+            });
+        }
+
+        <?php if ($openResetModal): ?>
+        window.addEventListener('load', function () {
+            const modalElement = document.getElementById('forgotPasswordModal');
+            if (!modalElement) {
+                return;
+            }
+
+            const resetModal = new bootstrap.Modal(modalElement);
+            resetModal.show();
+        });
+        <?php endif; ?>
+    </script>
+</body>
+</html>

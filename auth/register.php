@@ -238,12 +238,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare('INSERT INTO users (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')');
                 try {
                     $stmt->execute($values);
-                    $message = 'สร้างบัญชีสำเร็จแล้ว สามารถเข้าสู่ระบบได้ทันที';
-                    if ($avatarFileName === null) {
-                        $message .= ' หากยังไม่อัปโหลดรูป ระบบจะใช้ภาพเริ่มต้นให้อัตโนมัติ';
-                    }
+                    $message = 'สร้างบัญชีสำเร็จแล้ว กำลังพาไปหน้าเข้าสู่ระบบ...';
                     if ($signatureFileName === null) {
-                        $message .= ' และเพิ่มลายเซ็นภายหลังได้จากหน้าโปรไฟล์';
+                        $message .= ' เพิ่มลายเซ็นภายหลังได้จากหน้าโปรไฟล์';
                     }
                     $messageType = 'success';
                     header('refresh:2;url=login.php');
@@ -261,1007 +258,1176 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>สร้างบัญชีผู้ใช้งาน</title>
+    <title>สมัครใช้งาน — Over Time</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/loading-overlay.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
+        /* ─── Design tokens ────────────────────────────────────────── */
         :root {
-            --reg-navy: #073763;
-            --reg-navy-2: #075a8a;
-            --reg-teal: #17b7b2;
-            --reg-blue: #0969e8;
-            --reg-ink: #0b2d4d;
-            --reg-muted: #6b7f95;
-            --reg-border: #dbe8f0;
-            --reg-card: rgba(255,255,255,.96);
+            --ot-teal:      #0F9F95;
+            --ot-teal-dk:   #0C8780;
+            --ot-teal-lt:   #E4F6F5;
+            --ot-navy:      #07395A;
+            --ot-navy-dk:   #042840;
+            --ot-navy-md:   #0B4A70;
+            --ot-cyan-bg:   #EAF7F8;
+            --ot-mint-bg:   #F4FCFB;
+            --ot-border:    #D2E8EC;
+            --ot-card:      rgba(255,255,255,0.97);
+            --ot-ink:       #0D3347;
+            --ot-muted:     #5A7A8E;
         }
 
-        * { box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box; }
 
-        body {
-            min-height: 100vh;
+        html, body {
+            height: 100%;
             margin: 0;
             font-family: 'Sarabun', sans-serif;
+            color: var(--ot-ink);
+        }
+
+        /* ─── Page background ───────────────────────────────────────── */
+        body {
             background:
-                radial-gradient(circle at 100% 0%, rgba(34,211,238,.28), transparent 30rem),
-                linear-gradient(135deg, #eef8fb 0%, #f8fbff 54%, #e9faf6 100%);
-            color: var(--reg-ink);
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background-image:
-                linear-gradient(rgba(255,255,255,.45) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px);
-            background-size: 42px 42px;
-            mask-image: linear-gradient(90deg, rgba(0,0,0,.22), transparent 58%);
-        }
-
-        .wrapper {
-            position: relative;
-            z-index: 1;
+                radial-gradient(ellipse 60% 50% at 110% -10%, rgba(15,159,149,.18), transparent),
+                radial-gradient(ellipse 50% 60% at -10% 110%, rgba(7,57,90,.12), transparent),
+                linear-gradient(150deg, #EAF7F8 0%, #F6FEFB 45%, #EDF6FA 100%);
             min-height: 100vh;
-            display: grid;
-            grid-template-columns: minmax(360px, 44fr) minmax(620px, 56fr);
-            gap: 28px;
-            padding: 28px;
         }
 
-        .poster {
-            position: sticky;
-            top: 28px;
-            min-height: calc(100vh - 56px);
-            padding: clamp(34px, 4vw, 58px);
-            color: #fff;
+        /* ─── Outer shell ───────────────────────────────────────────── */
+        .reg-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .reg-shell {
+            width: min(1300px, calc(100vw - 40px));
+            height: calc(100vh - 40px);
+            max-height: 940px;
+            display: grid;
+            grid-template-columns: 0.88fr 1.12fr;
+            gap: 24px;
+        }
+
+        /* ─── Brand panel (left) ────────────────────────────────────── */
+        .reg-brand {
+            border-radius: 28px;
             overflow: hidden;
-            border-radius: 34px;
             background:
-                radial-gradient(circle at 10% 10%, rgba(34,211,238,.22), transparent 19rem),
-                radial-gradient(circle at 92% 94%, rgba(23,183,178,.42), transparent 20rem),
-                linear-gradient(145deg, #042f63 0%, #06457d 44%, #0b827e 100%);
-            box-shadow: 0 34px 90px rgba(4,48,99,.28);
+                radial-gradient(circle at 15% 15%,  rgba(34,211,238,.20), transparent 18rem),
+                radial-gradient(circle at 88% 88%,  rgba(15,159,149,.35), transparent 18rem),
+                linear-gradient(145deg, #042840 0%, #07395A 42%, #0C6E6A 100%);
+            box-shadow: 0 28px 72px rgba(4,40,64,.30);
+            color: #fff;
+            padding: clamp(28px, 3vw, 44px);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
             isolation: isolate;
         }
 
-        .poster::before {
-            content: "";
+        /* subtle grid pattern */
+        .reg-brand::before {
+            content: '';
             position: absolute;
-            inset: auto -15% -8% -10%;
-            height: 42%;
-            background:
-                linear-gradient(135deg, transparent 12%, rgba(255,255,255,.08) 13%, transparent 14%),
-                url('../LOGO/nongphok_logo.png') center bottom / 220px no-repeat;
-            opacity: .32;
+            inset: 0;
+            z-index: -1;
+            opacity: .07;
+            background-image:
+                linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px);
+            background-size: 36px 36px;
+        }
+
+        /* decorative circle */
+        .reg-brand::after {
+            content: '';
+            position: absolute;
+            right: -100px;
+            bottom: -100px;
+            width: 360px;
+            height: 360px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,.12);
             z-index: -1;
         }
 
-        .poster::after {
-            content: "";
-            position: absolute;
-            right: -120px;
-            bottom: -120px;
-            width: 420px;
-            height: 420px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,.16);
-            z-index: -1;
-        }
-
-        .poster h1,
-        .card-title,
-        .section-title {
-            font-family: 'Prompt', sans-serif;
-        }
-
-        .brand-mark {
+        /* ── Logo row */
+        .brand-logo {
             display: flex;
             align-items: center;
-            gap: 16px;
-            font-family: 'Prompt', sans-serif;
+            gap: 14px;
         }
 
-        .brand-mark img {
-            width: 70px;
-            height: 70px;
-            object-fit: contain;
-            padding: 7px;
-            border-radius: 22px;
-            background: rgba(255,255,255,.95);
-            box-shadow: 0 18px 36px rgba(0,0,0,.18);
-        }
-
-        .brand-mark strong {
-            display: block;
-            font-size: clamp(26px, 2vw, 34px);
-            line-height: 1.05;
-        }
-
-        .brand-mark span {
-            color: rgba(255,255,255,.82);
-            font-size: 16px;
-        }
-
-        .poster-heading {
-            max-width: 580px;
-            margin-top: clamp(56px, 9vh, 120px);
-        }
-
-        .poster-label {
-            margin-bottom: 14px;
-            color: rgba(255,255,255,.72);
-            font-size: 12px;
-            font-weight: 900;
-            letter-spacing: .16em;
-            text-transform: uppercase;
-        }
-
-        .poster h1 {
-            margin: 0 0 18px;
-            font-size: clamp(40px, 4vw, 58px);
-            line-height: 1.08;
-            letter-spacing: -.045em;
-            font-weight: 900;
-        }
-
-        .poster-copy {
-            max-width: 520px;
-            margin: 0;
-            color: rgba(255,255,255,.86);
-            font-size: 18px;
-            line-height: 1.8;
-        }
-
-        .feature-list {
-            display: grid;
-            gap: 22px;
-            margin-top: 48px;
-            max-width: 520px;
-        }
-
-        .feature-item {
-            display: grid;
-            grid-template-columns: 64px 1fr;
-            gap: 18px;
-            align-items: center;
-        }
-
-        .feature-icon,
-        .role-icon,
-        .step-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
-        }
-
-        .feature-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 999px;
-            background: rgba(255,255,255,.12);
-            border: 1px solid rgba(255,255,255,.18);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
-            font-size: 28px;
-        }
-
-        .feature-item strong {
-            display: block;
-            margin-bottom: 4px;
-            font-family: 'Prompt', sans-serif;
-            font-size: 18px;
-        }
-
-        .feature-item p {
-            margin: 0;
-            color: rgba(255,255,255,.76);
-            line-height: 1.6;
-        }
-
-        .brand-login-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 18px;
-            margin-top: 46px;
-            padding: 22px;
-            border-radius: 24px;
+        .brand-logo-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
             background: rgba(255,255,255,.12);
             border: 1px solid rgba(255,255,255,.22);
-            box-shadow: 0 20px 44px rgba(0,0,0,.16);
-            backdrop-filter: blur(14px);
-        }
-
-        .brand-login-card p {
-            margin: 4px 0 0;
-            color: rgba(255,255,255,.76);
-        }
-
-        .brand-login-card a {
-            min-height: 46px;
-            padding: 0 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,.5);
-            color: #fff;
-            text-decoration: none;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            font-weight: 900;
-            white-space: nowrap;
-            transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+            font-size: 22px;
+            color: #5EE8E2;
+            flex-shrink: 0;
         }
 
-        .brand-login-card a:hover {
-            transform: translateY(-1px);
-            background: rgba(255,255,255,.14);
-            box-shadow: 0 12px 28px rgba(0,0,0,.16);
+        .brand-logo-text strong {
+            display: block;
+            font-family: 'Prompt', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -.02em;
         }
 
-        .panel {
-            min-width: 0;
-            display: grid;
-            align-items: center;
-            padding: 8px 6px;
-        }
-
-        .card-shell {
-            width: min(100%, 940px);
-            justify-self: center;
-            background: var(--reg-card);
-            border: 1px solid rgba(219,232,240,.95);
-            border-radius: 32px;
-            box-shadow: 0 34px 90px rgba(12,49,82,.14);
-            backdrop-filter: blur(18px);
-            padding: clamp(26px, 3vw, 42px);
-        }
-
-        .register-back-row {
-            margin-bottom: 22px;
-        }
-
-        .btn-back {
-            min-height: 42px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 16px;
-            border-radius: 999px;
-            border: 1px solid var(--reg-border);
-            background: #f7fbfd;
-            color: var(--reg-ink);
-            font-weight: 900;
-            box-shadow: 0 10px 24px rgba(12,49,82,.06);
-            transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-        }
-
-        .btn-back:hover {
-            transform: translateY(-1px);
-            background: #fff;
-            box-shadow: 0 14px 28px rgba(12,49,82,.1);
-        }
-
-        .form-eyebrow {
-            color: #0a9f97;
+        .brand-logo-text span {
             font-size: 12px;
-            font-weight: 900;
-            letter-spacing: .14em;
+            color: rgba(255,255,255,.65);
+        }
+
+        /* ── Heading block */
+        .brand-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(28px,4vh,52px) 0;
+        }
+
+        .brand-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .16em;
             text-transform: uppercase;
+            color: #5EE8E2;
+            margin-bottom: 12px;
         }
 
-        .card-title {
-            margin: 6px 0 8px;
-            color: #092d4c;
-            font-size: clamp(32px, 3vw, 44px);
-            line-height: 1.15;
-            font-weight: 900;
+        .brand-heading {
+            font-family: 'Prompt', sans-serif;
+            font-size: clamp(28px, 3.2vw, 42px);
+            font-weight: 700;
+            line-height: 1.12;
             letter-spacing: -.04em;
+            margin: 0 0 14px;
         }
 
-        .section-box {
-            position: relative;
-            border: 1px solid rgba(219,232,240,.96);
-            border-radius: 24px;
-            padding: 22px;
-            background: #fff;
-            box-shadow: 0 16px 40px rgba(12,49,82,.06);
+        .brand-desc {
+            font-size: 15px;
+            line-height: 1.75;
+            color: rgba(255,255,255,.78);
+            margin: 0 0 28px;
+            max-width: 380px;
         }
 
-        .section-box.section-login { order: 1; }
-        .section-box.section-general { order: 2; }
+        /* ── Feature list */
+        .brand-features {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
 
-        .section-heading {
+        .brand-feature {
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            margin-bottom: 18px;
         }
 
-        .step-badge {
-            width: 30px;
-            height: 30px;
-            flex: 0 0 30px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #0969e8, #0aa5c8);
+        .brand-feature-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(94,232,226,.14);
+            border: 1px solid rgba(94,232,226,.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #5EE8E2;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .brand-feature-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1px;
+        }
+
+        .brand-feature-text span {
+            font-size: 13px;
+            color: rgba(255,255,255,.65);
+            line-height: 1.5;
+        }
+
+        /* ── Login CTA */
+        .brand-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 16px 20px;
+            border-radius: 18px;
+            background: rgba(255,255,255,.10);
+            border: 1px solid rgba(255,255,255,.18);
+            backdrop-filter: blur(12px);
+        }
+
+        .brand-cta p {
+            margin: 0;
+            font-size: 13px;
+            color: rgba(255,255,255,.72);
+        }
+
+        .brand-cta strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn-brand-login {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.40);
+            background: rgba(255,255,255,.10);
             color: #fff;
-            font-weight: 900;
-            box-shadow: 0 10px 20px rgba(9,105,232,.18);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background .18s, transform .18s;
+        }
+
+        .btn-brand-login:hover {
+            background: rgba(255,255,255,.20);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* ─── Form panel (right) ────────────────────────────────────── */
+        .reg-form-panel {
+            background: var(--ot-card);
+            border: 1px solid rgba(210,232,236,.90);
+            border-radius: 28px;
+            box-shadow: 0 28px 72px rgba(7,57,90,.11);
+            backdrop-filter: blur(18px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Sticky header inside card */
+        .reg-form-header {
+            flex-shrink: 0;
+            padding: 22px 28px 16px;
+            border-bottom: 1px solid var(--ot-border);
+            background: var(--ot-card);
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--ot-border);
+            background: #F4FBFC;
+            color: var(--ot-ink);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background .15s, transform .15s;
+            cursor: pointer;
+        }
+
+        .back-btn:hover {
+            background: #fff;
+            color: var(--ot-ink);
+            transform: translateY(-1px);
+        }
+
+        .form-eyebrow {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            color: var(--ot-teal);
+            margin-top: 10px;
+            margin-bottom: 3px;
+        }
+
+        .form-main-title {
+            font-family: 'Prompt', sans-serif;
+            font-size: clamp(22px, 2.4vw, 30px);
+            font-weight: 700;
+            color: var(--ot-navy);
+            line-height: 1.15;
+            letter-spacing: -.03em;
+            margin: 0;
+        }
+
+        .form-subtitle {
+            font-size: 13px;
+            color: var(--ot-muted);
+            margin: 4px 0 0;
+        }
+
+        /* Scrollable body */
+        .reg-form-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 28px 24px;
+            scroll-behavior: smooth;
+        }
+
+        .reg-form-body::-webkit-scrollbar { width: 5px; }
+        .reg-form-body::-webkit-scrollbar-track { background: transparent; }
+        .reg-form-body::-webkit-scrollbar-thumb { background: var(--ot-border); border-radius: 99px; }
+
+        /* ─── Section blocks ────────────────────────────────────────── */
+        .reg-section {
+            border: 1px solid var(--ot-border);
+            border-radius: 18px;
+            padding: 18px 20px;
+            background: #fff;
+            margin-bottom: 16px;
+        }
+
+        .reg-section:last-of-type { margin-bottom: 0; }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--ot-teal), #0C7A74);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 6px 14px rgba(15,159,149,.22);
         }
 
         .section-title {
+            font-family: 'Prompt', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ot-navy);
             margin: 0;
-            color: #103451;
-            font-size: 21px;
-            line-height: 1.25;
-            font-weight: 900;
         }
 
-        .form-control,
-        .form-select {
-            min-height: 46px;
-            border-radius: 14px;
-            border-color: #d9e6ee;
-            padding: 11px 13px;
-            color: #143650;
-            font-weight: 700;
+        .section-sub {
+            font-size: 12px;
+            color: var(--ot-muted);
+            margin-left: auto;
+        }
+
+        /* ─── Form controls ─────────────────────────────────────────── */
+        .form-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #3A6070;
+            margin-bottom: 5px;
+        }
+
+        .form-label .req { color: #E05252; margin-left: 2px; }
+
+        .form-control, .form-select {
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid #C8DEE5;
+            padding: 0 12px;
+            font-size: 14px;
+            color: var(--ot-ink);
+            font-family: 'Sarabun', sans-serif;
+            transition: border-color .18s, box-shadow .18s;
             box-shadow: none !important;
         }
 
-        .form-control:focus,
-        .form-select:focus {
-            border-color: #0891b2;
-            box-shadow: 0 0 0 4px rgba(8,145,178,.14) !important;
+        .form-control:focus, .form-select:focus {
+            border-color: var(--ot-teal) !important;
+            box-shadow: 0 0 0 3px rgba(15,159,149,.15) !important;
+            outline: none;
         }
 
-        .form-label {
-            color: #425d72;
-            font-size: 13px;
+        .form-control::placeholder { color: #9BB4BD; }
+
+        .field-hint {
+            font-size: 11.5px;
+            color: #8DAABB;
+            margin-top: 3px;
         }
 
+        /* ─── Role cards ────────────────────────────────────────────── */
         .role-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
         }
 
-        .role-card {
-            position: relative;
-        }
+        .role-card { position: relative; }
 
-        .role-card input {
+        .role-card input[type="radio"] {
             position: absolute;
             inset: 0;
             opacity: 0;
+            cursor: pointer;
+            z-index: 1;
+            margin: 0;
         }
 
         .role-card label {
-            display: grid;
-            grid-template-columns: 54px 1fr;
-            gap: 14px;
-            height: 100%;
-            min-height: 106px;
-            padding: 16px;
-            border: 1px solid rgba(16,36,59,.12);
-            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding: 12px 14px;
+            min-height: 80px;
+            border: 1.5px solid #D4E6EC;
+            border-radius: 14px;
             cursor: pointer;
-            transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+            background: #FAFCFD;
+            transition: border-color .18s, background .18s, box-shadow .18s, transform .15s;
         }
 
         .role-card label:hover {
+            border-color: var(--ot-teal);
+            background: var(--ot-teal-lt);
             transform: translateY(-1px);
-            box-shadow: 0 14px 30px rgba(12,49,82,.08);
-        }
-
-        .role-card input:focus-visible + label {
-            outline: 4px solid rgba(8,145,178,.18);
-            outline-offset: 2px;
         }
 
         .role-card input:checked + label {
-            border-color: #0969e8;
-            background: linear-gradient(135deg, rgba(9,105,232,.08), rgba(23,183,178,.06));
-            box-shadow: 0 16px 34px rgba(9,105,232,.12);
+            border-color: var(--ot-teal);
+            background: linear-gradient(135deg, rgba(15,159,149,.09), rgba(15,159,149,.04));
+            box-shadow: 0 8px 20px rgba(15,159,149,.12);
+        }
+
+        .role-card input:focus-visible + label {
+            outline: 3px solid rgba(15,159,149,.30);
+            outline-offset: 2px;
         }
 
         .role-icon {
-            width: 54px;
-            height: 54px;
-            border-radius: 999px;
-            background: #e9f3ff;
-            color: #0969e8;
-            font-size: 24px;
-        }
-
-        .role-finance .role-icon {
-            background: #ddf8ec;
-            color: #059669;
-        }
-
-        .role-checker .role-icon {
-            background: #f1e8ff;
-            color: #7c3aed;
-        }
-
-        .finance-box {
-            padding: 16px;
-            border-radius: 18px;
-            background: #f7fbfd;
-            border: 1px solid #e2edf4;
-        }
-
-        .avatar-upload-card {
-            display: grid;
-            grid-template-columns: 102px 1fr;
-            gap: 18px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
             align-items: center;
-            border: 1px dashed #c9dbe6;
-            border-radius: 18px;
-            padding: 16px;
-            background: #f8fbfd;
+            justify-content: center;
+            font-size: 16px;
         }
 
-        .avatar-preview {
-            width: 96px;
-            height: 96px;
-            border-radius: 999px;
+        .role-staff  .role-icon { background: #E3F2FD; color: #1976D2; }
+        .role-finance .role-icon { background: #E8F5E9; color: #2E7D32; }
+        .role-checker .role-icon { background: #F3E5F5; color: #7B1FA2; }
+
+        .role-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ot-navy);
+            line-height: 1.2;
+        }
+
+        .role-desc {
+            font-size: 11.5px;
+            color: var(--ot-muted);
+            line-height: 1.4;
+        }
+
+        /* ─── Finance extra perms ───────────────────────────────────── */
+        .finance-perms {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #F4FCFB;
+            border: 1px solid #C2E6E4;
+        }
+
+        .finance-perms .perm-title {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ot-teal-dk);
+            margin-bottom: 8px;
+        }
+
+        .form-check-label { font-size: 13px; color: var(--ot-ink); }
+        .form-check-input:checked {
+            background-color: var(--ot-teal);
+            border-color: var(--ot-teal);
+        }
+        .form-check-input:focus {
+            box-shadow: 0 0 0 3px rgba(15,159,149,.18);
+        }
+
+        /* ─── Avatar upload ─────────────────────────────────────────── */
+        .avatar-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .avatar-thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #E0F5F3, #EBF4F8);
+            border: 2px solid var(--ot-border);
             overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ot-muted);
+            font-size: 26px;
             position: relative;
-            background: linear-gradient(135deg, #e1f2f2, #edf5fb);
-            border: 1px solid #dcebf2;
-            box-shadow: inset 0 0 0 6px #fff, 0 12px 24px rgba(12,49,82,.08);
         }
 
-        .avatar-preview img {
-            display: none;
+        .avatar-thumb img {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: none;
         }
 
-        .avatar-preview.has-image img {
+        .avatar-thumb.has-image img { display: block; }
+        .avatar-thumb.has-image .avatar-ph { display: none; }
+
+        .avatar-file-wrap { flex: 1; min-width: 0; }
+
+        /* ─── Signature accordion ───────────────────────────────────── */
+        .sig-accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            padding: 10px 0 2px;
+            border-top: 1px solid var(--ot-border);
+            margin-top: 4px;
+        }
+
+        .sig-accordion-header .sig-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ot-teal-dk);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .sig-accordion-header .chevron {
+            font-size: 14px;
+            color: var(--ot-muted);
+            transition: transform .22s;
+        }
+
+        .sig-accordion-header.open .chevron { transform: rotate(180deg); }
+
+        .sig-accordion-body {
+            display: none;
+            padding-top: 12px;
+        }
+
+        .sig-accordion-body.open { display: block; }
+
+        .sig-canvas {
+            width: 100%;
+            height: 130px;
+            border-radius: 10px;
+            border: 1.5px dashed #B8D8DE;
+            background: #FAFCFD;
+            touch-action: none;
             display: block;
         }
 
-        .avatar-placeholder {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            place-items: center;
-            color: #58708a;
-            font-size: 42px;
+        .sig-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .signature-panel {
-            border: 1px solid #dfeaf2;
-            border-radius: 20px;
-            padding: 16px;
-            background: #fbfdff;
-        }
+        .sig-mode-btns { display: flex; gap: 6px; }
 
-        .signature-canvas {
-            border-radius: 16px;
-            border: 1px dashed rgba(16,36,59,.18);
+        .btn-sig {
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 12.5px;
+            font-weight: 600;
+            border: 1.5px solid var(--ot-border);
             background: #fff;
+            color: var(--ot-ink);
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .btn-sig.active, .btn-sig:hover {
+            border-color: var(--ot-teal);
+            background: var(--ot-teal-lt);
+            color: var(--ot-teal-dk);
+        }
+
+        .btn-sig-clear {
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 12.5px;
+            font-weight: 600;
+            border: 1.5px solid #EFC0B8;
+            background: #FFF5F4;
+            color: #C0392B;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .btn-sig-clear:hover { background: #FDECEA; }
+
+        /* ─── Submit button ─────────────────────────────────────────── */
+        .btn-submit {
             width: 100%;
-            height: 150px;
-            touch-action: none;
+            height: 48px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--ot-teal) 0%, #0C8780 100%);
+            color: #fff;
+            font-family: 'Prompt', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: .01em;
+            cursor: pointer;
+            box-shadow: 0 12px 28px rgba(15,159,149,.28);
+            transition: transform .18s, box-shadow .18s, opacity .18s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
         }
 
-        .form-footer {
-            order: 3;
-            padding-top: 6px;
-        }
-
-        .form-footer .btn-dark {
-            border: 0;
-            background: linear-gradient(135deg, #0969e8, #034da3);
-            box-shadow: 0 16px 34px rgba(9,105,232,.18);
-            font-weight: 900;
-            transition: transform .18s ease, box-shadow .18s ease;
-        }
-
-        .form-footer .btn-dark:hover {
+        .btn-submit:hover {
             transform: translateY(-1px);
-            box-shadow: 0 20px 42px rgba(9,105,232,.24);
+            box-shadow: 0 16px 36px rgba(15,159,149,.34);
         }
 
-        .soft-disabled-field {
-            background: #f7fbfd !important;
-            color: #91a3b4 !important;
+        .btn-submit:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        @media (max-width: 1180px) {
-            .wrapper {
+        .login-link {
+            text-align: center;
+            font-size: 13px;
+            color: var(--ot-muted);
+            margin-top: 12px;
+        }
+
+        .login-link a {
+            color: var(--ot-teal-dk);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .login-link a:hover { text-decoration: underline; }
+
+        /* ─── Alert ─────────────────────────────────────────────────── */
+        .reg-alert {
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            margin-bottom: 14px;
+            border: 1px solid transparent;
+        }
+
+        .reg-alert.success {
+            background: #E6F8F5;
+            border-color: #A8E0D9;
+            color: #0B6B62;
+        }
+
+        .reg-alert.danger {
+            background: #FEF0EF;
+            border-color: #F9BBBB;
+            color: #9B2020;
+        }
+
+        /* ─── Responsive ────────────────────────────────────────────── */
+        @media (max-width: 1080px) {
+            .reg-shell {
                 grid-template-columns: 1fr;
-                padding: 18px;
+                height: auto;
+                max-height: none;
             }
 
-            .poster {
-                position: relative;
-                top: auto;
+            .reg-brand {
                 min-height: auto;
+                padding: 24px;
             }
 
-            .poster-heading {
-                margin-top: 42px;
+            .brand-body { padding: 20px 0; }
+
+            .reg-form-panel {
+                overflow: visible;
+                max-height: none;
             }
 
-            .panel {
-                padding: 0;
-            }
-
-            .card-shell {
-                width: 100%;
+            .reg-form-body {
+                overflow: visible;
+                max-height: none;
             }
         }
 
-        @media (max-width: 760px) {
-            .wrapper {
-                gap: 16px;
-                padding: 12px;
-            }
-
-            .poster,
-            .card-shell {
-                border-radius: 24px;
-            }
-
-            .poster {
-                padding: 26px;
-            }
-
-            .brand-mark img {
-                width: 58px;
-                height: 58px;
-            }
-
-            .poster h1 {
-                font-size: 34px;
-            }
-
-            .poster-copy {
-                font-size: 16px;
-            }
-
-            .feature-list {
-                gap: 16px;
-                margin-top: 32px;
-            }
-
-            .feature-item {
-                grid-template-columns: 52px 1fr;
-            }
-
-            .feature-icon {
-                width: 52px;
-                height: 52px;
-                font-size: 22px;
-            }
-
-            .brand-login-card,
-            .avatar-upload-card {
-                grid-template-columns: 1fr;
-                display: grid;
-            }
-
-            .role-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .section-box {
-                padding: 18px;
-            }
+        @media (max-width: 640px) {
+            .reg-page { padding: 12px; }
+            .reg-shell { gap: 14px; }
+            .reg-brand, .reg-form-panel { border-radius: 20px; }
+            .reg-form-header { padding: 16px 18px 12px; }
+            .reg-form-body { padding: 14px 18px 18px; }
+            .role-grid { grid-template-columns: 1fr; }
+            .brand-cta { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
-<div class="wrapper">
-    <section class="poster" aria-label="ภาพรวมระบบลงเวลาโรงพยาบาล">
-        <div>
-            <div class="brand-mark">
-                <img src="../LOGO/nongphok_logo.png" alt="โลโก้โรงพยาบาลหนองพอก">
+
+<div class="reg-page">
+    <div class="reg-shell">
+
+        <!-- ══════════════════════════════════════
+             LEFT — Brand Panel
+        ══════════════════════════════════════ -->
+        <aside class="reg-brand">
+            <div class="brand-logo">
+                <div class="brand-logo-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="brand-logo-text">
+                    <strong>Over Time</strong>
+                    <span>ระบบลงเวลางานสำหรับโรงพยาบาล</span>
+                </div>
+            </div>
+
+            <div class="brand-body">
+                <div class="brand-label">Registration</div>
+                <h1 class="brand-heading">สร้างบัญชีผู้ใช้งานใหม่</h1>
+                <p class="brand-desc">ลงทะเบียนเพื่อใช้งานระบบลงเวลางานสำหรับบุคลากรโรงพยาบาล ครบทุกบทบาท ปลอดภัย และพร้อมใช้งานได้ทันที</p>
+                <div class="brand-features">
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-shield-check"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>ปลอดภัยและตรวจสอบย้อนหลังได้</strong>
+                            <span>ข้อมูลบัญชีถูกเก็บตามมาตรฐานความปลอดภัยของระบบโรงพยาบาล</span>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-calendar2-check"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>ใช้งานกับเวรและรายงานได้ทันที</strong>
+                            <span>ลงเวลาเวร ดูประวัติ และส่งออกรายงานได้หลังสมัครเสร็จ</span>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-people"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>รองรับบทบาทเจ้าหน้าที่และผู้ตรวจสอบ</strong>
+                            <span>ออกแบบสำหรับเจ้าหน้าที่ หัวหน้างาน และผู้ตรวจสอบ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="brand-cta">
                 <div>
-                    <strong>ระบบลงเวลา</strong>
-                    <span>โรงพยาบาลหนองพอก</span>
+                    <strong>มีบัญชีอยู่แล้ว?</strong>
+                    <p>เข้าสู่ระบบเพื่อใช้งานระบบลงเวลา</p>
                 </div>
+                <a href="login.php" class="btn-brand-login">
+                    เข้าสู่ระบบ <i class="bi bi-arrow-right"></i>
+                </a>
             </div>
+        </aside>
 
-            <div class="poster-heading">
-                <div class="poster-label">Registration</div>
-                <h1>สร้างบัญชีผู้ใช้งานใหม่</h1>
-                <p class="poster-copy">ลงทะเบียนเพื่อเข้าใช้งานระบบลงเวลาเวรสำหรับบุคลากรโรงพยาบาล ด้วยข้อมูลที่ชัดเจน ปลอดภัย และพร้อมใช้งานจริง</p>
-            </div>
+        <!-- ══════════════════════════════════════
+             RIGHT — Form Panel
+        ══════════════════════════════════════ -->
+        <main class="reg-form-panel">
 
-            <div class="feature-list">
-                <div class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-shield-check"></i></span>
-                    <div>
-                        <strong>ปลอดภัย เชื่อถือได้</strong>
-                        <p>ข้อมูลบัญชีและไฟล์สำคัญถูกจัดเก็บตามมาตรฐานระบบภายในโรงพยาบาล</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-clock-history"></i></span>
-                    <div>
-                        <strong>ใช้งานได้ทุกที่ ทุกเวลา</strong>
-                        <p>รองรับการลงเวลา ตรวจสอบข้อมูล และติดตามประวัติการทำงานของเจ้าหน้าที่</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-people"></i></span>
-                    <div>
-                        <strong>สำหรับบุคลากรโรงพยาบาล</strong>
-                        <p>ออกแบบเพื่อบทบาทเจ้าหน้าที่ หัวหน้างาน และผู้ตรวจสอบในระบบลงเวลาเวร</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="brand-login-card">
-            <div>
-                <strong>หากคุณมีบัญชีอยู่แล้ว</strong>
-                <p>เข้าสู่ระบบเพื่อใช้งานระบบลงเวลา</p>
-            </div>
-            <a href="login.php">เข้าสู่ระบบ <i class="bi bi-arrow-right"></i></a>
-        </div>
-    </section>
-
-    <section class="panel d-grid align-items-center">
-        <div class="card-shell">
-            <div class="register-back-row">
-                <button type="button" class="btn btn-back" data-simple-back data-fallback-href="login.php">
-                    <i class="bi bi-arrow-left"></i>ย้อนกลับ
+            <!-- sticky header -->
+            <div class="reg-form-header">
+                <button type="button" class="back-btn" data-simple-back data-fallback-href="login.php">
+                    <i class="bi bi-arrow-left"></i> ย้อนกลับ
                 </button>
+                <div class="form-eyebrow mt-2">ลงทะเบียนผู้ใช้งาน</div>
+                <h2 class="form-main-title">สร้างบัญชีผู้ใช้งาน</h2>
+                <p class="form-subtitle">กรอกข้อมูลที่จำเป็นเพื่อสร้างบัญชีสำหรับเข้าใช้งานระบบ</p>
             </div>
 
-            <div class="form-eyebrow">ลงทะเบียนผู้ใช้งาน</div>
-            <h2 class="card-title mt-2 mb-2">สร้างบัญชีผู้ใช้งาน</h2>
-            <p class="text-muted mb-0">ระบบจะบันทึกชื่อและนามสกุลแยกกัน พร้อมสร้างชื่อแสดงผลแบบเดิมไว้เพื่อให้ข้อมูลเก่ายังทำงานได้ต่อเนื่อง</p>
+            <!-- scrollable body -->
+            <div class="reg-form-body">
 
-            <?php if ($message !== ''): ?>
-                <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mt-4 mb-0"><?= htmlspecialchars($message) ?></div>
-            <?php endif; ?>
-
-            <form method="post" enctype="multipart/form-data" class="mt-4 d-grid gap-4" data-global-loading-form data-loading-message="กำลังสร้างบัญชีผู้ใช้งาน...">
-                <div class="section-box section-login">
-                    <div class="section-heading">
-                        <span class="step-badge">1</span>
-                        <div>
-                            <div class="section-title h5 mb-1">ข้อมูลบัญชีผู้ใช้งาน</div>
-                            <div class="text-muted small">ใช้สำหรับเข้าสู่ระบบในภายหลัง</div>
-                        </div>
+                <?php if ($message !== ''): ?>
+                    <div class="reg-alert <?= $messageType === 'danger' ? 'danger' : 'success' ?>">
+                        <i class="bi bi-<?= $messageType === 'danger' ? 'exclamation-circle' : 'check-circle' ?>"></i>
+                        <?= htmlspecialchars($message) ?>
                     </div>
+                <?php endif; ?>
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold d-flex align-items-center gap-2">
-                                <span>ชื่อผู้ใช้ (username)</span>
-                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="ชื่อนี้ใช้สำหรับล็อกอินเข้าสู่ระบบ"></i>
-                            </label>
-                            <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($form['username']) ?>" required>
-                            <div class="small text-muted mt-2">ชื่อนี้ใช้สำหรับเข้าสู่ระบบ</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">รหัสผ่าน</label>
-                            <input type="password" name="password" class="form-control" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">ยืนยันรหัสผ่าน</label>
-                            <input type="password" name="confirm_password" class="form-control" required>
-                        </div>
-                    </div>
+                <form method="post" enctype="multipart/form-data" id="regForm">
 
-                    <div class="section-heading mt-2">
-                        <span class="step-badge">2</span>
-                        <div>
-                            <div class="section-title h5 mb-1">บทบาทการใช้งาน</div>
-                            <div class="text-muted small">เลือกสิทธิ์เริ่มต้นให้ตรงกับหน้าที่ของผู้ใช้งาน</div>
+                    <!-- ── Section 1: Account ── -->
+                    <div class="reg-section">
+                        <div class="section-head">
+                            <div class="step-num">1</div>
+                            <span class="section-title">ข้อมูลบัญชีผู้ใช้งาน</span>
+                            <span class="section-sub">ใช้สำหรับเข้าสู่ระบบ</span>
                         </div>
-                    </div>
-                    <div class="role-grid">
-                        <div class="role-card">
-                            <input type="radio" name="role" id="role_staff" value="staff" <?= $form['role'] === 'staff' ? 'checked' : '' ?>>
-                            <label for="role_staff">
-                                <span class="role-icon"><i class="bi bi-person-fill"></i></span>
-                                <span>
-                                    <strong>เจ้าหน้าที่ทั่วไป</strong>
-                                    <span class="small text-muted d-block mt-2">ลงเวลาเวร ดูประวัติ และรายงานของตนเอง</span>
-                                </span>
-                            </label>
-                        </div>
-                        <div class="role-card role-finance">
-                            <input type="radio" name="role" id="role_finance" value="finance" <?= $form['role'] === 'finance' ? 'checked' : '' ?>>
-                            <label for="role_finance">
-                                <span class="role-icon"><i class="bi bi-person-check-fill"></i></span>
-                                <span>
-                                    <strong>เจ้าหน้าที่หัวหน้างาน</strong>
-                                    <span class="small text-muted d-block mt-2">ดูข้อมูลรายบุคคลหรือรายแผนกได้ตามสิทธิ์เสริม</span>
-                                </span>
-                            </label>
-                        </div>
-                        <div class="role-card role-checker">
-                            <input type="radio" name="role" id="role_checker" value="checker" <?= $form['role'] === 'checker' ? 'checked' : '' ?>>
-                            <label for="role_checker">
-                                <span class="role-icon"><i class="bi bi-person-badge-fill"></i></span>
-                                <span>
-                                    <strong>ผู้ตรวจสอบ</strong>
-                                    <span class="small text-muted d-block mt-2">ตรวจสอบรายการลงเวลาเวรและดูรายงานที่เกี่ยวข้อง</span>
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="finance-box mt-3" id="financePermissions" <?= $form['role'] === 'finance' ? '' : 'hidden' ?>>
-                        <div class="fw-semibold mb-2">สิทธิ์เพิ่มเติมสำหรับเจ้าหน้าที่การเงิน</div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="perm_view_all_staff" name="can_view_all_staff" value="1" <?= $form['can_view_all_staff'] === '1' ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="perm_view_all_staff">ดูข้อมูลรายบุคคลของเจ้าหน้าที่ในหน่วยงานที่เกี่ยวข้องได้</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="perm_view_department" name="can_view_department_reports" value="1" <?= $form['can_view_department_reports'] === '1' ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="perm_view_department">ดูรายงานสรุปรายแผนกได้</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="perm_export" name="can_export_reports" value="1" <?= $form['can_export_reports'] === '1' ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="perm_export">ส่งออกรายงานได้</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section-box section-general">
-                    <div class="section-heading">
-                        <span class="step-badge">3</span>
-                        <div>
-                            <div class="section-title h5 mb-1">ข้อมูลส่วนตัว</div>
-                            <div class="text-muted small">ข้อมูลส่วนตัวและข้อมูลการทำงานของเจ้าหน้าที่</div>
-                        </div>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">คำนำหน้า</label>
-                            <select class="form-select soft-disabled-field" disabled>
-                                <option>เลือกคำนำหน้า</option>
-                            </select>
-                            <div class="small text-muted mt-2">ยังไม่เชื่อมกับ schema สมัครปัจจุบัน</div>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold">หมายเลขบัตรประชาชน</label>
-                            <input type="text" class="form-control soft-disabled-field" placeholder="เช่น 1-2345-67890-12-3" disabled>
-                            <div class="small text-muted mt-2">ช่อง UI เตรียมรองรับ ไม่ส่งค่าไป backend</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">ชื่อ</label>
-                            <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($form['first_name']) ?>" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">นามสกุล</label>
-                            <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($form['last_name']) ?>" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">ตำแหน่ง</label>
-                            <input type="text" name="position_name" class="form-control" value="<?= htmlspecialchars($form['position_name']) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">เบอร์โทร</label>
-                            <input type="text" name="phone_number" class="form-control" value="<?= htmlspecialchars($form['phone_number']) ?>" inputmode="numeric" maxlength="10" pattern="\d{10}" placeholder="เช่น 0812345678">
-                            <div class="small text-muted mt-2">กรอกเป็นตัวเลข 10 หลักเท่านั้น</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">อีเมล</label>
-                            <input type="email" class="form-control soft-disabled-field" placeholder="เช่น name@email.com" disabled>
-                            <div class="small text-muted mt-2">ยังไม่บันทึกใน flow สมัครปัจจุบัน</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">แผนก</label>
-                            <select name="department_id" class="form-select" required>
-                                <?php foreach ($departments as $department): ?>
-                                    <option value="<?= (int) $department['id'] ?>" <?= (string) $form['department_id'] === (string) $department['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($department['department_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="section-heading mb-3">
-                                <span class="step-badge">4</span>
-                                <div>
-                                    <div class="section-title h5 mb-1">รูปโปรไฟล์</div>
-                                    <div class="text-muted small">ไฟล์ JPG, PNG, WEBP ไม่เกิน 1MB</div>
-                                </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">ชื่อผู้ใช้<span class="req">*</span></label>
+                                <input type="text" name="username" class="form-control"
+                                    value="<?= htmlspecialchars($form['username']) ?>"
+                                    placeholder="กรอก username" required autocomplete="username">
                             </div>
-                            <label class="form-label fw-semibold">รูปประจำตัว (ไม่บังคับ)</label>
-                            <div class="avatar-upload-card">
-                                <div class="avatar-preview" id="avatarPreview">
-                                    <img src="" alt="ตัวอย่างรูปประจำตัว" id="avatarPreviewImage">
-                                    <div class="avatar-placeholder" id="avatarPlaceholder"><i class="bi bi-person-circle fs-1"></i></div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <input type="file" name="profile_image" id="profile_image" class="form-control" accept="image/png,image/jpeg,image/webp">
-                                    <div class="small text-muted mt-2">แนะนำรูปหน้าตรง พื้นหลังเรียบ และสัดส่วนใกล้เคียง 1:1</div>
-                                </div>
+                            <div class="col-md-4">
+                                <label class="form-label">รหัสผ่าน<span class="req">*</span></label>
+                                <input type="password" name="password" class="form-control"
+                                    placeholder="อย่างน้อย 6 ตัวอักษร" required autocomplete="new-password">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ยืนยันรหัสผ่าน<span class="req">*</span></label>
+                                <input type="password" name="confirm_password" class="form-control"
+                                    placeholder="กรอกรหัสผ่านอีกครั้ง" required autocomplete="new-password">
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="section-heading mb-3">
-                                <span class="step-badge">5</span>
-                                <div>
-                                    <div class="section-title h5 mb-1">ลายมือชื่อสำหรับใช้งานในระบบ (ไม่บังคับ)</div>
-                                    <div class="text-muted small">วาดลายมือชื่อหรืออัปโหลดรูปภาพได้ ระบบยังสมัครได้หากเว้นว่าง</div>
-                                </div>
+                    </div>
+
+                    <!-- ── Section 2: Role ── -->
+                    <div class="reg-section">
+                        <div class="section-head">
+                            <div class="step-num">2</div>
+                            <span class="section-title">บทบาทการใช้งาน</span>
+                        </div>
+                        <div class="role-grid">
+                            <div class="role-card role-staff">
+                                <input type="radio" name="role" id="role_staff" value="staff"
+                                    <?= $form['role'] === 'staff' ? 'checked' : '' ?>>
+                                <label for="role_staff">
+                                    <div class="role-icon"><i class="bi bi-person-fill"></i></div>
+                                    <div class="role-name">เจ้าหน้าที่ทั่วไป</div>
+                                    <div class="role-desc">ลงเวลาเวร ดูประวัติ และรายงานของตนเอง</div>
+                                </label>
                             </div>
-                            <label class="form-label fw-semibold">ลายเซ็นสำหรับใช้งานในระบบ (ไม่บังคับ)</label>
-                            <div class="signature-panel">
-                                <div class="d-flex gap-2 flex-wrap mb-3">
-                                    <button class="btn btn-sm btn-primary rounded-pill active" type="button" data-signature-mode="draw">วาดลายเซ็น</button>
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill" type="button" data-signature-mode="upload">อัปโหลดรูปภาพ</button>
-                                </div>
-                                <div id="signatureDrawPanel">
-                                    <canvas id="signatureCanvas" class="signature-canvas"></canvas>
-                                    <input type="hidden" name="signature_base64" id="signature_base64">
-                                    <div class="d-flex justify-content-between flex-wrap gap-2 mt-3">
-                                        <span class="small text-muted">ใช้เมาส์หรือหน้าจอสัมผัสวาดลายเซ็นในกรอบนี้</span>
-                                        <button type="button" class="btn btn-outline-secondary rounded-pill" id="clearSignatureBtn">ล้างลายเซ็น</button>
+                            <div class="role-card role-finance">
+                                <input type="radio" name="role" id="role_finance" value="finance"
+                                    <?= $form['role'] === 'finance' ? 'checked' : '' ?>>
+                                <label for="role_finance">
+                                    <div class="role-icon"><i class="bi bi-person-check-fill"></i></div>
+                                    <div class="role-name">เจ้าหน้าที่หัวหน้างาน</div>
+                                    <div class="role-desc">ดูข้อมูลรายบุคคลและรายแผนกได้</div>
+                                </label>
+                            </div>
+                            <div class="role-card role-checker">
+                                <input type="radio" name="role" id="role_checker" value="checker"
+                                    <?= $form['role'] === 'checker' ? 'checked' : '' ?>>
+                                <label for="role_checker">
+                                    <div class="role-icon"><i class="bi bi-person-badge-fill"></i></div>
+                                    <div class="role-name">ผู้ตรวจสอบ</div>
+                                    <div class="role-desc">ตรวจสอบ อนุมัติ และส่งออกรายงาน</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="finance-perms" id="financePermissions" <?= $form['role'] === 'finance' ? '' : 'hidden' ?>>
+                            <div class="perm-title"><i class="bi bi-toggles"></i> สิทธิ์เพิ่มเติมสำหรับเจ้าหน้าที่หัวหน้างาน</div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="perm_view_all_staff"
+                                    name="can_view_all_staff" value="1"
+                                    <?= $form['can_view_all_staff'] === '1' ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="perm_view_all_staff">ดูข้อมูลรายบุคคลของเจ้าหน้าที่ได้</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="perm_view_department"
+                                    name="can_view_department_reports" value="1"
+                                    <?= $form['can_view_department_reports'] === '1' ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="perm_view_department">ดูรายงานสรุปรายแผนกได้</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="perm_export"
+                                    name="can_export_reports" value="1"
+                                    <?= $form['can_export_reports'] === '1' ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="perm_export">ส่งออกรายงานได้</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Section 3: Personal Info ── -->
+                    <div class="reg-section">
+                        <div class="section-head">
+                            <div class="step-num">3</div>
+                            <span class="section-title">ข้อมูลส่วนตัว</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label">ชื่อ<span class="req">*</span></label>
+                                <input type="text" name="first_name" class="form-control"
+                                    value="<?= htmlspecialchars($form['first_name']) ?>"
+                                    placeholder="ชื่อจริง" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">นามสกุล<span class="req">*</span></label>
+                                <input type="text" name="last_name" class="form-control"
+                                    value="<?= htmlspecialchars($form['last_name']) ?>"
+                                    placeholder="นามสกุล" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">ตำแหน่ง</label>
+                                <input type="text" name="position_name" class="form-control"
+                                    value="<?= htmlspecialchars($form['position_name']) ?>"
+                                    placeholder="เช่น พยาบาลวิชาชีพ">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">เบอร์โทร</label>
+                                <input type="text" name="phone_number" class="form-control"
+                                    value="<?= htmlspecialchars($form['phone_number']) ?>"
+                                    placeholder="0812345678" inputmode="numeric" maxlength="10" pattern="\d{10}">
+                                <div class="field-hint">ตัวเลข 10 หลัก</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">แผนก<span class="req">*</span></label>
+                                <select name="department_id" class="form-select" required>
+                                    <?php foreach ($departments as $dept): ?>
+                                        <option value="<?= (int) $dept['id'] ?>"
+                                            <?= (string) $form['department_id'] === (string) $dept['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($dept['department_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Avatar (compact) -->
+                            <?php if ($hasProfileImageColumn): ?>
+                            <div class="col-12">
+                                <label class="form-label">รูปโปรไฟล์ <span style="color:var(--ot-muted);font-weight:400">(ไม่บังคับ)</span></label>
+                                <div class="avatar-row">
+                                    <div class="avatar-thumb" id="avatarThumb">
+                                        <i class="bi bi-person avatar-ph"></i>
+                                        <img src="" alt="preview" id="avatarImg">
+                                    </div>
+                                    <div class="avatar-file-wrap">
+                                        <input type="file" name="profile_image" id="profile_image"
+                                            class="form-control" accept="image/png,image/jpeg,image/webp"
+                                            style="height:42px;padding:8px 12px;">
+                                        <div class="field-hint">JPG / PNG / WEBP ไม่เกิน 1MB · สัดส่วน 1:1</div>
                                     </div>
                                 </div>
-                                <div id="signatureUploadPanel" hidden>
-                                    <input type="file" name="signature_file" class="form-control" accept="image/png,image/jpeg,image/webp">
-                                    <div class="small text-muted mt-2">หากยังไม่เพิ่มลายเซ็นตอนนี้ ระบบยังสมัครให้ได้ตามปกติ</div>
+                            </div>
+                            <?php endif; ?>
+
+                            <!-- Signature accordion -->
+                            <div class="col-12">
+                                <div class="sig-accordion-header" id="sigToggle">
+                                    <span class="sig-title">
+                                        <i class="bi bi-pen"></i>
+                                        ลายมือชื่อ <span style="font-weight:400;color:var(--ot-muted)">(ไม่บังคับ)</span>
+                                    </span>
+                                    <i class="bi bi-chevron-down chevron"></i>
+                                </div>
+                                <div class="sig-accordion-body" id="sigBody">
+                                    <div class="sig-controls mb-2">
+                                        <div class="sig-mode-btns">
+                                            <button type="button" class="btn-sig active" data-sig-mode="draw">วาดลายเซ็น</button>
+                                            <button type="button" class="btn-sig" data-sig-mode="upload">อัปโหลดรูปภาพ</button>
+                                        </div>
+                                        <button type="button" class="btn-sig-clear" id="clearSigBtn">ล้าง</button>
+                                    </div>
+                                    <div id="sigDrawPanel">
+                                        <canvas id="sigCanvas" class="sig-canvas"></canvas>
+                                        <input type="hidden" name="signature_base64" id="sigBase64">
+                                        <div class="field-hint mt-1">ใช้เมาส์หรือหน้าจอสัมผัสวาดลายเซ็นในกรอบด้านบน</div>
+                                    </div>
+                                    <div id="sigUploadPanel" hidden>
+                                        <input type="file" name="signature_file" class="form-control"
+                                            accept="image/png,image/jpeg,image/webp" style="height:42px;padding:8px 12px;">
+                                        <div class="field-hint mt-1">JPG / PNG / WEBP · เพิ่มลายเซ็นภายหลังได้จากโปรไฟล์</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-footer">
-                    <button type="submit" class="btn btn-dark rounded-pill py-3 w-100">สร้างบัญชีและเริ่มใช้งาน</button>
-                    <div class="text-center small text-muted mt-3">มีบัญชีอยู่แล้ว? <a href="login.php" class="text-decoration-none fw-semibold">กลับไปหน้าเข้าสู่ระบบ</a></div>
-                </div>
-            </form>
-        </div>
-    </section>
-</div>
+                    <!-- ── Submit ── -->
+                    <button type="submit" class="btn-submit" id="submitBtn">
+                        <i class="bi bi-person-plus"></i>
+                        สร้างบัญชีและเริ่มใช้งาน
+                    </button>
+                    <div class="login-link">
+                        มีบัญชีอยู่แล้ว?
+                        <a href="login.php">กลับไปหน้าเข้าสู่ระบบ</a>
+                    </div>
+
+                </form>
+            </div><!-- /reg-form-body -->
+        </main>
+
+    </div><!-- /reg-shell -->
+</div><!-- /reg-page -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../assets/js/global-loading.js"></script>
 <script>
-window.GlobalLoading && window.GlobalLoading.init();
-document.querySelectorAll('[data-simple-back]').forEach(function (button) {
-    button.addEventListener('click', function () {
-        const fallbackHref = button.getAttribute('data-fallback-href') || 'login.php';
-        const hasHistory = window.history.length > 1 && document.referrer;
+(function () {
+    'use strict';
 
-        if (hasHistory) {
-            window.history.back();
-            return;
+    /* ── Back button ── */
+    document.querySelectorAll('[data-simple-back]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const fallback = btn.getAttribute('data-fallback-href') || 'login.php';
+            if (window.history.length > 1 && document.referrer) {
+                window.history.back();
+            } else {
+                window.location.href = fallback;
+            }
+        });
+    });
+
+    /* ── Role toggle ── */
+    const roleInputs      = document.querySelectorAll('input[name="role"]');
+    const financePerms    = document.getElementById('financePermissions');
+
+    function syncRole() {
+        const val = document.querySelector('input[name="role"]:checked')?.value || 'staff';
+        if (financePerms) financePerms.hidden = val !== 'finance';
+    }
+
+    roleInputs.forEach(function (r) { r.addEventListener('change', syncRole); });
+    syncRole();
+
+    /* ── Avatar preview ── */
+    const avatarInput = document.getElementById('profile_image');
+    const avatarThumb = document.getElementById('avatarThumb');
+    const avatarImg   = document.getElementById('avatarImg');
+
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function (e) {
+            const file = e.target.files?.[0];
+            if (!file) {
+                avatarThumb?.classList.remove('has-image');
+                if (avatarImg) avatarImg.removeAttribute('src');
+                return;
+            }
+            avatarImg.src = URL.createObjectURL(file);
+            avatarThumb?.classList.add('has-image');
+        });
+    }
+
+    /* ── Signature accordion ── */
+    const sigToggle = document.getElementById('sigToggle');
+    const sigBody   = document.getElementById('sigBody');
+
+    sigToggle?.addEventListener('click', function () {
+        const open = sigBody.classList.toggle('open');
+        sigToggle.classList.toggle('open', open);
+        if (open) resizeCanvas();
+    });
+
+    /* ── Signature mode switch ── */
+    const sigModeBtns     = document.querySelectorAll('[data-sig-mode]');
+    const sigDrawPanel    = document.getElementById('sigDrawPanel');
+    const sigUploadPanel  = document.getElementById('sigUploadPanel');
+
+    function setSigMode(mode) {
+        sigModeBtns.forEach(function (b) {
+            b.classList.toggle('active', b.dataset.sigMode === mode);
+        });
+        if (sigDrawPanel)   sigDrawPanel.hidden   = mode !== 'draw';
+        if (sigUploadPanel) sigUploadPanel.hidden  = mode !== 'upload';
+    }
+
+    sigModeBtns.forEach(function (b) {
+        b.addEventListener('click', function () { setSigMode(b.dataset.sigMode); });
+    });
+    setSigMode('draw');
+
+    /* ── Canvas drawing ── */
+    const canvas   = document.getElementById('sigCanvas');
+    const sigB64   = document.getElementById('sigBase64');
+    const clearBtn = document.getElementById('clearSigBtn');
+    let ctx, isDrawing = false;
+
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const ratio = window.devicePixelRatio || 1;
+            const rect  = canvas.getBoundingClientRect();
+            canvas.width  = rect.width  * ratio;
+            canvas.height = rect.height * ratio;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(ratio, ratio);
+            ctx.lineCap   = 'round';
+            ctx.lineJoin  = 'round';
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#0D3347';
         }
 
-        window.location.href = fallbackHref;
+        function pt(e) {
+            const r = canvas.getBoundingClientRect();
+            const s = e.touches ? e.touches[0] : e;
+            return { x: s.clientX - r.left, y: s.clientY - r.top };
+        }
+
+        canvas.addEventListener('mousedown',  function (e) { isDrawing = true; ctx.beginPath(); const p = pt(e); ctx.moveTo(p.x, p.y); });
+        canvas.addEventListener('mousemove',  function (e) { if (!isDrawing) return; const p = pt(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if (sigB64) sigB64.value = canvas.toDataURL('image/png'); });
+        canvas.addEventListener('mouseup',    function ()  { isDrawing = false; ctx.closePath(); });
+        canvas.addEventListener('mouseleave', function ()  { isDrawing = false; });
+        canvas.addEventListener('touchstart', function (e) { isDrawing = true; ctx.beginPath(); const p = pt(e); ctx.moveTo(p.x, p.y); }, { passive: true });
+        canvas.addEventListener('touchmove',  function (e) { if (!isDrawing) return; e.preventDefault(); const p = pt(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if (sigB64) sigB64.value = canvas.toDataURL('image/png'); }, { passive: false });
+        canvas.addEventListener('touchend',   function ()  { isDrawing = false; });
+
+        clearBtn?.addEventListener('click', function () {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (sigB64) sigB64.value = '';
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    }
+
+    window.resizeCanvas = resizeCanvas || function(){};
+
+    /* ── Submit loading state ── */
+    document.getElementById('regForm')?.addEventListener('submit', function () {
+        const btn = document.getElementById('submitBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังสร้างบัญชี...';
+        }
     });
-});
 
-const roleInputs = Array.from(document.querySelectorAll('input[name="role"]'));
-const financePermissions = document.getElementById('financePermissions');
-const avatarInput = document.getElementById('profile_image');
-const avatarPreview = document.getElementById('avatarPreview');
-const avatarPreviewImage = document.getElementById('avatarPreviewImage');
-const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-const signatureButtons = Array.from(document.querySelectorAll('[data-signature-mode]'));
-const signatureDrawPanel = document.getElementById('signatureDrawPanel');
-const signatureUploadPanel = document.getElementById('signatureUploadPanel');
-const signatureCanvas = document.getElementById('signatureCanvas');
-const signatureBase64 = document.getElementById('signature_base64');
-const clearSignatureBtn = document.getElementById('clearSignatureBtn');
-const ctx = signatureCanvas.getContext('2d');
-let isDrawing = false;
-
-function syncRoleUI() {
-    const selectedRole = roleInputs.find((input) => input.checked)?.value || 'staff';
-    financePermissions.hidden = selectedRole !== 'finance';
-}
-
-function updateAvatarPreview(file) {
-    if (!file) {
-        avatarPreview.classList.remove('has-image');
-        avatarPreviewImage.removeAttribute('src');
-        avatarPlaceholder.hidden = false;
-        return;
-    }
-    const objectUrl = URL.createObjectURL(file);
-    avatarPreviewImage.src = objectUrl;
-    avatarPreview.classList.add('has-image');
-    avatarPlaceholder.hidden = true;
-}
-
-function setSignatureMode(mode) {
-    signatureButtons.forEach((button) => {
-        const active = button.dataset.signatureMode === mode;
-        button.classList.toggle('btn-primary', active);
-        button.classList.toggle('btn-outline-primary', !active);
-        button.classList.toggle('active', active);
-    });
-    signatureDrawPanel.hidden = mode !== 'draw';
-    signatureUploadPanel.hidden = mode !== 'upload';
-}
-
-function resizeCanvas() {
-    const ratio = window.devicePixelRatio || 1;
-    const rect = signatureCanvas.getBoundingClientRect();
-    signatureCanvas.width = rect.width * ratio;
-    signatureCanvas.height = rect.height * ratio;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(ratio, ratio);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#10243b';
-}
-
-function getPoint(event) {
-    const rect = signatureCanvas.getBoundingClientRect();
-    const source = event.touches ? event.touches[0] : event;
-    return { x: source.clientX - rect.left, y: source.clientY - rect.top };
-}
-
-function startDrawing(event) {
-    isDrawing = true;
-    const point = getPoint(event);
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y);
-}
-
-function drawSignature(event) {
-    if (!isDrawing) {
-        return;
-    }
-    event.preventDefault();
-    const point = getPoint(event);
-    ctx.lineTo(point.x, point.y);
-    ctx.stroke();
-    signatureBase64.value = signatureCanvas.toDataURL('image/png');
-}
-
-function stopDrawing() {
-    if (!isDrawing) {
-        return;
-    }
-    isDrawing = false;
-    ctx.closePath();
-}
-
-roleInputs.forEach((input) => input.addEventListener('change', syncRoleUI));
-syncRoleUI();
-
-avatarInput?.addEventListener('change', (event) => updateAvatarPreview(event.target.files?.[0] || null));
-signatureButtons.forEach((button) => button.addEventListener('click', () => setSignatureMode(button.dataset.signatureMode)));
-
-setSignatureMode('draw');
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-signatureCanvas.addEventListener('mousedown', startDrawing);
-signatureCanvas.addEventListener('mousemove', drawSignature);
-signatureCanvas.addEventListener('mouseup', stopDrawing);
-signatureCanvas.addEventListener('mouseleave', stopDrawing);
-signatureCanvas.addEventListener('touchstart', startDrawing, { passive: true });
-signatureCanvas.addEventListener('touchmove', drawSignature, { passive: false });
-signatureCanvas.addEventListener('touchend', stopDrawing);
-clearSignatureBtn?.addEventListener('click', () => {
-    ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    signatureBase64.value = '';
-});
-
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
-    new bootstrap.Tooltip(element);
-});
+})();
 </script>
 </body>
 </html>

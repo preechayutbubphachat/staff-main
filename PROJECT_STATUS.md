@@ -581,3 +581,37 @@ npm run build
   - `npm run build:tailwind` ผ่าน
 
 ---
+
+---
+
+## ล่าสุด: ปรับหน้า Login เป็นโทน Over Time ฟ้า-เขียว
+
+- วันที่: 1 พฤษภาคม 2569
+- Branch: `codex/strict-monthly-matrix-mapping`
+- ไฟล์ที่แก้: `auth/login.php`
+
+### สิ่งที่ปรับ
+
+- **โทนสีใหม่**: เปลี่ยนจาก blue gradient หนัก → teal-navy palette
+  - `--teal: #0f9f94`, `--teal-dark: #062f4f`, `--fog: #eaf8f8`
+  - visual-side gradient: `#062f4f → #073b5c → #0b706a` (148deg)
+  - body background: soft cyan `#eaf8f8 / #f4fbfb`
+- **Brand หลัก**: เปลี่ยนจาก NONG PHOK HOSPITAL → **Over Time**
+  - subtitle: "ระบบลงเวลางานสำหรับโรงพยาบาล"
+  - เพิ่ม clock icon + overtime-logo block
+- **ปุ่มหน้าแรก**: เปลี่ยนจาก `history.back()` → `href="/staff-main/"` โดยตรง
+  - ลบ JS handler `data-simple-back` ออก
+  - ปุ่มเป็น pill outline สีขาว `<a>` tag
+- **btn-submit**: gradient teal/navy (`#062f4f → #0f9f94`) แทน blue
+- **Focus ring**: teal `rgba(15,159,148,0.12)`
+- **Layout desktop**: `max-height: calc(100vh-48px)` ไม่ scroll บน 1366x768 / 1440x900
+  - padding ลดลง, gap กระชับขึ้น, mini-grid icon เล็กลง
+- **SSO**: ยังคง `display: none !important` (ไม่มี function)
+- **dot pattern overlay**: เพิ่ม pattern จุดเบา ๆ บน left panel
+
+### สถานะ build
+
+- `npm run build:tailwind` ผ่าน ✅
+- commit บันทึกใน branch แล้ว ✅
+- push: ต้อง push จากเครื่อง local (sandbox network ถูก restrict)
+

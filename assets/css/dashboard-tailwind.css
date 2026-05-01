@@ -25,7 +25,11 @@
 
 @layer components {
   .dash-shell {
-    @apply min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(111,215,232,0.20),transparent_24%),radial-gradient(circle_at_88%_0%,rgba(223,247,239,0.72),transparent_26%),linear-gradient(180deg,#f8fbfd_0%,#eef6f9_100%)] text-hospital-ink antialiased;
+    @apply min-h-screen overflow-x-hidden text-hospital-ink antialiased;
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 35%),
+      radial-gradient(circle at top right, rgba(125, 211, 252, 0.16), transparent 35%),
+      linear-gradient(135deg, #F7FEFF 0%, #EAF7F8 100%);
   }
 
   .dash-sidebar {
@@ -33,7 +37,7 @@
   }
 
   .dash-sidebar-panel {
-    @apply flex h-full min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-[#e2eef2]/80 bg-white/90 p-3.5 shadow-soft backdrop-blur-xl;
+    @apply flex h-full min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-[#D8E7EA]/80 bg-white/95 p-3.5 shadow-soft backdrop-blur-xl;
   }
 
   .dash-main {
@@ -41,7 +45,7 @@
   }
 
   .dash-topbar {
-    @apply sticky top-4 z-30 mb-4 flex min-h-[76px] shrink-0 items-center gap-3 rounded-[1.5rem] border border-white/70 bg-white/85 px-4 py-3 shadow-soft backdrop-blur-xl;
+    @apply sticky top-4 z-30 mb-4 flex min-h-[76px] shrink-0 items-center gap-3 rounded-[1.5rem] border border-[#D8E7EA]/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur-xl;
   }
 
   .dash-dashboard-frame {
@@ -53,11 +57,11 @@
   }
 
   .dash-card-strong {
-    @apply relative isolate pointer-events-auto rounded-[1.9rem] bg-hospital-navy p-5 text-white shadow-glass xl:p-6;
+    @apply relative isolate pointer-events-auto rounded-[1.9rem] p-5 text-white shadow-glass xl:p-6;
     background:
-      radial-gradient(circle at 18% 16%, rgba(111, 215, 232, 0.25), transparent 28%),
-      radial-gradient(circle at 72% 74%, rgba(111, 215, 232, 0.12), transparent 26%),
-      linear-gradient(135deg, #12385a 0%, #10243b 100%);
+      radial-gradient(circle at 18% 16%, rgba(20, 184, 166, 0.35), transparent 30%),
+      radial-gradient(circle at 75% 75%, rgba(15, 159, 149, 0.18), transparent 28%),
+      linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
   }
 
   .dash-nav-link {
@@ -65,7 +69,8 @@
   }
 
   .dash-nav-link.active {
-    @apply bg-hospital-navy text-white shadow-soft;
+    @apply text-white shadow-soft;
+    background: linear-gradient(135deg, #0B3A55 0%, #0F9F95 100%);
   }
 
   .dash-nav-icon {
@@ -187,7 +192,7 @@
   }
 
   .dash-kpi-card {
-    @apply relative flex h-full min-h-[134px] rounded-[1.55rem] border border-white/75 bg-white/90 p-4 shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:border-hospital-teal/25 hover:bg-white xl:min-h-[138px];
+    @apply relative flex h-full min-h-[134px] rounded-[1.55rem] border border-[#D8E7EA]/80 bg-white/95 p-4 shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:border-hospital-teal/35 hover:bg-white xl:min-h-[138px];
   }
 
   .dash-icon-badge {
@@ -195,11 +200,12 @@
   }
 
   .dash-action-card {
-    @apply relative flex h-full min-h-[154px] cursor-pointer flex-col justify-between rounded-[1.45rem] border border-white/75 bg-white/90 p-4 text-hospital-ink no-underline shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-hospital-teal/30 hover:bg-white hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
+    @apply relative flex h-full min-h-[154px] cursor-pointer flex-col justify-between rounded-[1.45rem] border border-[#D8E7EA]/80 bg-white/95 p-4 text-hospital-ink no-underline shadow-soft backdrop-blur-xl transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-hospital-teal/35 hover:bg-white hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99];
   }
 
   .dash-action-link {
-    @apply mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-hospital-navy px-3 py-1.5 text-xs font-bold text-white shadow-soft transition-all duration-200 ease-out;
+    @apply mt-2 inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-soft transition-all duration-200 ease-out;
+    background: linear-gradient(135deg, #063B4F 0%, #0F9F95 100%);
   }
 
   .dash-action-card:hover .dash-action-link {
@@ -215,7 +221,7 @@
   }
 
   .dash-btn-primary {
-    @apply bg-hospital-navy text-white shadow-soft hover:-translate-y-0.5 hover:bg-[#0f3150] hover:shadow-glass;
+    @apply bg-hospital-navy text-white shadow-soft hover:-translate-y-0.5 hover:bg-[#075D6E] hover:shadow-glass;
   }
 
   .dash-btn-secondary {
@@ -259,7 +265,7 @@
   }
 
   .dash-detail-card {
-    @apply rounded-[1.45rem] border border-white/75 bg-white/90 p-4 shadow-soft backdrop-blur-xl;
+    @apply rounded-[1.45rem] border border-[#D8E7EA]/80 bg-white/95 p-4 shadow-soft backdrop-blur-xl;
   }
 
   .dash-mobile-backdrop {
@@ -350,9 +356,9 @@
   .time-hero-card {
     @apply min-h-[222px] overflow-hidden px-5 py-4 xl:px-6 xl:py-5;
     background:
-      radial-gradient(circle at 82% 20%, rgba(17, 198, 229, 0.18), transparent 16%),
-      radial-gradient(circle at 90% 18%, rgba(17, 198, 229, 0.14), transparent 24%),
-      linear-gradient(135deg, #0f4d79 0%, #0c3c63 30%, #0d2f53 100%);
+      radial-gradient(circle at 82% 20%, rgba(20, 184, 166, 0.28), transparent 22%),
+      radial-gradient(circle at 90% 18%, rgba(15, 159, 149, 0.18), transparent 28%),
+      linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
   }
 
   .time-hero-grid {
@@ -929,9 +935,9 @@
   .approval-hero-card {
     @apply overflow-hidden px-5 py-5 xl:px-7 xl:py-6;
     background:
-      radial-gradient(circle at 86% 20%, rgba(17, 198, 229, 0.22), transparent 16%),
-      radial-gradient(circle at 96% 18%, rgba(17, 198, 229, 0.16), transparent 26%),
-      linear-gradient(135deg, #0f4d79 0%, #0e416b 30%, #0d3155 100%);
+      radial-gradient(circle at 86% 20%, rgba(20, 184, 166, 0.28), transparent 22%),
+      radial-gradient(circle at 96% 18%, rgba(15, 159, 149, 0.18), transparent 28%),
+      linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
   }
 
   .approval-hero-grid {
@@ -1648,7 +1654,7 @@
   }
 
   .daily-roster-row {
-    @apply grid min-h-[72px] grid-cols-[74px_minmax(136px,1.18fr)_minmax(78px,0.72fr)_minmax(86px,0.76fr)_minmax(98px,0.76fr)_minmax(84px,0.62fr)_minmax(82px,0.76fr)_minmax(94px,0.68fr)_176px] items-center gap-2.5 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(16,36,59,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-hospital-teal/25 hover:shadow-soft;
+    @apply grid min-h-[72px] grid-cols-[74px_minmax(136px,1.18fr)_minmax(78px,0.72fr)_minmax(86px,0.76fr)_minmax(98px,0.76fr)_minmax(84px,0.62fr)_minmax(82px,0.76fr)_minmax(94px,0.68fr)_176px] items-center gap-2.5 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(6,59,79,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-hospital-teal/25 hover:shadow-soft;
   }
 
   .daily-date-tile {
@@ -4291,10 +4297,10 @@
     padding: 1.65rem 1.75rem;
     color: #fff;
     background:
-      radial-gradient(circle at 88% 15%, rgba(31, 182, 210, 0.26), transparent 24rem),
-      radial-gradient(circle at 0% 0%, rgba(87, 145, 255, 0.18), transparent 20rem),
-      linear-gradient(135deg, #07365c 0%, #073f73 45%, #062845 100%);
-    box-shadow: 0 22px 48px rgba(7, 40, 68, 0.18);
+      radial-gradient(circle at 88% 15%, rgba(20, 184, 166, 0.30), transparent 24rem),
+      radial-gradient(circle at 0% 0%, rgba(15, 159, 149, 0.18), transparent 20rem),
+      linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
+    box-shadow: 0 22px 48px rgba(6, 59, 79, 0.18);
   }
 
   .audit-log-hero::after {
@@ -4614,7 +4620,7 @@
   .audit-log-card-heading h2,
   .audit-log-results-header h2 {
     margin: 0.18rem 0 0;
-    color: #10243b;
+    color: #082B45;
     font-family: Prompt, sans-serif;
     font-size: 1.24rem;
     font-weight: 800;
@@ -4706,7 +4712,7 @@
   }
 
   .audit-log-button.is-primary {
-    background: linear-gradient(135deg, #073b66, #052d4f);
+    background: linear-gradient(135deg, #063B4F, #0F9F95);
     color: #fff;
   }
 
@@ -4777,7 +4783,7 @@
   }
 
   .audit-log-view-switch button.active {
-    background: #073b66;
+    background: #073B5A;
     color: #fff;
     box-shadow: 0 12px 24px rgba(7, 59, 102, 0.2);
   }
@@ -4838,7 +4844,7 @@
     display: grid;
     gap: 0.1rem;
     font-weight: 900;
-    color: #10243b;
+    color: #082B45;
   }
 
   .audit-log-table-name em {
@@ -5842,10 +5848,10 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   padding: 1.45rem 1.6rem;
   color: #fff;
   background:
-    radial-gradient(circle at 17% 14%, rgba(111, 215, 232, 0.28), transparent 28%),
-    radial-gradient(circle at 76% 68%, rgba(29, 185, 172, 0.1), transparent 30%),
-    linear-gradient(135deg, #0c426b 0%, #082947 100%);
-  box-shadow: 0 28px 70px rgba(16, 36, 59, 0.12);
+    radial-gradient(circle at 17% 14%, rgba(20, 184, 166, 0.30), transparent 28%),
+    radial-gradient(circle at 76% 68%, rgba(15, 159, 149, 0.18), transparent 30%),
+    linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
+  box-shadow: 0 28px 70px rgba(6, 59, 79, 0.13);
 }
 
 .admin-users-hero::after {
@@ -6005,7 +6011,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-hero-icon.is-teal {
   background: rgba(94, 234, 212, 0.95);
-  color: #082947;
+  color: #063B4F;
 }
 
 .admin-users-hero-icon.is-amber {
@@ -6065,8 +6071,8 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-hero-action.is-primary {
   background: #fff;
-  color: #12385a;
-  box-shadow: 0 18px 44px rgba(16, 36, 59, 0.16);
+  color: #063B4F;
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.16);
 }
 
 .admin-users-hero-action.is-secondary {
@@ -6091,7 +6097,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border: 1px solid rgba(255, 255, 255, 0.75);
   background: rgba(255, 255, 255, 0.88);
   padding: 1rem 1.1rem;
-  box-shadow: 0 18px 44px rgba(16, 36, 59, 0.08);
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
   backdrop-filter: blur(20px);
 }
 
@@ -6105,7 +6111,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 .admin-users-kpi-card strong {
   margin-top: 0.25rem;
   display: block;
-  color: #10243b;
+  color: #082B45;
   font-family: Prompt, sans-serif;
   font-size: 1.25rem;
   line-height: 1.2;
@@ -6154,7 +6160,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border-radius: 1.55rem;
   border: 1px solid rgba(255, 255, 255, 0.75);
   background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 18px 44px rgba(16, 36, 59, 0.08);
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
   backdrop-filter: blur(20px);
 }
 
@@ -6165,7 +6171,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-card-heading span,
 .admin-users-results-header > div:first-child > span {
-  color: #1f9a91;
+  color: #0F9F95;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -6175,7 +6181,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 .admin-users-card-heading h2,
 .admin-users-results-header h2 {
   margin-top: 0.25rem;
-  color: #10243b;
+  color: #082B45;
   font-family: Prompt, sans-serif;
   font-size: 1.35rem;
   line-height: 1.15;
@@ -6223,7 +6229,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border: 1px solid #e2e8f0;
   background: #fff;
   padding: 0 0.75rem;
-  color: #10243b;
+  color: #082B45;
   font-size: 0.875rem;
   font-weight: 700;
   outline: none;
@@ -6236,7 +6242,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-field input:focus,
 .admin-users-field select:focus {
-  border-color: #1f9a91;
+  border-color: #0F9F95;
   box-shadow: 0 0 0 4px rgba(31, 154, 145, 0.1);
 }
 
@@ -6253,7 +6259,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 }
 
 .admin-users-input-wrap:focus-within {
-  border-color: #1f9a91;
+  border-color: #0F9F95;
   box-shadow: 0 0 0 4px rgba(31, 154, 145, 0.1);
 }
 
@@ -6308,24 +6314,24 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 .admin-users-row-action:focus-visible,
 .admin-users-more-action:focus-visible,
 .admin-users-pagination a:focus-visible {
-  outline: 2px solid #1f9a91;
+  outline: 2px solid #0F9F95;
   outline-offset: 2px;
 }
 
 .admin-users-button.is-primary {
-  background: #12385a;
+  background: #063B4F;
   color: #fff;
-  box-shadow: 0 18px 44px rgba(16, 36, 59, 0.08);
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
 }
 
 .admin-users-button.is-ghost {
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #10243b;
+  color: #082B45;
 }
 
 .admin-users-button.is-ghost:hover {
-  background: #f4f9fb;
+  background: #EAF7F8;
 }
 
 .admin-users-toolbox {
@@ -6336,7 +6342,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-toolbox h3 {
   margin-bottom: 0.65rem;
-  color: #10243b;
+  color: #082B45;
   font-size: 0.875rem;
   font-weight: 800;
 }
@@ -6353,15 +6359,15 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border: 1px solid #e2e8f0;
   background: #fff;
   padding: 0.5rem;
-  color: #10243b;
+  color: #082B45;
   text-align: center;
   font-size: 0.75rem;
 }
 
 .admin-users-tool-button:hover {
   border-color: rgba(31, 154, 145, 0.3);
-  background: #f4f9fb;
-  color: #12385a;
+  background: #EAF7F8;
+  color: #063B4F;
 }
 
 .admin-users-table-panel {
@@ -6386,7 +6392,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   align-items: center;
   gap: 0.5rem;
   border-radius: 1rem;
-  background: #f4f9fb;
+  background: #EAF7F8;
   padding: 0.25rem;
 }
 
@@ -6406,13 +6412,13 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 .admin-users-view-switch button:hover {
   background: #fff;
-  color: #12385a;
+  color: #063B4F;
 }
 
 .admin-users-view-switch button.is-active {
-  background: #12385a;
+  background: #063B4F;
   color: #fff;
-  box-shadow: 0 18px 44px rgba(16, 36, 59, 0.08);
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
 }
 
 .admin-users-table-shell {
@@ -6450,7 +6456,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   background: #fff;
   padding: 0.58rem 0.7rem;
   vertical-align: middle;
-  color: #10243b;
+  color: #082B45;
   font-size: 0.875rem;
   font-weight: 700;
 }
@@ -6464,7 +6470,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   height: 1rem;
   border-radius: 0.25rem;
   border: 1px solid #cbd5e1;
-  accent-color: #1f9a91;
+  accent-color: #0F9F95;
 }
 
 .admin-users-index-cell {
@@ -6479,13 +6485,13 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0;
-  color: #12385a;
+  color: #063B4F;
   text-align: left;
   font-weight: 800;
 }
 
 .admin-users-name-cell button:hover {
-  color: #1f9a91;
+  color: #0F9F95;
 }
 
 .admin-users-name-cell span {
@@ -6583,7 +6589,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   margin-left: 0.25rem;
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #10243b;
+  color: #082B45;
 }
 
 .admin-users-more-action {
@@ -6608,12 +6614,12 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 }
 
 .admin-users-empty .bi {
-  color: #1f9a91;
+  color: #0F9F95;
   font-size: 1.875rem;
 }
 
 .admin-users-empty strong {
-  color: #10243b;
+  color: #082B45;
   font-family: Prompt, sans-serif;
   font-size: 1.125rem;
 }
@@ -6642,7 +6648,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border: 1px solid #e2e8f0;
   background: #fff;
   padding: 0 0.75rem;
-  color: #10243b;
+  color: #082B45;
   font-size: 0.875rem;
   font-weight: 800;
   outline: none;
@@ -6670,7 +6676,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   border: 1px solid #e2e8f0;
   background: #fff;
   padding: 0 0.75rem;
-  color: #10243b;
+  color: #082B45;
   font-size: 0.875rem;
   font-weight: 800;
   text-decoration: none;
@@ -6678,8 +6684,8 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 }
 
 .admin-users-pagination a.is-active {
-  border-color: #12385a;
-  background: #12385a;
+  border-color: #063B4F;
+  background: #063B4F;
   color: #fff;
 }
 
@@ -6691,7 +6697,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 }
 
 .admin-users-bottom-title {
-  color: #10243b;
+  color: #082B45;
   font-family: Prompt, sans-serif;
   font-size: 1.15rem;
   line-height: 1.2;
@@ -6710,7 +6716,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 .admin-users-bottom-item strong {
   margin-top: 0.25rem;
   display: block;
-  color: #12385a;
+  color: #063B4F;
   font-family: Prompt, sans-serif;
   font-size: 1.35rem;
   line-height: 1.1;
@@ -6740,7 +6746,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 }
 
 .admin-users-progress-head strong {
-  color: #12385a;
+  color: #063B4F;
   font-family: Prompt, sans-serif;
   font-size: 1.125rem;
   font-weight: 800;
@@ -6899,11 +6905,11 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   }
 
   .admin-users-hero {
-    @apply relative isolate grid min-h-[13.25rem] gap-5 overflow-hidden rounded-[1.9rem] bg-hospital-navy px-6 py-5 text-white shadow-glass xl:grid-cols-[minmax(0,1fr)_minmax(500px,1.25fr)_230px] xl:items-center xl:px-7 xl:py-6;
+    @apply relative isolate grid min-h-[13.25rem] gap-5 overflow-hidden rounded-[1.9rem] px-6 py-5 text-white shadow-glass xl:grid-cols-[minmax(0,1fr)_minmax(500px,1.25fr)_230px] xl:items-center xl:px-7 xl:py-6;
     background:
-      radial-gradient(circle at 17% 14%, rgba(111, 215, 232, 0.28), transparent 28%),
-      radial-gradient(circle at 76% 68%, rgba(29, 185, 172, 0.10), transparent 30%),
-      linear-gradient(135deg, #0c426b 0%, #082947 100%);
+      radial-gradient(circle at 17% 14%, rgba(20, 184, 166, 0.30), transparent 28%),
+      radial-gradient(circle at 76% 68%, rgba(15, 159, 149, 0.18), transparent 30%),
+      linear-gradient(135deg, #073B5A 0%, #075D6E 48%, #0F9F95 100%);
   }
 
   .admin-users-hero::after {
@@ -7435,7 +7441,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   }
 
   .db-admin-hero-card {
-    @apply grid min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(30,181,205,0.24),transparent_24rem),linear-gradient(135deg,#083553_0%,#0b3f63_48%,#062a44_100%)] p-5 text-white shadow-[0_20px_48px_rgba(7,40,68,0.17)] xl:min-h-[210px] xl:grid-cols-[minmax(340px,1.05fr)_minmax(500px,1.2fr)_230px] xl:items-center xl:gap-5 xl:p-6;
+    @apply grid min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(30,181,205,0.24),transparent_24rem),linear-gradient(135deg,#083553_0%,#0b3f63_48%,#062a44_100%)] p-5 text-white shadow-[0_20px_48px_rgba(6,59,79,0.17)] xl:min-h-[210px] xl:grid-cols-[minmax(340px,1.05fr)_minmax(500px,1.2fr)_230px] xl:items-center xl:gap-5 xl:p-6;
   }
 
   .db-admin-hero-copy {
@@ -7949,10 +7955,10 @@ body.manage-time-page-shell .manage-time-bottom-strip {
     padding: 1.65rem 1.75rem;
     color: #fff;
     background:
-      radial-gradient(circle at 88% 15%, rgba(31, 182, 210, 0.28), transparent 24rem),
-      radial-gradient(circle at 0% 0%, rgba(87, 145, 255, 0.2), transparent 20rem),
-      linear-gradient(135deg, #07365c 0%, #073f73 48%, #062845 100%);
-    box-shadow: 0 22px 48px rgba(7, 40, 68, 0.18);
+      radial-gradient(circle at 88% 15%, rgba(20, 184, 166, 0.28), transparent 24rem),
+      radial-gradient(circle at 0% 0%, rgba(15, 159, 149, 0.2), transparent 20rem),
+      linear-gradient(135deg, #073B5A 0%, #0F9F95 48%, #062845 100%);
+    box-shadow: 0 22px 48px rgba(6, 59, 79, 0.18);
   }
 
   .db-table-hero::after {
@@ -8283,7 +8289,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   .db-table-results-header h2,
   .db-table-selected-toolbar h2 {
     margin: 0.18rem 0 0;
-    color: #10243b;
+    color: #082B45;
     font-family: Prompt, sans-serif;
     font-size: 1.32rem;
     font-weight: 800;
@@ -8368,7 +8374,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   }
 
   .db-table-button.is-primary {
-    background: linear-gradient(135deg, #073b66, #052d4f);
+    background: linear-gradient(135deg, #073B5A, #063B4F);
     color: #fff;
   }
 
@@ -8444,7 +8450,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   }
 
   .db-table-view-switch button.active {
-    background: #073b66;
+    background: #073B5A;
     color: #fff;
     box-shadow: 0 12px 24px rgba(7, 59, 102, 0.2);
   }
@@ -8520,7 +8526,7 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
   .db-table-name-cell strong {
     display: block;
-    color: #10243b;
+    color: #082B45;
     font-weight: 900;
   }
 
