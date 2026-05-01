@@ -13,9 +13,34 @@ require_once __DIR__ . '/config/db.php';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/staff-main/index.php')), '/');
 $basePath = $basePath === '' ? '' : $basePath;
 $today = date('Y-m-d');
+$yesterday = date('Y-m-d', strtotime('-1 day'));
 $nowSql = date('Y-m-d H:i:s');
+$nowTime = date('H:i:s');
 $hospitalImagePath = __DIR__ . '/images/hopital.png';
 $hospitalImageUrl = is_file($hospitalImagePath) ? $basePath . '/images/hopital.png' : '';
+$activeShiftCondition = "
+       t.time_in IS NOT NULL
+       AND t.time_out IS NOT NULL
+       AND COALESCE(t.status, 'submitted') <> 'draft'
+       AND (
+           (
+               t.work_date = ?
+               AND TIME(t.time_in) <= TIME(t.time_out)
+               AND TIME(t.time_in) <= ?
+               AND TIME(t.time_out) >= ?
+           )
+           OR (
+               t.work_date = ?
+               AND TIME(t.time_in) > TIME(t.time_out)
+               AND TIME(t.time_in) <= ?
+           )
+           OR (
+               t.work_date = ?
+               AND TIME(t.time_in) > TIME(t.time_out)
+               AND TIME(t.time_out) >= ?
+           )
+       )";
+$activeShiftParams = [$today, $nowTime, $nowTime, $today, $nowTime, $yesterday, $nowTime];
 
 function home_query_value(PDO $conn, string $sql, array $params = [], $fallback = 0)
 {
@@ -176,12 +201,9 @@ $activeUsersNow = home_query_rows(
      FROM time_logs t
      LEFT JOIN users u ON t.user_id = u.id
      LEFT JOIN departments d ON t.department_id = d.id
-     WHERE t.time_in IS NOT NULL
-       AND t.time_out IS NOT NULL
-       AND t.time_in <= ?
-       AND t.time_out >= ?
+     WHERE {$activeShiftCondition}
      ORDER BY t.time_in ASC, u.fullname ASC",
-    [$nowSql, $nowSql]
+    $activeShiftParams
 );
 
 $todayAttendanceRows = home_query_rows(
@@ -208,13 +230,10 @@ $activeDepartments = home_query_rows(
         COUNT(DISTINCT t.user_id) AS staff_count
      FROM time_logs t
      LEFT JOIN departments d ON t.department_id = d.id
-     WHERE t.time_in IS NOT NULL
-       AND t.time_out IS NOT NULL
-       AND t.time_in <= ?
-       AND t.time_out >= ?
+     WHERE {$activeShiftCondition}
      GROUP BY d.id, d.department_name
      ORDER BY staff_count DESC, d.department_name ASC",
-    [$nowSql, $nowSql]
+    $activeShiftParams
 );
 
 $todayAttendanceCount = (int) home_query_value($conn, 'SELECT COUNT(*) FROM time_logs WHERE work_date = ?', [$today]);
@@ -224,17 +243,7 @@ $activeUsersCount = count($activeUsersNow);
 $activeDepartmentsCount = count($activeDepartments);
 $latestUpdateLabel = date('H:i') . ' น.';
 
-$departmentTableRows = $activeDepartments;
-if (!$departmentTableRows) {
-    $departmentTableRows = home_query_rows(
-        $conn,
-        "SELECT department_name, 0 AS staff_count
-         FROM departments
-         ORDER BY department_name ASC
-         LIMIT 6"
-    );
-}
-
+$departmentTableRows = array_values(array_filter($activeDepartments, static fn ($row) => (int) ($row['staff_count'] ?? 0) > 0));
 $topDepartmentsByCount = $departmentTableRows;
 ?>
 <!DOCTYPE html>
@@ -297,7 +306,7 @@ $topDepartmentsByCount = $departmentTableRows;
                             </span>
                             <div>
                                 <p class="text-sm font-extrabold text-hospital-teal">ระบบพร้อมใช้งาน</p>
-                                <p class="text-xs font-semibold text-hospital-muted">อัปเดตข้อมูลล่าสุดเมื่อ <?= htmlspecialchars($latestUpdateLabel) ?></p>
+                                <p class="text-xs font-semibold text-hospital-muted">อัปเดตข้อมูลล่าสุดเมื่อ <span data-last-updated><?= htmlspecialchars($latestUpdateLabel) ?></span></p>
                             </div>
                         </div>
                     </div>
@@ -338,25 +347,21 @@ $topDepartmentsByCount = $departmentTableRows;
 
                         <div class="ot-status-panel">
                             <p class="mb-4 text-base font-extrabold text-white">สรุปสถานะการลงเวลาวันนี้</p>
-                            <div class="grid gap-3 sm:grid-cols-4">
+                            <div class="grid gap-3 sm:grid-cols-3">
                                 <div class="ot-status-metric">
                                     <i class="bi bi-people-fill"></i>
-                                    <strong><?= number_format($activeUsersCount) ?></strong>
+                                    <strong id="homeOverviewActiveUsers"><?= number_format($activeUsersCount) ?></strong>
                                     <span>บุคลากร<br>พร้อมทำงานที่ตอนนี้</span>
                                 </div>
                                 <div class="ot-status-metric">
                                     <i class="bi bi-buildings-fill"></i>
-                                    <strong><?= number_format($activeDepartmentsCount) ?></strong>
+                                    <strong id="homeOverviewActiveDepartments"><?= number_format($activeDepartmentsCount) ?></strong>
                                     <span>แผนก<br>ลงเวรตอนนี้</span>
                                 </div>
                                 <div class="ot-status-metric">
                                     <i class="bi bi-clipboard2-check-fill"></i>
-                                    <strong><?= number_format($todayAttendanceCount) ?></strong>
+                                    <strong id="homeOverviewTodayAttendance"><?= number_format($todayAttendanceCount) ?></strong>
                                     <span>รายการ<br>ลงเวลาวันนี้</span>
-                                </div>
-                                <div class="ot-progress-ring" style="--progress: <?= (int) $attendanceRate ?>;">
-                                    <span><?= number_format($attendanceRate) ?>%</span>
-                                    <small>อัตราการลงเวลาภาพรวม</small>
                                 </div>
                             </div>
                         </div>
@@ -379,11 +384,11 @@ $topDepartmentsByCount = $departmentTableRows;
                         <div class="flex items-center gap-4">
                             <span class="stat-icon-badge"><i class="bi bi-people-fill"></i></span>
                             <div>
-                                <strong class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeUsersCount) ?></strong>
+                                <strong id="homeCardActiveUsers" class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeUsersCount) ?></strong>
                                 <span class="ml-1 font-bold text-hospital-teal">คน</span>
                             </div>
                         </div>
-                        <div class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-2.5">
+                        <div id="homeActiveUsersPreview" class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-2.5">
                             <?php if ($activeUsersNow): ?>
                                 <?php foreach ($activeUsersNow as $row): ?>
                                     <div class="active-user-row">
@@ -396,7 +401,7 @@ $topDepartmentsByCount = $departmentTableRows;
                                     </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <p class="py-5 text-sm font-semibold text-hospital-muted">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</p>
+                                <p class="ot-empty-state">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -421,11 +426,11 @@ $topDepartmentsByCount = $departmentTableRows;
                         <div class="flex items-center gap-4">
                             <span class="stat-icon-badge"><i class="bi bi-buildings-fill"></i></span>
                             <div>
-                                <strong class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeDepartmentsCount) ?></strong>
+                                <strong id="homeCardActiveDepartments" class="font-prompt text-5xl font-extrabold text-hospital-teal"><?= number_format($activeDepartmentsCount) ?></strong>
                                 <span class="ml-1 font-bold text-hospital-teal">แผนก</span>
                             </div>
                         </div>
-                        <div class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-3">
+                        <div id="homeDepartmentsPreview" class="active-preview-list rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-3">
                             <?php if ($topDepartmentsByCount): ?>
                                 <?php foreach ($topDepartmentsByCount as $row): ?>
                                     <div class="flex items-center justify-between border-b border-hospital-navy/5 py-2 last:border-b-0">
@@ -434,7 +439,7 @@ $topDepartmentsByCount = $departmentTableRows;
                                     </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <p class="py-5 text-sm font-semibold text-hospital-muted">ยังไม่มีแผนกที่กำลังปฏิบัติงาน</p>
+                                <p class="ot-empty-state">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -459,17 +464,17 @@ $topDepartmentsByCount = $departmentTableRows;
                         <div class="flex items-center gap-4">
                             <span class="stat-icon-badge"><i class="bi bi-calendar2-check-fill"></i></span>
                             <div>
-                                <strong class="font-prompt text-6xl font-extrabold text-hospital-teal"><?= number_format($todayAttendanceCount) ?></strong>
+                                <strong id="homeCardTodayAttendance" class="font-prompt text-6xl font-extrabold text-hospital-teal"><?= number_format($todayAttendanceCount) ?></strong>
                                 <p class="font-bold text-hospital-teal">รายการ</p>
                             </div>
                         </div>
                         <div class="rounded-[1.15rem] border border-hospital-navy/10 bg-white/70 p-5">
                             <p class="text-sm font-semibold text-hospital-muted">อัตราการลงเวลาภาพรวม</p>
-                            <strong class="mt-1 block font-prompt text-4xl font-extrabold text-hospital-ink"><?= number_format($attendanceRate) ?>%</strong>
+                            <strong id="homeAttendanceRate" class="mt-1 block font-prompt text-4xl font-extrabold text-hospital-ink"><?= number_format($attendanceRate) ?>%</strong>
                             <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
-                                <span class="block h-full rounded-full bg-gradient-to-r from-hospital-teal to-emerald-400" style="width: <?= (int) $attendanceRate ?>%"></span>
+                                <span id="homeAttendanceRateBar" class="block h-full rounded-full bg-gradient-to-r from-hospital-teal to-emerald-400" style="width: <?= (int) $attendanceRate ?>%"></span>
                             </div>
-                            <p class="mt-2 text-xs font-semibold text-hospital-muted">เสร็จสิ้น <?= number_format($todayAttendanceCount) ?> จาก <?= number_format(max($expectedTodayShiftCount, 1)) ?> เวร</p>
+                            <p class="mt-2 text-xs font-semibold text-hospital-muted">เสร็จสิ้น <span id="homeAttendanceCompleted"><?= number_format($todayAttendanceCount) ?></span> จาก <span id="homeAttendanceExpected"><?= number_format(max($expectedTodayShiftCount, 1)) ?></span> เวร</p>
                         </div>
                     </div>
                     <div class="ot-compact-actions">
@@ -507,7 +512,7 @@ $topDepartmentsByCount = $departmentTableRows;
                                     <th class="text-right">เมนู</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="activeUsersTableBody">
                                 <?php if ($activeUsersNow): ?>
                                     <?php foreach (array_slice($activeUsersNow, 0, 5) as $row): ?>
                                         <tr>
@@ -536,9 +541,13 @@ $topDepartmentsByCount = $departmentTableRows;
                             </tbody>
                         </table>
                     </div>
-                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-hospital-muted">
-                        <span>แสดง 1-<?= number_format(min(5, $activeUsersCount)) ?> จาก <?= number_format($activeUsersCount) ?> รายการ</span>
-                        <span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>
+                    <div id="activeUsersTableFooter" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-hospital-muted">
+                        <?php if ($activeUsersCount > 0): ?>
+                            <span>แสดง 1-<?= number_format(min(5, $activeUsersCount)) ?> จาก <?= number_format($activeUsersCount) ?> รายการ</span>
+                            <span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>
+                        <?php else: ?>
+                            <span>ไม่มีรายการ</span>
+                        <?php endif; ?>
                     </div>
                 </article>
 
@@ -559,20 +568,19 @@ $topDepartmentsByCount = $departmentTableRows;
                                     <th>รายละเอียด</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="departmentsTableBody">
                                 <?php if ($departmentTableRows): ?>
                                     <?php foreach ($departmentTableRows as $row): ?>
-                                        <?php $deptStatus = home_department_status((int) $row['staff_count']); ?>
                                         <tr>
                                             <td class="font-extrabold text-hospital-ink"><?= htmlspecialchars($row['department_name']) ?></td>
                                             <td><?= number_format((int) $row['staff_count']) ?> คน</td>
-                                            <td><span class="ot-status-badge <?= htmlspecialchars($deptStatus['class']) ?>"><span></span><?= htmlspecialchars($deptStatus['label']) ?></span></td>
+                                            <td><span class="ot-status-badge"><span></span>กำลังปฏิบัติงาน</span></td>
                                             <td><button type="button" class="ot-row-link" data-modal-open="departmentsModal">รายละเอียด <i class="bi bi-chevron-right"></i></button></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="4" class="py-10 text-center">ยังไม่มีข้อมูลแผนก</td>
+                                        <td colspan="4" class="py-10 text-center">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -610,7 +618,7 @@ $topDepartmentsByCount = $departmentTableRows;
                                 <th>สถานะ</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="activeUsersModalTableBody">
                             <?php if ($activeUsersNow): ?>
                                 <?php foreach ($activeUsersNow as $row): ?>
                                     <tr>
@@ -665,19 +673,18 @@ $topDepartmentsByCount = $departmentTableRows;
                                 <th>รายละเอียด</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="departmentsModalTableBody">
                             <?php if ($departmentTableRows): ?>
                                 <?php foreach ($departmentTableRows as $row): ?>
-                                    <?php $deptStatus = home_department_status((int) $row['staff_count']); ?>
                                     <tr>
                                         <td class="font-extrabold text-hospital-ink"><?= htmlspecialchars($row['department_name']) ?></td>
                                         <td><?= number_format((int) $row['staff_count']) ?> คน</td>
-                                        <td><span class="ot-status-badge <?= htmlspecialchars($deptStatus['class']) ?>"><span></span><?= htmlspecialchars($deptStatus['label']) ?></span></td>
+                                        <td><span class="ot-status-badge"><span></span>กำลังปฏิบัติงาน</span></td>
                                         <td>ข้อมูลจากช่วงเวลาปัจจุบัน</td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="4" class="py-10 text-center">ยังไม่มีข้อมูลแผนก</td></tr>
+                                <tr><td colspan="4" class="py-10 text-center">ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -756,13 +763,180 @@ $topDepartmentsByCount = $departmentTableRows;
             tick();
             window.setInterval(tick, 1000);
 
-            document.querySelectorAll('[data-modal-open]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const modal = document.getElementById(button.dataset.modalOpen);
-                    if (modal && typeof modal.showModal === 'function') {
-                        modal.showModal();
-                    }
+            const realtimeEndpoint = '<?= htmlspecialchars($basePath) ?>/api/public/home/realtime.php';
+            const emptyActiveMessage = 'ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้';
+            const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;',
+            }[char]));
+            const formatNumber = (value) => new Intl.NumberFormat('th-TH').format(Number(value || 0));
+            const avatarHtml = (user, className = 'active-user-avatar') => {
+                const name = user.fullname || '-';
+                if (user.avatar_url) {
+                    return `<img class="${className}" src="${escapeHtml(user.avatar_url)}" alt="${escapeHtml(name)}" loading="lazy">`;
+                }
+                return `<span class="${className}">${escapeHtml(user.initial || name.slice(0, 1) || '-')}</span>`;
+            };
+            const setText = (selector, value) => {
+                document.querySelectorAll(selector).forEach((node) => {
+                    node.textContent = value;
                 });
+            };
+            const setById = (id, value) => {
+                const node = document.getElementById(id);
+                if (node) node.textContent = value;
+            };
+            const renderEmptyRow = (colspan) => `<tr><td colspan="${colspan}" class="py-10 text-center">${emptyActiveMessage}</td></tr>`;
+            const renderActiveUsersPreview = (users) => {
+                if (!users.length) {
+                    return `<p class="ot-empty-state">${emptyActiveMessage}</p>`;
+                }
+
+                return users.map((user) => `
+                    <div class="active-user-row">
+                        ${avatarHtml(user)}
+                        <span class="min-w-0">
+                            <span class="block truncate text-[13px] font-extrabold leading-snug text-hospital-ink">${escapeHtml(user.fullname)}</span>
+                            <span class="block truncate text-[11px] font-semibold leading-snug text-hospital-muted">${escapeHtml(user.position_name)}</span>
+                        </span>
+                        <span class="max-w-[92px] truncate text-[11px] font-semibold text-hospital-muted">${escapeHtml(user.department_name)}</span>
+                    </div>
+                `).join('');
+            };
+            const renderDepartmentsPreview = (departments) => {
+                if (!departments.length) {
+                    return `<p class="ot-empty-state">${emptyActiveMessage}</p>`;
+                }
+
+                return departments.map((department) => `
+                    <div class="flex items-center justify-between border-b border-hospital-navy/5 py-2 last:border-b-0">
+                        <span class="font-bold text-hospital-ink">${escapeHtml(department.department_name)}</span>
+                        <span class="font-semibold text-hospital-muted">${formatNumber(department.staff_count)} คน</span>
+                    </div>
+                `).join('');
+            };
+            const renderActiveUsersTable = (users, includeMenu = true) => {
+                if (!users.length) {
+                    return renderEmptyRow(includeMenu ? 7 : 6);
+                }
+
+                return users.slice(0, includeMenu ? 5 : users.length).map((user) => `
+                    <tr>
+                        <td>
+                            <div class="active-table-person">
+                                ${avatarHtml(user, 'active-table-avatar')}
+                                <span class="min-w-0">
+                                    <span class="block truncate text-[13px] font-extrabold text-hospital-ink">${escapeHtml(user.fullname)}</span>
+                                    <span class="block truncate text-[11px] font-semibold text-hospital-muted">${escapeHtml(user.position_name)}</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td>${escapeHtml(user.position_name)}</td>
+                        <td>${escapeHtml(user.department_name)}</td>
+                        <td>${escapeHtml(user.shift_label)}</td>
+                        <td>${escapeHtml(user.time_in_label)}</td>
+                        <td><span class="ot-status-badge"><span></span>${escapeHtml(user.status_label || 'ปฏิบัติงาน')}</span></td>
+                        ${includeMenu ? '<td class="text-right"><button type="button" class="ot-row-link" data-modal-open="activeUsersModal">⋮</button></td>' : ''}
+                    </tr>
+                `).join('');
+            };
+            const renderDepartmentsTable = (departments, includeDetails = true) => {
+                if (!departments.length) {
+                    return renderEmptyRow(4);
+                }
+
+                return departments.map((department) => `
+                    <tr>
+                        <td class="font-extrabold text-hospital-ink">${escapeHtml(department.department_name)}</td>
+                        <td>${formatNumber(department.staff_count)} คน</td>
+                        <td><span class="ot-status-badge"><span></span>${escapeHtml(department.status_label || 'กำลังปฏิบัติงาน')}</span></td>
+                        <td>${includeDetails ? '<button type="button" class="ot-row-link" data-modal-open="departmentsModal">รายละเอียด <i class="bi bi-chevron-right"></i></button>' : 'ข้อมูลจากช่วงเวลาปัจจุบัน'}</td>
+                    </tr>
+                `).join('');
+            };
+            const updateActionAvailability = (usersCount, departmentsCount) => {
+                document.querySelectorAll('[data-csv-target="activeUsersTable"], [data-csv-target="activeUsersModalTable"], [data-print-target="activeUsersModal"]').forEach((button) => {
+                    button.toggleAttribute('disabled', usersCount === 0);
+                    button.classList.toggle('is-disabled', usersCount === 0);
+                    button.title = usersCount === 0 ? 'ไม่มีข้อมูลสำหรับส่งออก' : '';
+                });
+                document.querySelectorAll('[data-csv-target="departmentsTable"], [data-csv-target="departmentsModalTable"], [data-print-target="departmentsModal"]').forEach((button) => {
+                    button.toggleAttribute('disabled', departmentsCount === 0);
+                    button.classList.toggle('is-disabled', departmentsCount === 0);
+                    button.title = departmentsCount === 0 ? 'ไม่มีข้อมูลสำหรับส่งออก' : '';
+                });
+            };
+            const updateRealtimeUi = (payload) => {
+                if (!payload || !payload.success) return;
+                const metrics = payload.metrics || {};
+                const activeUsers = Array.isArray(payload.active_users) ? payload.active_users : [];
+                const activeDepartments = Array.isArray(payload.active_departments) ? payload.active_departments : [];
+                const usersCount = Number(metrics.active_users_count || activeUsers.length);
+                const departmentsCount = Number(metrics.active_departments_count || activeDepartments.length);
+                const todayCount = Number(metrics.today_attendance_count || 0);
+                const expectedCount = Number(metrics.expected_today_shift_count || 0);
+                const rate = Number(metrics.attendance_rate || 0);
+
+                setById('homeOverviewActiveUsers', formatNumber(usersCount));
+                setById('homeOverviewActiveDepartments', formatNumber(departmentsCount));
+                setById('homeOverviewTodayAttendance', formatNumber(todayCount));
+                setById('homeCardActiveUsers', formatNumber(usersCount));
+                setById('homeCardActiveDepartments', formatNumber(departmentsCount));
+                setById('homeCardTodayAttendance', formatNumber(todayCount));
+                setById('homeAttendanceRate', `${formatNumber(rate)}%`);
+                setById('homeAttendanceCompleted', formatNumber(todayCount));
+                setById('homeAttendanceExpected', formatNumber(Math.max(expectedCount, 1)));
+                const rateBar = document.getElementById('homeAttendanceRateBar');
+                if (rateBar) rateBar.style.width = `${Math.max(0, Math.min(100, rate))}%`;
+                if (payload.last_updated_at) setText('[data-last-updated]', payload.last_updated_at);
+
+                const usersPreview = document.getElementById('homeActiveUsersPreview');
+                if (usersPreview) usersPreview.innerHTML = renderActiveUsersPreview(activeUsers);
+                const departmentsPreview = document.getElementById('homeDepartmentsPreview');
+                if (departmentsPreview) departmentsPreview.innerHTML = renderDepartmentsPreview(activeDepartments);
+                const activeUsersTableBody = document.getElementById('activeUsersTableBody');
+                if (activeUsersTableBody) activeUsersTableBody.innerHTML = renderActiveUsersTable(activeUsers, true);
+                const activeUsersModalTableBody = document.getElementById('activeUsersModalTableBody');
+                if (activeUsersModalTableBody) activeUsersModalTableBody.innerHTML = renderActiveUsersTable(activeUsers, false);
+                const departmentsTableBody = document.getElementById('departmentsTableBody');
+                if (departmentsTableBody) departmentsTableBody.innerHTML = renderDepartmentsTable(activeDepartments, true);
+                const departmentsModalTableBody = document.getElementById('departmentsModalTableBody');
+                if (departmentsModalTableBody) departmentsModalTableBody.innerHTML = renderDepartmentsTable(activeDepartments, false);
+                const activeUsersTableFooter = document.getElementById('activeUsersTableFooter');
+                if (activeUsersTableFooter) {
+                    activeUsersTableFooter.innerHTML = usersCount > 0
+                        ? `<span>แสดง 1-${formatNumber(Math.min(5, usersCount))} จาก ${formatNumber(usersCount)} รายการ</span><span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>`
+                        : '<span>ไม่มีรายการ</span>';
+                }
+                updateActionAvailability(usersCount, departmentsCount);
+            };
+            const fetchRealtime = async () => {
+                try {
+                    const response = await fetch(`${realtimeEndpoint}?_=${Date.now()}`, {
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store',
+                    });
+                    if (!response.ok) return;
+                    updateRealtimeUi(await response.json());
+                } catch (error) {
+                    // Keep current UI if the near-real-time endpoint is temporarily unavailable.
+                }
+            };
+
+            updateActionAvailability(<?= (int) $activeUsersCount ?>, <?= (int) $activeDepartmentsCount ?>);
+            fetchRealtime();
+            window.setInterval(fetchRealtime, 15000);
+
+            document.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-modal-open]');
+                if (!button) return;
+                const modal = document.getElementById(button.dataset.modalOpen);
+                if (modal && typeof modal.showModal === 'function') {
+                    modal.showModal();
+                }
             });
 
             document.querySelectorAll('[data-modal-close]').forEach((button) => {

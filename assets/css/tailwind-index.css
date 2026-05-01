@@ -402,6 +402,11 @@
     @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-[0.8rem] border border-hospital-navy/10 bg-white/80 px-3.5 text-xs font-bold text-hospital-navy shadow-[0_8px_18px_rgba(16,36,59,0.05)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2;
   }
 
+  .ot-tool-button:disabled,
+  .ot-tool-button.is-disabled {
+    @apply cursor-not-allowed opacity-45 hover:translate-y-0 hover:bg-white/80;
+  }
+
   .ot-compact-actions {
     @apply mt-auto flex flex-wrap items-center gap-2 pt-4;
   }
@@ -422,6 +427,10 @@
 
   .active-preview-list::-webkit-scrollbar-thumb {
     @apply rounded-full bg-slate-300/70;
+  }
+
+  .ot-empty-state {
+    @apply flex min-h-[86px] items-center justify-center rounded-2xl bg-white/60 px-4 py-5 text-center text-sm font-semibold leading-6 text-hospital-muted;
   }
 
   .active-user-row {

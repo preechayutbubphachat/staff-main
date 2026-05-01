@@ -464,6 +464,38 @@ npm run build
 
 ---
 
+## ล่าสุด: ปรับ realtime/empty state หน้าแรก Public Over Time
+
+- วันที่/เวลา: 1 พฤษภาคม 2569 09:25 น.
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก public landing page / Over Time
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `api/public/home/realtime.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - ตัดวงเปอร์เซ็นต์และข้อความ `อัตราการลงเวรภาพรวม` ออกจากการ์ด `ภาพรวมวันนี้` แล้วจัด metrics เหลือ 3 ช่องให้เต็มพื้นที่
+  - แก้ logic active-now ให้อิง `work_date`, `TIME(time_in)`, `TIME(time_out)` และรองรับเวรข้ามวัน
+  - การ์ด `แผนกที่ลงเวรตอนนี้` แสดง empty state เมื่อไม่มีแผนกที่มีบุคลากรปฏิบัติงานจริง และไม่แสดงแถว 0 คน
+  - ตาราง `แผนกที่กำลังปฏิบัติงาน` แสดงเฉพาะแผนกที่มีคน > 0 หรือ empty state แทนแถว ICU/IPD/OPD 0 คน
+  - ตาราง `รายการบุคลากรที่ลงเวรตอนนี้` ซ่อน pagination ที่ทำให้เข้าใจผิดเมื่อไม่มีข้อมูล และแสดง `ไม่มีรายการ`
+  - เพิ่ม endpoint `GET /api/public/home/realtime.php` และ polling ทุก 15 วินาที เพื่ออัปเดตตัวเลข/list/table โดยไม่ reload หน้า
+  - ปุ่ม export/print ของ User Active และ Department Active ถูก disable เมื่อไม่มีข้อมูลสำหรับส่งออก
+- วิธีทดสอบ:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `C:\xampp\php\php.exe -l api\public\home\realtime.php` ผ่าน
+  - `curl http://localhost/staff-main/api/public/home/realtime.php` คืน JSON UTF-8 พร้อม `active_users`, `active_departments`, metrics และ timestamp
+  - `npm run build:tailwind` ผ่าน และ generate `assets/css/index-tailwind.css`
+- สิ่งที่ยังต้องตรวจ:
+  - Browser visual QA หลัง hard refresh ที่ 1440px/1600px
+  - ตรวจ DevTools ว่า polling ทุก 15 วินาทีไม่มี console/network error บนเครื่อง deploy
+- สถานะ: completed / pending browser visual review
+
+---
+
 ## Deployment / Git Status
 
 - วันที่/เวลา: 30 เมษายน 2569 16:13 น.
