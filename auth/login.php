@@ -99,11 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --ink: #10243b;
-            --teal: #1c6b63;
-            --gold: #d3a448;
-            --fog: #eef4f4;
-            --line: rgba(16, 36, 59, 0.14);
+            --ink: #0f2544;
+            --teal: #0f9f94;
+            --teal-dark: #062f4f;
+            --teal-mid: #07857c;
+            --fog: #eaf8f8;
+            --line: rgba(15, 37, 68, 0.13);
         }
 
         * { box-sizing: border-box; }
@@ -111,196 +112,224 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body {
             min-height: 100vh;
             margin: 0;
-            font-family: 'Sarabun', sans-serif;
+            font-family: 'Prompt', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at 12% 10%, rgba(39, 193, 184, 0.18), transparent 30rem),
-                radial-gradient(circle at 88% 88%, rgba(15, 105, 161, 0.12), transparent 28rem),
-                linear-gradient(135deg, #eef8fb 0%, #f8fcff 50%, #edf7f4 100%);
+                radial-gradient(circle at 10% 8%,  rgba(15, 159, 148, 0.14), transparent 28rem),
+                radial-gradient(circle at 90% 90%, rgba(6,  47,  79,  0.10), transparent 26rem),
+                linear-gradient(135deg, #eaf8f7 0%, #f4fbfb 55%, #edf7f5 100%);
             display: grid;
             place-items: center;
-            padding: 40px 28px;
+            padding: 24px 20px;
         }
 
+        /* ── Shell ── */
         .login-shell {
-            width: min(1260px, 100%);
-            min-height: min(760px, calc(100vh - 80px));
+            width: min(1180px, 100%);
+            max-height: calc(100vh - 48px);
             display: grid;
-            grid-template-columns: minmax(480px, 1fr) minmax(460px, 0.95fr);
-            border-radius: 32px;
+            grid-template-columns: 55% 45%;
+            border-radius: 28px;
             overflow: hidden;
             background: #fff;
-            border: 1px solid rgba(221, 234, 241, 0.92);
-            box-shadow: 0 30px 90px rgba(13, 48, 78, 0.16);
+            border: 1px solid #d7eeee;
+            box-shadow: 0 24px 72px rgba(6, 47, 79, 0.14);
         }
 
+        /* ── Left (Brand) Panel ── */
         .visual-side {
-            min-height: 720px;
-            padding: 48px 54px;
+            padding: 36px 46px;
             background:
-                radial-gradient(circle at 82% 18%, rgba(12, 113, 189, 0.52), transparent 28rem),
-                radial-gradient(circle at 18% 86%, rgba(25, 189, 173, 0.34), transparent 24rem),
-                linear-gradient(150deg, #052b55 0%, #063f78 45%, #007a9c 100%);
-            color: #f6fbff;
+                radial-gradient(circle at 80% 15%, rgba(20, 184, 166, 0.45), transparent 26rem),
+                radial-gradient(circle at 15% 85%, rgba(15, 159, 148, 0.30), transparent 22rem),
+                linear-gradient(148deg, #062f4f 0%, #073b5c 48%, #0b706a 100%);
+            color: #f0fafa;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            gap: 20px;
             position: relative;
             isolation: isolate;
+            overflow: hidden;
         }
 
+        /* subtle dot pattern overlay */
+        .visual-side::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 28px 28px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* faint hospital logo watermark */
         .visual-side::after {
             content: "";
             position: absolute;
-            right: -72px;
-            bottom: -92px;
-            width: 460px;
-            height: 360px;
-            background:
-                linear-gradient(rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
-                url('../LOGO/nongphok_logo.png') center/230px no-repeat;
-            opacity: 0.32;
-            filter: saturate(0.75);
-            z-index: -1;
+            right: -50px;
+            bottom: -60px;
+            width: 380px;
+            height: 300px;
+            background: url('../LOGO/nongphok_logo.png') center/200px no-repeat;
+            opacity: 0.10;
+            filter: grayscale(1) brightness(2);
+            z-index: 0;
         }
 
-        .brand-line {
-            display: inline-flex;
+        .visual-side > * { position: relative; z-index: 1; }
+
+        /* Over Time logo block */
+        .overtime-logo {
+            display: flex;
             align-items: center;
             gap: 12px;
-            font-family: 'Prompt', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.82rem;
         }
 
-        .brand-line img {
-            width: 44px;
-            height: 44px;
-            object-fit: contain;
+        .overtime-logo-icon {
+            width: 46px;
+            height: 46px;
             border-radius: 14px;
-            padding: 6px;
-            background: rgba(255,255,255,0.08);
-        }
-
-        .brand-top {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.20);
             display: flex;
-            flex-direction: column;
-            gap: 42px;
-            align-items: flex-start;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            color: #fff;
+            flex-shrink: 0;
         }
 
-        .visual-copy {
-            max-width: 520px;
-            position: relative;
-            z-index: 1;
+        .overtime-logo-text {
+            font-family: 'Prompt', sans-serif;
+            font-weight: 700;
         }
 
-        .visual-copy .badge-soft {
+        .overtime-logo-text .brand-name {
+            display: block;
+            font-size: 1.1rem;
+            letter-spacing: -0.01em;
+            color: #fff;
+            line-height: 1.15;
+        }
+
+        .overtime-logo-text .brand-sub {
+            display: block;
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.65);
+            letter-spacing: 0.02em;
+            font-weight: 400;
+        }
+
+        /* Headline block */
+        .visual-copy { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+        .badge-soft {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 14px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.20);
+            padding: 6px 14px;
             border-radius: 999px;
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 600;
+            margin-bottom: 18px;
+            width: fit-content;
         }
 
         .visual-copy h1 {
             font-family: 'Prompt', sans-serif;
-            font-size: clamp(2.35rem, 3.55vw, 3.95rem);
-            line-height: 1.12;
-            letter-spacing: -0.055em;
-            margin: 28px 0 18px;
+            font-size: clamp(1.75rem, 2.6vw, 2.55rem);
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin: 0 0 12px;
+            color: #fff;
         }
 
         .visual-copy p {
-            max-width: 440px;
-            font-size: 1.03rem;
-            line-height: 1.72;
-            color: rgba(246,251,255,0.84);
+            font-size: 0.92rem;
+            line-height: 1.7;
+            color: rgba(240,250,250,0.78);
+            margin: 0 0 18px;
+            max-width: 400px;
         }
 
+        /* Checklist items */
         .mini-grid {
             display: grid;
-            gap: 18px;
-            margin-top: 34px;
-            padding-top: 26px;
-            border-top: 1px solid rgba(255,255,255,0.14);
+            gap: 10px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.13);
         }
 
         .mini-grid div {
             display: flex;
-            gap: 16px;
-            align-items: start;
-            color: rgba(246,251,255,0.82);
+            gap: 12px;
+            align-items: center;
+            color: rgba(240,250,250,0.82);
+            font-size: 0.87rem;
         }
 
         .mini-grid i {
-            width: 54px;
-            height: 54px;
+            width: 32px;
+            height: 32px;
             border-radius: 999px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            flex: 0 0 54px;
+            flex: 0 0 32px;
+            font-size: 0.9rem;
             color: #fff;
-            font-size: 1.5rem;
-            background: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.14);
             border: 1px solid rgba(255,255,255,0.18);
-            box-shadow: 0 16px 34px rgba(0,0,0,0.12);
         }
 
-        .mini-grid strong {
-            display: block;
-            margin-bottom: 3px;
-            color: #fff;
-            font-weight: 800;
-        }
-
+        /* Bottom glass card */
         .brand-login-cta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 20px;
-            padding: 20px 22px;
-            border-radius: 22px;
-            color: rgba(255,255,255,0.84);
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 18px 42px rgba(0,0,0,0.12);
-            position: relative;
-            z-index: 1;
+            gap: 14px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            color: rgba(255,255,255,0.80);
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            font-size: 0.85rem;
         }
 
         .brand-login-cta strong {
             display: block;
             color: #fff;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
         }
 
+        /* ── Right (Form) Panel ── */
         .login-side {
-            padding: 58px 58px;
+            padding: 40px 48px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: #fff;
         }
 
         .login-panel {
             width: 100%;
-            max-width: 520px;
+            max-width: 440px;
         }
 
         .panel-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 14px;
+            padding: 7px 14px;
             border-radius: 999px;
             background: var(--fog);
             color: var(--teal);
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 700;
         }
 
@@ -310,57 +339,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .login-panel h2 {
-            font-size: clamp(2.55rem, 4vw, 3.2rem);
-            line-height: 1.08;
-            letter-spacing: -0.055em;
-            margin: 22px 0 12px;
-            color: #092d4c;
+            font-size: clamp(2rem, 3.2vw, 2.6rem);
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            margin: 16px 0 10px;
+            color: #062f4f;
         }
 
-        .login-panel p,
+        .login-panel > p,
         .modal-subtitle {
             color: #64748b;
-            line-height: 1.75;
+            line-height: 1.65;
         }
 
-        .login-panel p {
-            margin-bottom: 30px;
-            font-size: 1.04rem;
+        .login-panel > p {
+            margin-bottom: 22px;
+            font-size: 0.92rem;
             display: -webkit-box;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
         .field-label {
-            font-size: 0.86rem;
+            font-size: 0.84rem;
             font-weight: 700;
             color: #425166;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .field-help {
-            margin-top: 8px;
+            margin-top: 6px;
             color: #708296;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
         }
 
-        .input-wrap {
-            position: relative;
-        }
+        .input-wrap { position: relative; }
 
         .form-control {
-            min-height: 58px;
-            border-radius: 17px;
+            min-height: 50px;
+            border-radius: 14px;
             border: 1px solid var(--line);
-            padding: 15px 50px 15px 18px;
-            background: rgba(255,255,255,0.88);
-            font-weight: 700;
+            padding: 12px 46px 12px 16px;
+            background: #fafcfc;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .form-control:focus {
-            border-color: rgba(28, 107, 99, 0.55);
-            box-shadow: 0 0 0 4px rgba(28, 107, 99, 0.12);
+            border-color: rgba(15, 159, 148, 0.55);
+            box-shadow: 0 0 0 4px rgba(15, 159, 148, 0.12);
+            background: #fff;
         }
 
         .input-icon,
@@ -368,100 +397,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            color: #708296;
+            color: #a0aec0;
         }
 
-        .input-icon { right: 16px; }
+        .input-icon { right: 14px; pointer-events: none; }
 
         .toggle-password {
-            right: 16px;
+            right: 14px;
             border: 0;
             background: transparent;
             padding: 0;
+            cursor: pointer;
         }
 
         .btn-submit,
         .btn-outline-action {
-            border-radius: 18px;
-            min-height: 58px;
-            padding: 15px 20px;
+            border-radius: 14px;
+            min-height: 50px;
+            padding: 12px 20px;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+            transition: transform .16s ease, box-shadow .16s ease;
         }
 
         .btn-submit {
             border: 0;
             width: 100%;
-            background: linear-gradient(135deg, #063d78 0%, #0078ee 100%);
+            background: linear-gradient(135deg, #062f4f 0%, #0f9f94 100%);
             color: #fff;
-            box-shadow: 0 18px 34px rgba(10, 86, 174, 0.2);
-        }
-
-        .btn-submit:hover,
-        .btn-outline-action:hover,
-        .btn-back:hover {
-            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(6, 47, 79, 0.20);
+            font-size: 0.97rem;
         }
 
         .btn-submit:hover {
             color: #fff;
-            box-shadow: 0 22px 42px rgba(10, 86, 174, 0.26);
+            transform: translateY(-1px);
+            box-shadow: 0 18px 38px rgba(6, 47, 79, 0.26);
         }
 
         .btn-outline-action {
-            border: 1px solid rgba(16, 36, 59, 0.16);
+            border: 1px solid rgba(15, 37, 68, 0.16);
             background: #fff;
             color: var(--ink);
         }
 
+        .btn-outline-action:hover { transform: translateY(-1px); }
+
         .page-back { display: none; }
 
-        /* SSO is hidden until the organization SSO flow is implemented. */
+        /* SSO hidden — no SSO flow implemented yet */
         .login-divider,
-        .sso-button {
-            display: none !important;
-        }
+        .sso-button { display: none !important; }
 
+        /* Back button (pill outline white) */
         .btn-back {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            min-height: 48px;
-            padding: 0 20px;
+            gap: 8px;
+            min-height: 40px;
+            padding: 0 18px;
             border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.35);
-            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.38);
+            background: rgba(255,255,255,0.10);
             color: #fff;
-            font-weight: 800;
+            font-weight: 700;
+            font-size: 0.88rem;
             text-decoration: none;
-            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+            transition: background .16s, transform .16s;
             align-self: flex-start;
             width: auto;
         }
 
-        .quick-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 18px;
-        }
-
-        .quick-links button,
-        .quick-links a {
+        .btn-back:hover {
+            background: rgba(255,255,255,0.18);
+            transform: translateY(-1px);
+            color: #fff;
             text-decoration: none;
         }
 
         .support-note {
-            margin-top: 24px;
-            padding-top: 22px;
-            border-top: 1px solid rgba(16, 36, 59, 0.08);
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(15, 37, 68, 0.08);
             color: #64748b;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
         }
 
         .text-link {
@@ -470,98 +493,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 700;
         }
 
+        .text-link:hover { color: var(--teal-mid); text-decoration: underline; }
+
         .modal-content {
             border: 0;
-            border-radius: 28px;
-            box-shadow: 0 30px 70px rgba(16, 36, 59, 0.16);
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(6, 47, 79, 0.16);
         }
 
         .modal-header,
         .modal-body,
         .modal-footer {
-            padding-left: 28px;
-            padding-right: 28px;
+            padding-left: 26px;
+            padding-right: 26px;
         }
 
         .modal-header {
-            padding-top: 24px;
-            padding-bottom: 8px;
+            padding-top: 22px;
+            padding-bottom: 6px;
             border-bottom: 0;
         }
 
         .modal-footer {
             border-top: 0;
-            padding-top: 8px;
-            padding-bottom: 24px;
+            padding-top: 6px;
+            padding-bottom: 22px;
         }
 
+        /* ── Responsive ── */
         @media (max-width: 980px) {
             .login-shell {
                 grid-template-columns: 1fr;
-                min-height: 0;
+                max-height: none;
             }
 
             .visual-side {
-                min-height: 460px;
-                padding: 34px 28px;
+                padding: 28px 26px;
+                min-height: 380px;
             }
 
-            .login-side { padding: 36px 28px; }
+            .login-side { padding: 32px 26px; }
         }
 
         @media (max-width: 640px) {
-            body { padding: 12px; }
-            .login-shell { border-radius: 24px; }
-            .login-side { padding: 24px 20px; }
-            .visual-side { min-height: 420px; }
+            body { padding: 10px; }
+            .login-shell { border-radius: 20px; }
+            .login-side { padding: 22px 18px; }
+            .visual-side { min-height: 340px; }
             .brand-login-cta { flex-direction: column; align-items: flex-start; }
-            .mini-grid i { width: 48px; height: 48px; flex-basis: 48px; }
             .modal-header,
             .modal-body,
-            .modal-footer {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
+            .modal-footer { padding-left: 16px; padding-right: 16px; }
         }
     </style>
 </head>
 <body>
-    <div class="page-back">
-        <button type="button" class="btn btn-back" data-simple-back data-fallback-href="/staff-main/">
-            <i class="bi bi-arrow-left"></i>ย้อนกลับ
-        </button>
-    </div>
-
     <div class="login-shell">
         <section class="visual-side">
-            <button type="button" class="btn btn-back" data-simple-back data-fallback-href="/staff-main/">
-                <i class="bi bi-arrow-left"></i>หน้าแรก
-            </button>
 
-            <div class="brand-line">
-                <img src="../LOGO/nongphok_logo.png" alt="Logo">
-                <span>Nong Phok Hospital</span>
+            <!-- ปุ่มหน้าแรก — link ตรงไป /staff-main/ -->
+            <a href="/staff-main/" class="btn-back">
+                <i class="bi bi-arrow-left"></i>หน้าแรก
+            </a>
+
+            <!-- Over Time Brand Logo -->
+            <div class="overtime-logo">
+                <div class="overtime-logo-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="overtime-logo-text">
+                    <span class="brand-name">Over Time</span>
+                    <span class="brand-sub">ระบบลงเวลางานสำหรับโรงพยาบาล</span>
+                </div>
             </div>
 
+            <!-- Headline copy -->
             <div class="visual-copy">
                 <div class="badge-soft"><i class="bi bi-diagram-3"></i> Unified Access</div>
-                <h1>เข้าสู่ระบบครั้งเดียว แล้วใช้งานตามสิทธิ์ได้ทันที</h1>
-                <p>ระบบจะอ่านบทบาทจากบัญชีผู้ใช้โดยอัตโนมัติ เพื่อพาไปยังหน้าที่เหมาะกับการทำงานจริงของแต่ละคน ทั้งงานลงเวลาเวร รายงาน และคิวตรวจสอบ</p>
+                <h1>เข้าสู่ระบบครั้งเดียว<br>แล้วใช้งานตามสิทธิ์ได้ทันที</h1>
+                <p>ระบบอ่านบทบาทจากบัญชีผู้ใช้โดยอัตโนมัติ และพาไปยังหน้าที่เหมาะกับการทำงานจริงของแต่ละคน</p>
 
                 <div class="mini-grid">
-                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่ทั่วไปดูข้อมูลและจัดการรายการของตัวเองได้อย่างชัดเจน</span></div>
-                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่การเงินและผู้ได้รับสิทธิ์ดูรายงานตามขอบเขตที่กำหนด</span></div>
-                    <div><i class="bi bi-check2-circle"></i><span>ผู้ตรวจสอบและผู้ดูแลระบบเข้าถึงคิวตรวจสอบและงานหลังบ้านได้ครบถ้วน</span></div>
+                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่ดูและจัดการรายการของตัวเองได้อย่างชัดเจน</span></div>
+                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่การเงินดูรายงานตามขอบเขตที่กำหนดสิทธิ์</span></div>
+                    <div><i class="bi bi-check2-circle"></i><span>ผู้ดูแลระบบเข้าถึงคิวตรวจสอบและงานหลังบ้านได้ครบ</span></div>
                 </div>
             </div>
 
+            <!-- Bottom glass card -->
             <div class="brand-login-cta">
                 <div>
-                    <strong>ระบบลงเวลาโรงพยาบาล</strong>
+                    <strong>โรงพยาบาลหนองพอก</strong>
                     <span>ลงเวลาเวร รายงาน และตรวจสอบสิทธิ์ในจุดเดียว</span>
                 </div>
-                <i class="bi bi-shield-check fs-3"></i>
+                <i class="bi bi-shield-check fs-4"></i>
             </div>
+
         </section>
 
         <section class="login-side">
@@ -691,20 +718,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('[data-simple-back]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const fallbackHref = button.getAttribute('data-fallback-href') || '/staff-main/';
-                const hasHistory = window.history.length > 1 && document.referrer;
-
-                if (hasHistory) {
-                    window.history.back();
-                    return;
-                }
-
-                window.location.href = fallbackHref;
-            });
-        });
-
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('password');
         const eyeOpen = document.getElementById('eyeOpen');
@@ -715,21 +728,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const showPassword = passwordInput.type === 'password';
                 passwordInput.type = showPassword ? 'text' : 'password';
                 eyeOpen.classList.toggle('d-none', showPassword);
-                eyeClosed.classList.toggle('d-none', !showPassword);
-            });
-        }
-
-        <?php if ($openResetModal): ?>
-        window.addEventListener('load', function () {
-            const modalElement = document.getElementById('forgotPasswordModal');
-            if (!modalElement) {
-                return;
-            }
-
-            const resetModal = new bootstrap.Modal(modalElement);
-            resetModal.show();
-        });
-        <?php endif; ?>
-    </script>
-</body>
-</html>
+                eyeClosed.classList.toggle('d-none', !showPa
