@@ -169,10 +169,41 @@ function home_user_avatar_html(string $basePath, array $row, string $sizeClass =
     $avatarUrl = home_profile_image_url($basePath, $row['profile_image_path'] ?? '');
 
     if ($avatarUrl !== '') {
-        return '<img class="' . htmlspecialchars($sizeClass) . '" src="' . htmlspecialchars($avatarUrl) . '" alt="' . htmlspecialchars($name) . '" loading="lazy">';
+        return '<img class="' . htmlspecialchars($sizeClass) . ' avatar profile-avatar export-hide print-hide" data-export-hidden="true" src="' . htmlspecialchars($avatarUrl) . '" alt="' . htmlspecialchars($name) . '" loading="lazy">';
     }
 
     return '<span class="' . htmlspecialchars($sizeClass) . '">' . htmlspecialchars(home_user_initial($name)) . '</span>';
+}
+
+function home_export_user_rows(array $rows, string $statusLabel): array
+{
+    return array_map(static function (array $row, int $index) use ($statusLabel): array {
+        return [
+            'no' => $index + 1,
+            'fullName' => $row['fullname'] ?? '-',
+            'position' => $row['position_name'] ?? '-',
+            'department' => $row['department_name'] ?? '-',
+            'shift' => home_shift_label($row['time_in'] ?? null, $row['time_out'] ?? null),
+            'startTime' => home_time_label($row['time_in'] ?? null),
+            'endTime' => home_time_label($row['time_out'] ?? null),
+            'status' => $statusLabel,
+        ];
+    }, array_values($rows), array_keys(array_values($rows)));
+}
+
+function home_export_department_rows(array $rows): array
+{
+    return array_map(static function (array $row, int $index): array {
+        $count = (int) ($row['staff_count'] ?? 0);
+        $status = home_department_status($count);
+
+        return [
+            'no' => $index + 1,
+            'department' => $row['department_name'] ?? '-',
+            'staffCount' => number_format($count) . ' คน',
+            'status' => $status['label'] ?? '-',
+        ];
+    }, array_values($rows), array_keys(array_values($rows)));
 }
 
 function home_department_status(int $count): array
@@ -245,6 +276,11 @@ $latestUpdateLabel = date('H:i') . ' น.';
 
 $departmentTableRows = array_values(array_filter($activeDepartments, static fn ($row) => (int) ($row['staff_count'] ?? 0) > 0));
 $topDepartmentsByCount = $departmentTableRows;
+$homeExportPayload = [
+    'activeUsers' => home_export_user_rows($activeUsersNow, 'ปฏิบัติงาน'),
+    'departments' => home_export_department_rows($departmentTableRows),
+    'attendance' => home_export_user_rows($todayAttendanceRows, 'บันทึกแล้ว'),
+];
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -764,6 +800,24 @@ $topDepartmentsByCount = $departmentTableRows;
             window.setInterval(tick, 1000);
 
             const realtimeEndpoint = '<?= htmlspecialchars($basePath) ?>/api/public/home/realtime.php';
+            const homeExportData = <?= json_encode($homeExportPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            const homeReportDefinitions = {
+                activeUsers: {
+                    title: 'รายการบุคลากรที่ลงเวรตอนนี้',
+                    filename: 'active-users-now.csv',
+                    columns: [['no', 'ลำดับ'], ['fullName', 'ชื่อ'], ['position', 'ตำแหน่ง'], ['department', 'แผนก'], ['shift', 'เวร'], ['startTime', 'เวลาเริ่ม'], ['endTime', 'เวลาสิ้นสุด'], ['status', 'สถานะ']],
+                },
+                departments: {
+                    title: 'แผนกที่กำลังปฏิบัติงาน',
+                    filename: 'active-departments.csv',
+                    columns: [['no', 'ลำดับ'], ['department', 'แผนก'], ['staffCount', 'จำนวนบุคลากรที่ปฏิบัติงาน'], ['status', 'สถานะ']],
+                },
+                attendance: {
+                    title: 'รายการลงเวลาวันนี้',
+                    filename: 'today-attendance.csv',
+                    columns: [['no', 'ลำดับ'], ['fullName', 'ชื่อ'], ['position', 'ตำแหน่ง'], ['department', 'แผนก'], ['shift', 'เวร'], ['startTime', 'เวลาเริ่ม'], ['endTime', 'เวลาสิ้นสุด'], ['status', 'สถานะ']],
+                },
+            };
             const emptyActiveMessage = 'ยังไม่มีบุคลากรที่อยู่ในช่วงเวร ณ เวลานี้';
             const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
                 '&': '&amp;',
@@ -773,10 +827,62 @@ $topDepartmentsByCount = $departmentTableRows;
                 "'": '&#039;',
             }[char]));
             const formatNumber = (value) => new Intl.NumberFormat('th-TH').format(Number(value || 0));
+            const normalizeExportValue = (value) => {
+                const text = String(value ?? '-').replace(/\s+/g, ' ').trim();
+                if (!text || /^data:image\//i.test(text) || /^https?:\/\/.*\.(png|jpe?g|webp|gif|svg)(\?|#|$)/i.test(text)) {
+                    return '-';
+                }
+                return text;
+            };
+            const activeUsersToExportRows = (users, statusLabel = 'ปฏิบัติงาน') => users.map((user, index) => ({
+                no: index + 1,
+                fullName: normalizeExportValue(user.fullname || user.full_name || user.name),
+                position: normalizeExportValue(user.position_name || user.position),
+                department: normalizeExportValue(user.department_name),
+                shift: normalizeExportValue(user.shift_label || user.shift_name),
+                startTime: normalizeExportValue(user.time_in_label || user.start_time),
+                endTime: normalizeExportValue(user.time_out_label || user.end_time),
+                status: normalizeExportValue(user.status_label || user.status || statusLabel),
+            }));
+            const departmentsToExportRows = (departments) => departments.map((department, index) => ({
+                no: index + 1,
+                department: normalizeExportValue(department.department_name || department.department),
+                staffCount: `${formatNumber(department.staff_count)} คน`,
+                status: normalizeExportValue(department.status_label || department.status || 'กำลังปฏิบัติงาน'),
+            }));
+            const getReportKeyFromButton = (button) => {
+                const target = button.dataset.csvTarget || button.dataset.printTarget || '';
+                if (target.includes('department')) return 'departments';
+                if (target.includes('attendance')) return 'attendance';
+                return 'activeUsers';
+            };
+            const getReportRows = (key) => Array.isArray(homeExportData[key]) ? homeExportData[key] : [];
+            const rowsToCsv = (definition, rows) => {
+                const headers = definition.columns.map(([, label]) => label);
+                const bodyRows = rows.map((row) => definition.columns.map(([field]) => normalizeExportValue(row[field])));
+                return [headers, ...bodyRows]
+                    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                    .join('\n');
+            };
+            const buildReportHtml = (definition, rows) => {
+                const generatedAt = new Date().toLocaleString('th-TH', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+                const head = definition.columns.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join('');
+                const body = rows.length
+                    ? rows.map((row) => `<tr>${definition.columns.map(([field]) => `<td>${escapeHtml(normalizeExportValue(row[field]))}</td>`).join('')}</tr>`).join('')
+                    : `<tr><td colspan="${definition.columns.length}" class="empty">ไม่มีข้อมูลสำหรับส่งออก</td></tr>`;
+
+                return `<section class="report-page"><h1>${escapeHtml(definition.title)}</h1><p class="meta">วันที่/เวลาส่งออก: ${escapeHtml(generatedAt)}</p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table><p class="summary">จำนวนรายการรวม: ${escapeHtml(formatNumber(rows.length))} รายการ</p></section>`;
+            };
             const avatarHtml = (user, className = 'active-user-avatar') => {
                 const name = user.fullname || '-';
                 if (user.avatar_url) {
-                    return `<img class="${className}" src="${escapeHtml(user.avatar_url)}" alt="${escapeHtml(name)}" loading="lazy">`;
+                    return `<img class="${className} avatar profile-avatar export-hide print-hide" data-export-hidden="true" src="${escapeHtml(user.avatar_url)}" alt="${escapeHtml(name)}" loading="lazy">`;
                 }
                 return `<span class="${className}">${escapeHtml(user.initial || name.slice(0, 1) || '-')}</span>`;
             };
@@ -892,6 +998,8 @@ $topDepartmentsByCount = $departmentTableRows;
                 const rateBar = document.getElementById('homeAttendanceRateBar');
                 if (rateBar) rateBar.style.width = `${Math.max(0, Math.min(100, rate))}%`;
                 if (payload.last_updated_at) setText('[data-last-updated]', payload.last_updated_at);
+                homeExportData.activeUsers = activeUsersToExportRows(activeUsers, 'ปฏิบัติงาน');
+                homeExportData.departments = departmentsToExportRows(activeDepartments);
 
                 const usersPreview = document.getElementById('homeActiveUsersPreview');
                 if (usersPreview) usersPreview.innerHTML = renderActiveUsersPreview(activeUsers);
@@ -952,23 +1060,16 @@ $topDepartmentsByCount = $departmentTableRows;
                 });
             });
 
-            const tableToCsv = (table) => {
-                const rows = Array.from(table.querySelectorAll('tr'));
-                return rows.map((row) => {
-                    const cells = Array.from(row.querySelectorAll('th,td'));
-                    return cells.map((cell) => `"${cell.innerText.replace(/\s+/g, ' ').trim().replace(/"/g, '""')}"`).join(',');
-                }).join('\n');
-            };
-
             document.querySelectorAll('[data-csv-target]').forEach((button) => {
                 button.addEventListener('click', () => {
-                    const table = document.getElementById(button.dataset.csvTarget);
-                    if (!table) return;
-                    const blob = new Blob(['\ufeff' + tableToCsv(table)], { type: 'text/csv;charset=utf-8;' });
+                    const key = getReportKeyFromButton(button);
+                    const definition = homeReportDefinitions[key];
+                    if (!definition) return;
+                    const blob = new Blob(['\ufeff' + rowsToCsv(definition, getReportRows(key))], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = button.dataset.filename || 'export.csv';
+                    link.download = button.dataset.filename || definition.filename || 'export.csv';
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
@@ -978,15 +1079,13 @@ $topDepartmentsByCount = $departmentTableRows;
 
             document.querySelectorAll('[data-print-target]').forEach((button) => {
                 button.addEventListener('click', () => {
-                    const target = document.getElementById(button.dataset.printTarget);
-                    if (!target) {
-                        window.print();
-                        return;
-                    }
-                    const content = target.innerHTML;
+                    const key = getReportKeyFromButton(button);
+                    const definition = homeReportDefinitions[key];
+                    if (!definition) return;
+                    const content = buildReportHtml(definition, getReportRows(key));
                     const printWindow = window.open('', '_blank', 'width=1100,height=720');
                     if (!printWindow) return;
-                    printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Print</title><style>body{font-family:Sarabun,Arial,sans-serif;padding:24px;color:#10243b}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d9e7ec;padding:10px;text-align:left}th{background:#eef8f8}.ot-modal-close,.ot-modal-actions{display:none}</style></head><body>${content}</body></html>`);
+                    printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(definition.title)}</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{font-family:Sarabun,Arial,sans-serif;margin:0;padding:0;color:#10243b;background:#fff;font-size:11px}.report-page{width:100%}h1{margin:0 0 4px;font-size:18px;line-height:1.35}.meta,.summary{margin:0 0 10px;color:#53677f;font-size:11px}.summary{margin-top:10px;font-weight:700}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #d9e7ec;padding:6px 7px;text-align:left;vertical-align:top;word-break:break-word}th{background:#eef8f8;color:#10243b;font-weight:700}.empty{text-align:center;color:#53677f}.export-hide,.print-hide,.avatar,.profile-avatar,img[data-export-hidden="true"],img,svg,canvas,video{display:none!important}</style></head><body>${content}</body></html>`);
                     printWindow.document.close();
                     printWindow.focus();
                     printWindow.print();

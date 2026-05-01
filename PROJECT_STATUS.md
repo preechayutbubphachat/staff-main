@@ -561,3 +561,23 @@ npm run build
   - Visual QA ใน browser ว่ารูปไม่ถูก crop ผิดจุด และชื่อยาว truncate สวยที่ 1440px/1600px
   - ตรวจ Network tab ว่าไม่มี 404 ของรูปผู้ใช้รายอื่นที่มี filename ภาษาไทยหรือ path เก่า
 - สถานะ: completed / pending browser visual review
+## ล่าสุด: แก้ export/print/PDF/CSV หน้าแรกเป็น text-only
+
+- วันที่: 1 พฤษภาคม 2569
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก / Public Homepage
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - แยกข้อมูล export ของ User Active, Department Active และ Today Attendance ออกจาก UI table ที่มี avatar
+  - ให้ CSV และ Print/PDF ใช้ dataset แบบ text-only แทนการ clone DOM จาก modal/card
+  - ซ่อน profile image/avatar จาก print/export zone ด้วย `export-hide`, `print-hide`, `avatar`, `profile-avatar`, และ `img[data-export-hidden="true"]`
+  - เพิ่ม print layout แบบ A4 portrait มีชื่อรายงาน, วันที่/เวลาส่งออก, ตารางข้อมูล และจำนวนรายการรวม
+- สถานะ build:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+
+---

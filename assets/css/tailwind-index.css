@@ -454,6 +454,16 @@
     @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white bg-hospital-mint object-cover text-xs font-extrabold text-hospital-teal shadow-[0_6px_14px_rgba(16,36,59,0.12)];
   }
 
+  @media print {
+    .export-hide,
+    .print-hide,
+    .avatar,
+    .profile-avatar,
+    img[data-export-hidden="true"] {
+      display: none !important;
+    }
+  }
+
   .ot-card-heading {
     @apply mb-4 flex flex-wrap items-center justify-between gap-3;
   }
