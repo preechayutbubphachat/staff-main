@@ -1049,7 +1049,7 @@
   }
 
   .approval-workspace-grid {
-    @apply grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)] xl:items-start;
+    @apply grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start;
   }
 
   .approval-filter-card {
@@ -1177,7 +1177,87 @@
   }
 
   .approval-view-switch {
-    @apply hidden items-center gap-2 xl:flex;
+    @apply flex items-center gap-2;
+  }
+
+  /* ══════════════════════════════════════════════
+     New: Unified review-wrap card (toolbar + list)
+     ══════════════════════════════════════════════ */
+
+  .approval-review-wrap {
+    /* Same surface as dash-card but with flex layout and p-0 */
+    @apply relative pointer-events-auto flex flex-col overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/80 shadow-soft backdrop-blur-xl;
+  }
+
+  .approval-review-wrap-header {
+    @apply flex flex-wrap items-start justify-between gap-4 border-b border-hospital-teal/10 p-4;
+  }
+
+  .approval-review-header-copy {
+    @apply min-w-0;
+  }
+
+  /* ── Toolbar ── */
+  .approval-queue-toolbar {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .approval-sig-warning {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[0.72rem] font-bold text-amber-600;
+  }
+
+  /* Badge */
+  .approval-toolbar-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-bold transition-all duration-200 ease-out;
+    white-space: nowrap;
+  }
+
+  .approval-toolbar-badge.is-empty {
+    @apply border-hospital-teal/10 bg-hospital-mist text-hospital-muted;
+  }
+
+  .approval-toolbar-badge.has-selection {
+    @apply border-hospital-teal/25 bg-hospital-teal/10 text-hospital-teal;
+  }
+
+  /* Divider between primary / utility groups */
+  .approval-toolbar-divider {
+    @apply mx-0.5 h-6 w-px flex-shrink-0 self-center bg-hospital-teal/15;
+  }
+
+  /* Base class for every toolbar button (layered on top of dash-btn / dash-btn-ghost) */
+  .approval-bulk-btn {
+    @apply min-h-[38px] rounded-[0.9rem] px-3.5 py-2 text-[0.78rem] leading-none;
+    white-space: nowrap;
+  }
+
+  .approval-bulk-btn:disabled,
+  .approval-bulk-btn[data-disabled="true"] {
+    @apply cursor-not-allowed opacity-40;
+    pointer-events: none;
+  }
+
+  /* Reject button — warm negative, but clean */
+  .approval-btn-reject {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-[0.9rem] border border-rose-200 bg-rose-50 px-3.5 py-2 text-[0.78rem] font-semibold leading-none text-rose-600 no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-100 hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 active:translate-y-0;
+    white-space: nowrap;
+    min-height: 38px;
+  }
+
+  .approval-btn-reject:disabled,
+  .approval-btn-reject[data-disabled="true"] {
+    @apply cursor-not-allowed opacity-40;
+    pointer-events: none;
+  }
+
+  /* ── AJAX list body (inside .approval-review-wrap) ── */
+  .approval-results-inner {
+    @apply grid gap-3.5 p-4;
+  }
+
+  /* Controls bar: select-all | caption | view-switch */
+  .approval-review-controls-bar {
+    @apply flex flex-wrap items-center justify-between gap-3;
   }
 
   .approval-list-caption {
@@ -1185,19 +1265,19 @@
   }
 
   .approval-list-shell {
-    @apply rounded-[1.45rem] border border-hospital-teal/10 bg-hospital-mist/50 p-3;
+    @apply overflow-x-auto rounded-[1.45rem] border border-hospital-teal/10 bg-hospital-mist/50 p-3;
   }
 
   .approval-list-head {
-    @apply hidden items-center gap-3 px-3 pb-3 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-hospital-muted xl:grid xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_210px];
+    @apply hidden min-w-[900px] items-center gap-3 px-3 pb-3 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-hospital-muted xl:grid xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_162px];
   }
 
   .approval-review-list {
-    @apply grid gap-2.5 xl:max-h-[58vh] xl:overflow-y-auto xl:pr-1;
+    @apply grid min-w-[900px] gap-2.5 xl:max-h-[58vh] xl:overflow-y-auto xl:pr-1;
   }
 
   .approval-review-row {
-    @apply grid gap-3 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-3 py-2.5 shadow-soft transition-all duration-200 ease-out hover:border-hospital-teal/25 xl:min-h-[74px] xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_210px] xl:items-center;
+    @apply grid gap-3 rounded-[1.15rem] border border-hospital-teal/10 bg-white px-3 py-2.5 shadow-soft transition-all duration-200 ease-out hover:border-hospital-teal/25 xl:min-h-[74px] xl:grid-cols-[30px_78px_minmax(130px,1.15fr)_92px_124px_92px_minmax(84px,0.82fr)_92px_162px] xl:items-center;
   }
 
   .approval-review-row.is-selected {
@@ -4102,7 +4182,7 @@
     }
 
     .approval-workspace-grid {
-      grid-template-columns: 350px minmax(0, 1fr);
+      grid-template-columns: 280px minmax(0, 1fr);
     }
   }
 
@@ -8592,6 +8672,112 @@ body.manage-time-page-shell .manage-time-bottom-strip {
     color: #34516d;
   }
 
+  /* ปุ่มสำหรับตาราง read-only ในรายการตาราง */
+  .db-table-row-btn.is-readonly {
+    border-color: #e2e8f0;
+    color: #64748b;
+    background: #f8fafc;
+  }
+
+  .db-table-row-btn.is-readonly:hover {
+    border-color: #cbd5e1;
+    color: #475569;
+    box-shadow: 0 2px 6px rgba(16,36,59,.08);
+  }
+
+  /* badge read-only inline ในแถว record */
+  .ops-readonly-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.5rem;
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+  }
+
+  /* badge read-only ใน Selected Table header */
+  .db-table-readonly-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.5rem;
+    background: #f1f5f9;
+    color: #64748b;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+  }
+
+  /* eyebrow text ใน Selected Table info */
+  .db-table-selected-eyebrow {
+    display: block;
+    color: #159c94;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .db-table-selected-info h2 {
+    margin: 0.15rem 0 0.35rem;
+    font-size: 1.2rem;
+  }
+
+  .db-table-selected-info p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+
+  /* Export/print action buttons ใน Selected Table header */
+  .db-table-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.35rem;
+    border: 1px solid #d7e6ef;
+    border-radius: 0.8rem;
+    background: #fff;
+    color: #24445f;
+    padding: 0 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .db-table-export-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16,36,59,.1);
+    border-color: #b8d0e0;
+    color: #0b3557;
+  }
+
+  .db-table-export-btn.is-create {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #065f46;
+  }
+
+  .db-table-export-btn.is-create:hover {
+    background: #d1fae5;
+    border-color: #34d399;
+  }
+
+  .db-table-export-btn.is-ghost {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #64748b;
+  }
+
+  .db-table-export-btn.is-ghost:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
   .db-table-row-menu {
     width: 2rem;
     height: 2rem;
@@ -9159,114 +9345,5 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   .manage-time-date-tile {
     min-width: 92px !important;
     padding: 8px 10px !important;
-  }
-
-  .manage-time-date-tile strong {
-    font-size: 1.45rem !important;
-    line-height: 1 !important;
-  }
-
-  .manage-time-date-tile span {
-    font-size: 0.69rem !important;
-  }
-
-  .manage-time-row-actions {
-    gap: 6px !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    white-space: nowrap !important;
-  }
-
-  .manage-time-row-btn,
-  .manage-time-edit-btn {
-    min-height: 32px !important;
-    padding: 0 10px !important;
-    font-size: 0.74rem !important;
-    border-radius: 999px !important;
-  }
-
-  .manage-time-row-menu {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-  }
-
-  .manage-time-status {
-    min-height: 28px !important;
-    padding: 0 10px !important;
-    font-size: 0.72rem !important;
-  }
-
-  .manage-time-table-footer {
-    padding-top: 4px;
-  }
-
-  #manageTimeLogsResults {
-    min-height: 0 !important;
-    overflow: visible !important;
-  }
-
-  .manage-time-bottom-strip {
-    position: static !important;
-    min-height: 92px !important;
-    max-height: none !important;
-    height: auto !important;
-    grid-template-columns: 1.2fr repeat(5, minmax(130px, 1fr)) !important;
-    gap: 14px !important;
-    padding: 20px 24px !important;
-    margin-top: 0 !important;
-    overflow: visible !important;
-  }
-
-  @media (max-width: 1400px) {
-    .manage-time-hero-grid {
-      grid-template-columns: 1fr !important;
-      gap: 16px !important;
-    }
-
-    .manage-time-hero-actions {
-      width: 100%;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      justify-self: stretch;
-    }
-
-    .manage-time-hero-metrics {
-      border-left: 0 !important;
-      padding-left: 0 !important;
-    }
-  }
-
-  @media (max-width: 1200px) {
-    .manage-time-page-main {
-      padding: 18px !important;
-    }
-
-    .manage-time-summary-row {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-
-    .manage-time-workspace-grid {
-      grid-template-columns: 1fr !important;
-    }
-
-    .manage-time-bottom-strip {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .manage-time-summary-row,
-    .manage-time-bottom-strip {
-      grid-template-columns: 1fr !important;
-    }
-
-    .manage-time-hero-metrics {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-
-    .manage-time-hero-actions {
-      grid-template-columns: 1fr;
-    }
   }
 }

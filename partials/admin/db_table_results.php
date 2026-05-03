@@ -52,24 +52,39 @@
                         <td class="actions-cell">
                             <div class="ops-actions">
                                 <?php if (!empty($config['edit_allowed'])): ?>
-                                    <?php $editHref = $table === 'users' ? 'edit_user.php?id=' . $rowId : 'db_row_edit.php?table=' . urlencode($table) . '&id=' . $rowId; ?>
-                                    <?php if ($table === 'users'): ?>
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-outline-dark ops-action-btn btn-edit-row"
-                                            data-open-user-edit
-                                            data-user-id="<?= (int) $rowId ?>"
-                                            data-edit-url="<?= htmlspecialchars($editHref) ?>"
-                                        >
-                                            <i class="bi bi-pencil-square"></i>
-                                            <span>แก้ไข</span>
-                                        </button>
-                                    <?php else: ?>
-                                        <a href="<?= htmlspecialchars($editHref) ?>" class="btn btn-sm btn-outline-dark ops-action-btn btn-edit-row">
-                                            <i class="bi bi-pencil-square"></i>
-                                            <span>แก้ไข</span>
-                                        </a>
-                                    <?php endif; ?>
+                                    <?php
+                                    $editHref = $table === 'users'
+                                        ? 'edit_user.php?id=' . $rowId
+                                        : 'db_row_edit.php?table=' . urlencode($table) . '&id=' . $rowId;
+
+                                    // Modal meta สำหรับแต่ละ table
+                                    static $tableModalLabels = [
+                                        'users'       => ['title' => 'แก้ไขข้อมูลผู้ใช้งาน',    'desc' => 'แก้ไขข้อมูลผู้ใช้ สิทธิ์ และแผนก ระบบจะบันทึก audit log ทุกครั้ง'],
+                                        'departments' => ['title' => 'แก้ไขข้อมูลแผนก',          'desc' => 'แก้ไขชื่อและรหัสแผนก ระบบจะบันทึก audit log ทุกครั้ง'],
+                                        'time_logs'   => ['title' => 'แก้ไขข้อมูลลงเวลาเวร',     'desc' => 'แก้ไขวันที่ เวลาเข้า/ออก และหมายเหตุ ระบบจะบันทึก audit log ทุกครั้ง'],
+                                    ];
+                                    $modalMeta = $tableModalLabels[$table] ?? [
+                                        'title' => 'แก้ไขข้อมูล ' . ($config['label'] ?? $table),
+                                        'desc'  => 'ระบบจะบันทึก audit log ทุกครั้งที่มีการเปลี่ยนแปลง',
+                                    ];
+                                    ?>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-dark ops-action-btn btn-edit-row"
+                                        data-open-user-edit
+                                        data-user-id="<?= (int) $rowId ?>"
+                                        data-edit-url="<?= htmlspecialchars($editHref) ?>"
+                                        data-modal-title="<?= htmlspecialchars($modalMeta['title']) ?>"
+                                        data-modal-desc="<?= htmlspecialchars($modalMeta['desc']) ?>"
+                                        data-modal-eyebrow="Admin Only · <?= htmlspecialchars($config['label'] ?? $table) ?>"
+                                    >
+                                        <i class="bi bi-pencil-square"></i>
+                                        <span>แก้ไข</span>
+                                    </button>
+                                <?php else: ?>
+                                    <span class="badge text-bg-secondary ops-readonly-badge">
+                                        <i class="bi bi-lock"></i> อ่านอย่างเดียว
+                                    </span>
                                 <?php endif; ?>
                                 <?php if (!empty($config['delete_allowed'])): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger ops-action-btn" data-bs-toggle="modal" data-bs-target="#deleteModal<?= $rowId ?>">
@@ -98,34 +113,4 @@
                                                     <input type="hidden" name="return_q" value="<?= htmlspecialchars($filters['q']) ?>">
                                                     <input type="hidden" name="return_page" value="<?= (int) $page ?>">
                                                     <input type="hidden" name="return_per_page" value="<?= (int) $perPage ?>">
-                                                    <label class="form-label fw-semibold small">พิมพ์ DELETE เพื่อยืนยัน</label>
-                                                    <input type="text" name="confirm_delete_text" class="form-control" required>
-                                                    <div class="modal-footer px-0 pb-0">
-                                                        <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal">ยกเลิก</button>
-                                                        <button type="submit" class="btn btn-danger btn-pill">ยืนยันลบข้อมูล</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <?php if ($totalPages > 1): ?>
-        <nav class="mt-4">
-            <ul class="pagination mb-0">
-                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                        <a class="page-link" href="?<?= htmlspecialchars(app_db_admin_query_string($filters, ['page' => $i, 'per_page' => $perPage])) ?>" data-table-page-link><?= $i ?></a>
-                    </li>
-                <?php endfor; ?>
-            </ul>
-        </nav>
-    <?php endif; ?>
-</section>
+   
