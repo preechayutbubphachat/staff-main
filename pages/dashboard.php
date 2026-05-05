@@ -221,6 +221,7 @@ if (app_can('can_approve_logs')) {
     app_sync_reviewer_queue_notifications($conn);
 }
 $notificationCount = app_get_unread_notification_count($conn, (int) $uiStateContext['user_id']);
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
 $bottomCardCount = ($latestLog ? 1 : 0) + (app_can('can_approve_logs') ? 1 : 0) + ($todayIssueCount > 0 ? 1 : 0);
 $quickActionCount = count($quickActions);
 $primaryActions = array_slice($quickActions, 0, min(3, $quickActionCount));
@@ -254,7 +255,7 @@ $heroSecondaryAction = app_can('can_approve_logs')
     <title>แดชบอร์ด | ระบบลงเวลาเวร</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/dashboard-tailwind.output.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
 <body class="dash-shell">
 <?php render_dashboard_sidebar('dashboard.php', $displayName, $roleLabel, $profileImageSrc); ?>
