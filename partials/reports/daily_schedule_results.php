@@ -100,6 +100,13 @@ function daily_schedule_hours_label(array $row): string
     </article>
 </section>
 
+<?php
+/* Compute export URLs from $queryBase (available on both full-page load and AJAX refresh) */
+$_dailyExportBase = $queryBase ?? [];
+$_dailyPrintQuery = app_build_table_query($_dailyExportBase, ['type' => 'daily']);
+$_dailyPdfQuery   = app_build_table_query($_dailyExportBase, ['type' => 'daily', 'download' => 'pdf']);
+$_dailyCsvQuery   = app_build_table_query($_dailyExportBase, ['type' => 'daily']);
+?>
 <section class="dash-card daily-results-panel" id="daily-schedule-results-panel">
     <div class="daily-results-header">
         <div>
@@ -112,6 +119,20 @@ function daily_schedule_hours_label(array $row): string
                 <a class="daily-view-pill <?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
                 <a class="daily-view-pill <?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
             <?php endif; ?>
+            <div class="report-action-group">
+                <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="daily"
+                   href="report_print.php?<?= htmlspecialchars($_dailyPrintQuery) ?>" target="_blank" rel="noopener">
+                    <i class="bi bi-printer"></i>พิมพ์
+                </a>
+                <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="daily" data-export-download="pdf"
+                   href="report_print.php?<?= htmlspecialchars($_dailyPdfQuery) ?>" target="_blank" rel="noopener">
+                    <i class="bi bi-filetype-pdf"></i>PDF
+                </a>
+                <a class="dash-btn dash-btn-ghost" data-export-base="export_report.php" data-export-type="daily"
+                   href="export_report.php?<?= htmlspecialchars($_dailyCsvQuery) ?>">
+                    <i class="bi bi-filetype-csv"></i>CSV
+                </a>
+            </div>
         </div>
     </div>
 

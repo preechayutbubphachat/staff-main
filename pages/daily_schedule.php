@@ -262,20 +262,6 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                     </div>
                 </form>
 
-                <div class="daily-tools-card">
-                    <p class="daily-field-label !mb-1">เครื่องมือเพิ่มเติม</p>
-                    <div class="daily-tool-grid">
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="export_report.php" data-export-type="daily" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="dailyScheduleResults" class="min-w-0">

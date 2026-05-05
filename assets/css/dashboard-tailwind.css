@@ -3166,50 +3166,178 @@
     @apply font-semibold text-hospital-ink;
   }
 
+  /* ── Summary card bottom (Shift Management page) ─────────────────────── */
+
   .manage-time-bottom-strip {
-    @apply grid items-center gap-3 overflow-hidden px-5 py-4 xl:grid-cols-[230px_repeat(4,minmax(0,1fr))_330px];
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0;
+    background: #ffffff;
+    border: 1px solid #e2f0ef;
+    border-radius: 24px;
+    box-shadow: 0 4px 24px 0 rgba(15,159,149,0.07), 0 1px 4px 0 rgba(8,43,69,0.05);
+    padding: 20px 24px;
+    margin-top: 14px;
+    overflow: hidden;
   }
 
-  .manage-time-bottom-heading {
-    @apply font-prompt text-[1.24rem] font-bold tracking-[-0.04em] text-hospital-navy xl:border-r xl:border-hospital-teal/10 xl:pr-4;
+  /* Legacy helpers: hidden — HTML no longer uses them */
+  .manage-time-bottom-heading,
+  .manage-time-bottom-item,
+  .manage-time-bottom-progress,
+  .manage-time-progress-track { display: none !important; }
+
+  /* ── mtbs internals ──────────────────────────────────────────────────── */
+
+  .mtbs-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    flex: 1 1 140px;
+    min-width: 0;
+    padding: 8px 20px;
   }
 
-  .manage-time-bottom-item {
-    @apply grid gap-1 border-t border-hospital-teal/10 pt-3 xl:border-r xl:border-t-0 xl:px-4 xl:pt-0;
+  .mtbs-item--wide {
+    flex: 1.45 1 180px;
   }
 
-  .manage-time-bottom-item span,
-  .manage-time-bottom-progress span {
-    @apply text-[0.76rem] font-bold text-hospital-muted;
+  .mtbs-divider {
+    width: 1px;
+    background: rgba(15,159,149,0.13);
+    align-self: stretch;
+    flex-shrink: 0;
+    margin: 4px 0;
   }
 
-  .manage-time-bottom-item strong {
-    @apply font-prompt text-[1.22rem] font-bold tracking-[-0.04em] text-hospital-navy;
+  .mtbs-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+    line-height: 1;
   }
 
-  .manage-time-bottom-item small,
-  .manage-time-bottom-progress small {
-    @apply text-xs font-semibold text-hospital-muted;
+  .mtbs-icon .bi,
+  .mtbs-icon .bi::before {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
 
-  .manage-time-bottom-progress {
-    @apply grid gap-2 border-t border-hospital-teal/10 pt-3 xl:border-t-0 xl:pt-0;
+  .mtbs-icon--blue   { background: #dbeafe; color: #2563eb; }
+  .mtbs-icon--green  { background: #dcfce7; color: #16a34a; }
+  .mtbs-icon--purple { background: #ede9fe; color: #7c3aed; }
+  .mtbs-icon--amber  { background: #fef3c7; color: #d97706; }
+  .mtbs-icon--teal   { background: #ccfbf1; color: #0f766e; }
+
+  .mtbs-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
   }
 
-  .manage-time-bottom-progress > div:first-child {
-    @apply flex items-center justify-between gap-3;
+  .mtbs-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0;
+    white-space: nowrap;
   }
 
-  .manage-time-bottom-progress strong {
-    @apply font-prompt text-lg font-bold text-hospital-navy;
+  .mtbs-value {
+    @apply font-prompt;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #082b45;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
-  .manage-time-progress-track {
-    @apply h-3 overflow-hidden rounded-full bg-hospital-mist;
+  .mtbs-sub {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .manage-time-progress-track span {
-    @apply block h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400;
+  .mtbs-content--progress { gap: 5px; }
+
+  .mtbs-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mtbs-percent {
+    @apply font-prompt;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #082b45;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .mtbs-progress-track {
+    height: 10px;
+    background: #e0f2f1;
+    border-radius: 999px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .mtbs-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #34d399 0%, #0f9f95 100%);
+    transition: width 0.4s ease;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Tablet: 2-col grid */
+  @media (max-width: 1024px) {
+    .manage-time-bottom-strip {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px 20px;
+    }
+    .mtbs-divider { display: none; }
+    .mtbs-item,
+    .mtbs-item--wide {
+      padding: 12px 12px;
+      border: 1px solid rgba(15,159,149,0.10);
+      border-radius: 16px;
+      background: #f8fffe;
+    }
+  }
+
+  /* Mobile: 1-col */
+  @media (max-width: 640px) {
+    .manage-time-bottom-strip {
+      grid-template-columns: 1fr;
+      padding: 14px 16px;
+    }
+    .mtbs-value   { font-size: 1.1rem; }
+    .mtbs-percent { font-size: 1.05rem; }
   }
 
   @media (min-width: 1024px) {
@@ -3584,10 +3712,10 @@
     }
 
     .manage-time-bottom-strip {
-      min-height: 78px;
-      max-height: 90px;
-      grid-template-columns: 220px repeat(4, minmax(0, 1fr)) 320px;
-      gap: 0.75rem;
+      /* neutralised: flex layout via .mtbs-item handles sizing */
+      height: auto;
+      min-height: 0;
+      max-height: none;
       padding: 0.9rem 1.15rem;
       border-radius: 1.45rem;
     }
@@ -3819,12 +3947,11 @@
     }
 
     .manage-time-bottom-strip {
-      height: 82px;
-      min-height: 82px;
-      max-height: 82px;
-      grid-template-columns: 220px repeat(4, minmax(0, 1fr)) 300px;
-      gap: 0.75rem;
-      overflow: hidden;
+      /* neutralised: flex layout handles height automatically */
+      height: auto;
+      min-height: 0;
+      max-height: none;
+      overflow: visible;
       padding: 0.75rem 1.1rem;
     }
   }
@@ -5567,11 +5694,14 @@ body.manage-time-page-shell .manage-time-row-menu {
 body.manage-time-page-shell .manage-time-bottom-strip {
   position: static !important;
   inset: auto !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: stretch !important;
+  gap: 0 !important;
   margin-top: 14px !important;
-  min-height: 108px !important;
-  border-radius: 22px !important;
+  min-height: 0 !important;
+  border-radius: 24px !important;
   padding: 20px 24px !important;
-  grid-template-columns: 1.15fr repeat(5, minmax(120px, 1fr)) !important;
 }
 
 @media (min-width: 1600px) {
@@ -5592,7 +5722,18 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   }
 
   body.manage-time-page-shell .manage-time-bottom-strip {
+    display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  body.manage-time-page-shell .mtbs-divider {
+    display: none !important;
+  }
+  body.manage-time-page-shell .mtbs-item,
+  body.manage-time-page-shell .mtbs-item--wide {
+    border: 1px solid rgba(15,159,149,0.10) !important;
+    border-radius: 16px !important;
+    background: #f8fffe !important;
   }
 }
 
@@ -5842,12 +5983,13 @@ body.manage-time-page-shell .manage-time-table-footer {
 body.manage-time-page-shell .manage-time-bottom-strip {
   position: static !important;
   inset: auto !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: stretch !important;
+  gap: 0 !important;
   height: auto !important;
-  min-height: 92px !important;
+  min-height: 0 !important;
   max-height: none !important;
-  display: grid !important;
-  grid-template-columns: 1.2fr repeat(5, minmax(130px, 1fr)) !important;
-  gap: 14px !important;
   margin: 0 !important;
   padding: 20px 24px !important;
   overflow: visible !important;
@@ -5876,9 +6018,20 @@ body.manage-time-page-shell .manage-time-bottom-strip {
     padding: 18px !important;
   }
 
-  body.manage-time-page-shell #manageTimeLogsSummary .manage-time-summary-row,
-  body.manage-time-page-shell .manage-time-bottom-strip {
+  body.manage-time-page-shell #manageTimeLogsSummary .manage-time-summary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  body.manage-time-page-shell .manage-time-bottom-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  body.manage-time-page-shell .mtbs-divider { display: none !important; }
+  body.manage-time-page-shell .mtbs-item,
+  body.manage-time-page-shell .mtbs-item--wide {
+    border: 1px solid rgba(15,159,149,0.10) !important;
+    border-radius: 16px !important;
+    background: #f8fffe !important;
   }
 
   body.manage-time-page-shell .manage-time-workspace-grid {
@@ -5888,9 +6041,13 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
 @media (max-width: 720px) {
   body.manage-time-page-shell #manageTimeLogsSummary .manage-time-summary-row,
-  body.manage-time-page-shell .manage-time-bottom-strip,
   body.manage-time-page-shell .manage-time-hero-actions {
     grid-template-columns: 1fr !important;
+  }
+  body.manage-time-page-shell .manage-time-bottom-strip {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 
   body.manage-time-page-shell .manage-time-hero-metrics {
@@ -9345,5 +9502,20 @@ body.manage-time-page-shell .manage-time-bottom-strip {
   .manage-time-date-tile {
     min-width: 92px !important;
     padding: 8px 10px !important;
+  }
+
+  /* ── mtbs: bottom summary card flex overrides ──────────────────────── */
+  .manage-time-bottom-strip {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: stretch !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-radius: 24px !important;
+    padding: 20px 24px !important;
+    margin-top: 14px !important;
+    gap: 0 !important;
   }
 }

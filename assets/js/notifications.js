@@ -23,9 +23,11 @@
                     ? '<button type="button" class="notification-mark-one" data-notification-read data-notification-id="' + escapeHtml(item.id) + '">อ่านแล้ว</button>'
                     : '';
 
+                const itemUrl = escapeHtml(item.target_url || '');
+                const itemType = escapeHtml(item.type || '');
                 return ''
                     + '<div class="notification-item' + unreadClass + '" data-notification-item>'
-                    + '  <button type="button" class="notification-link" data-notification-open data-notification-id="' + escapeHtml(item.id) + '">'
+                    + '  <button type="button" class="notification-link" data-notification-open data-notification-id="' + escapeHtml(item.id) + '" data-notification-url="' + itemUrl + '" data-notification-type="' + itemType + '">'
                     + '      <span class="notification-item-head">'
                     + '          <span class="notification-item-title" title="' + escapeHtml(item.title || '') + '">' + escapeHtml(item.title || '') + '</span>'
                     +            unreadDot
@@ -64,6 +66,30 @@
         const csrfToken = config.csrfToken || root.dataset.csrfToken || '';
         const pollMs = Math.max(15000, Number(config.pollMs || root.dataset.pollMs || 20000));
         let isBusy = false;
+
+        // Type-to-URL fallback map (mirrors app_notification_event_matrix in PHP).
+        // Used when target_url is empty or not stored yet.
+        const TYPE_URL_MAP = {
+            time_log_approved:            'time.php',
+            time_log_rejected:            'time.php',
+            approval_queue_pending:       'approval_queue.php?status=pending',
+            approval_queue_ready:         'approval_queue.php?status=pending',
+            permission_changed:           'profile.php',
+            profile_updated_by_admin:     'profile.php',
+            system_notice:                'notifications.php',
+            report_ready:                 'my_reports.php',
+        };
+        const FALLBACK_URL = 'notifications.php';
+
+        function resolveNotificationUrl(url, type) {
+            if (url && url.trim() !== '') {
+                return url.trim();
+            }
+            if (type && TYPE_URL_MAP[type]) {
+                return TYPE_URL_MAP[type];
+            }
+            return FALLBACK_URL;
+        }
 
         function setCount(count) {
             const safeCount = Math.max(0, Number(count || 0));
@@ -229,10 +255,22 @@
             const itemButton = event.target.closest('[data-notification-open]');
             if (itemButton) {
                 event.preventDefault();
-                const ok = await markRead(itemButton.getAttribute('data-notification-id'));
-                if (ok) {
-                    fetchRecent();
-                }
+                const notifId  = itemButton.getAttribute('data-notification-id');
+                const notifUrl = itemButton.getAttribute('data-notification-url') || '';
+                const notifType = itemButton.getAttribute('data-notification-type') || '';
+                const destination = resolveNotificationUrl(notifUrl, notifType);
+
+                // Mark as read (fire-and-forget) — navigate regardless of outcome.
+                markRead(notifId).then(function (ok) {
+                    if (ok) {
+                        // Update badge without re-rendering the dropdown (we're navigating away).
+                        // fetchRecent() is skipped to avoid a flash before navigation.
+                    }
+                }).catch(function () {
+                    // Silently ignore; user still navigates.
+                }).finally(function () {
+                    window.location.href = destination;
+                });
             }
         });
 

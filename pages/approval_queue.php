@@ -215,6 +215,7 @@ $reviewStatCards = [
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
+    <link rel="stylesheet" href="../assets/css/approval-toolbar.css?v=<?= @filemtime(__DIR__ . '/../assets/css/approval-toolbar.css') ?>">
 </head>
 <body class="dash-shell approval-page-shell">
 <?php render_dashboard_sidebar('approval_queue.php', $displayName, $roleLabel, $profileImageSrc); ?>
@@ -340,6 +341,7 @@ $reviewStatCards = [
         </div>
 
         <section class="approval-workspace-grid">
+            <!-- ═══ LEFT: Filters ═══ -->
             <article class="dash-card approval-filter-card">
                 <div class="approval-card-head">
                     <div>
@@ -409,46 +411,95 @@ $reviewStatCards = [
                             <i class="bi bi-search"></i>ค้นหา
                         </button>
                     </div>
-
-                    <div class="approval-bulk-tools" id="bulkBar">
-                        <div class="approval-bulk-head">
-                            <div>
-                                <p class="approval-field-label !mb-1">จัดการหลายรายการ</p>
-                                <p class="approval-bulk-copy" id="selectedSummaryText">เลือกรายการ 0 รายการ</p>
-                            </div>
-                            <?php if ($checkerSignature === ''): ?>
-                                <span class="status-chip warning">ยังไม่ได้ตั้งค่าลายเซ็นผู้ตรวจสอบ</span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="approval-bulk-action-grid">
-                            <button type="button" class="dash-btn dash-btn-primary approval-tool-btn" id="openApproveModalBtn" <?= $checkerSignature === '' ? 'disabled data-signature-required="1"' : '' ?>>
-                                <i class="bi bi-patch-check"></i>อนุมัติทั้งหมด
-                            </button>
-                            <button type="button" class="dash-btn dash-btn-ghost approval-tool-btn is-disabled" disabled title="ยังไม่เปิดใช้ workflow ตีกลับแบบกลุ่ม">
-                                <i class="bi bi-arrow-counterclockwise"></i>ตีกลับทั้งหมด
-                            </button>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="report_print.php" data-export-type="approval" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                                <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                            </a>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="export_report.php" data-export-type="approval" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                                <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                            </a>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="report_print.php" data-export-type="approval" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                                <i class="bi bi-printer"></i>พิมพ์รายงาน
-                            </a>
-                            <button type="button" class="dash-btn dash-btn-ghost approval-tool-btn" id="clearSelectionBtn">
-                                <i class="bi bi-x-circle"></i>ล้างการเลือก
-                            </button>
-                        </div>
-                    </div>
                 </form>
             </article>
 
+            <!-- ═══ RIGHT: Review queue — static toolbar + AJAX list ═══ -->
             <form method="post" id="bulkApproveForm" class="approval-review-stage">
                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                 <input type="hidden" name="action" value="bulk_approve">
-                <div id="approvalResultsContainer"><?php require __DIR__ . '/../partials/approval/results_block.php'; ?></div>
+
+                <!-- One unified card: static header + AJAX body -->
+                <div class="approval-review-wrap" id="approval-review-panel">
+
+                    <!-- ── Static: toolbar header (never replaced by AJAX) ── -->
+                    <div class="approval-review-wrap-header">
+                        <div class="approval-review-header-copy">
+                            <p class="approval-section-eyebrow">Review queue</p>
+                            <h2 class="approval-card-title">รายการรอตรวจสอบ</h2>
+                            <p class="approval-card-copy">เลือกหลายรายการหรืออนุมัติทีละรายการได้ทันที พร้อมคงตัวกรองและการแบ่งหน้าตามบริบทที่ใช้งานอยู่</p>
+                        </div>
+
+                        <!-- ── Bulk-action toolbar ── -->
+                        <div class="approval-queue-toolbar" id="approvalQueueToolbar">
+
+                            <?php if ($checkerSignature === ''): ?>
+                                <span class="approval-sig-warning">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>ยังไม่ได้ตั้งค่าลายเซ็น
+                                </span>
+                            <?php endif; ?>
+
+                            <!-- Selection badge -->
+                            <span class="approval-toolbar-badge is-empty" id="selectedSummaryBadge">
+                                <i class="bi bi-square"></i>
+                                <span id="selectedSummaryText">ยังไม่ได้เลือกรายการ</span>
+                            </span>
+
+                            <!-- Primary: Approve + Reject -->
+                            <button type="button"
+                                    class="dash-btn dash-btn-primary approval-bulk-btn"
+                                    id="openApproveModalBtn"
+                                    disabled
+                                    <?= $checkerSignature === '' ? 'data-signature-required="1"' : '' ?>>
+                                <i class="bi bi-patch-check"></i>อนุมัติทั้งหมด
+                            </button>
+                            <button type="button"
+                                    class="dash-btn approval-btn-reject approval-bulk-btn"
+                                    id="bulkRejectBtn"
+                                    disabled
+                                    title="ยังไม่เปิดใช้ workflow ตีกลับแบบกลุ่ม">
+                                <i class="bi bi-arrow-counterclockwise"></i>ตีกลับทั้งหมด
+                            </button>
+
+                            <div class="approval-toolbar-divider" aria-hidden="true"></div>
+
+                            <!-- Utility: พิมพ์, PDF, CSV -->
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="printReportBtn"
+                               data-export-base="report_print.php"
+                               data-export-type="approval"
+                               href="report_print.php?<?= htmlspecialchars($printQuery) ?>"
+                               target="_blank" rel="noopener"
+                               >
+                                <i class="bi bi-printer"></i>พิมพ์
+                            </a>
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="exportPdfBtn"
+                               data-export-base="report_print.php"
+                               data-export-type="approval"
+                               data-export-download="pdf"
+                               href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>"
+                               target="_blank" rel="noopener"
+                               >
+                                <i class="bi bi-filetype-pdf"></i>PDF
+                            </a>
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="exportCsvBtn"
+                               data-export-base="export_report.php"
+                               data-export-type="approval"
+                               href="export_report.php?<?= htmlspecialchars($csvQuery) ?>"
+                               >
+                                <i class="bi bi-filetype-csv"></i>CSV
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- ── AJAX: list body (replaced on filter/page change) ── -->
+                    <div id="approvalResultsContainer">
+                        <?php require __DIR__ . '/../partials/approval/results_block.php'; ?>
+                    </div>
+
+                </div><!-- /.approval-review-wrap -->
             </form>
         </section>
 
@@ -489,7 +540,7 @@ $reviewStatCards = [
 </main>
 
 <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content time-modal-surface">
             <div class="modal-header border-0 px-4 pt-4">
                 <div>

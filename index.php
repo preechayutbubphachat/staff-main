@@ -281,6 +281,19 @@ $homeExportPayload = [
     'departments' => home_export_department_rows($departmentTableRows),
     'attendance' => home_export_user_rows($todayAttendanceRows, 'บันทึกแล้ว'),
 ];
+$homeInitialUsers = array_map(static function (array $row) use ($basePath): array {
+    return [
+        'fullname'        => $row['fullname'] ?? '-',
+        'position_name'   => $row['position_name'] ?? '-',
+        'department_name' => $row['department_name'] ?? '-',
+        'shift_label'     => home_shift_label($row['time_in'] ?? null, $row['time_out'] ?? null),
+        'time_in_label'   => home_time_label($row['time_in'] ?? null),
+        'time_out_label'  => home_time_label($row['time_out'] ?? null),
+        'status_label'    => 'ปฏิบัติงาน',
+        'avatar_url'      => home_profile_image_url($basePath, $row['profile_image_path'] ?? ''),
+        'initial'         => home_user_initial($row['fullname'] ?? ''),
+    ];
+}, array_values($activeUsersNow));
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -291,6 +304,74 @@ $homeExportPayload = [
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($basePath) ?>/assets/css/index-tailwind.css">
+    <style>
+        /* ── Preview list: show 3 rows full without clipping ── */
+        .active-preview-list {
+            min-height: 130px;
+            max-height: 162px !important;
+        }
+        /* ── Pagination controls ── */
+        .ot-pagination-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.625rem;
+            border: 1px solid rgba(6,59,79,.12);
+            background: #fff;
+            color: #063b5a;
+            font-size: 0.875rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(6,59,79,.06);
+        }
+        .ot-pagination-btn:hover:not(:disabled) {
+            background: #ddf8f3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(15,159,149,.15);
+        }
+        .ot-pagination-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .ot-pagination-select {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1px solid rgba(6,59,79,.12);
+            border-radius: 0.75rem;
+            background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23063b5a' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 0.55rem center;
+            padding: 0.3rem 1.75rem 0.3rem 0.75rem;
+            font-size: 0.75rem;
+            font-family: Sarabun, sans-serif;
+            font-weight: 700;
+            color: #063b5a;
+            cursor: pointer;
+            min-height: 2rem;
+            box-shadow: 0 2px 6px rgba(6,59,79,.06);
+        }
+        .ot-pagination-select:focus {
+            outline: 2px solid #0f9f95;
+            outline-offset: 2px;
+        }
+        .ot-pagination-info {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        #activeUsersTableFooter {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
 <body class="home-shell">
     <main class="relative isolate min-h-screen py-4 sm:py-5">
@@ -409,8 +490,7 @@ $homeExportPayload = [
                 <article class="ot-summary-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold text-hospital-muted">User Active</p>
-                            <h2 class="mt-1 font-prompt text-[22px] font-extrabold leading-tight text-hospital-ink">บุคลากรที่พร้อมทำหน้าที่</h2>
+                            <h2 class="font-prompt text-[22px] font-extrabold leading-tight text-hospital-ink">Active Staff</h2>
                         </div>
                         <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
                             <span class="live-dot"></span> อัปเดตอัตโนมัติ
@@ -451,8 +531,7 @@ $homeExportPayload = [
                 <article class="ot-summary-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold text-hospital-muted">Department Active</p>
-                            <h2 class="mt-1 font-prompt text-2xl font-extrabold text-hospital-ink">แผนกที่ลงเวรตอนนี้</h2>
+                            <h2 class="font-prompt text-2xl font-extrabold text-hospital-ink">Active Departments</h2>
                         </div>
                         <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
                             <span class="live-dot"></span> อัปเดตอัตโนมัติ
@@ -489,8 +568,7 @@ $homeExportPayload = [
                 <article class="ot-summary-card">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold text-hospital-muted">Today Attendance</p>
-                            <h2 class="mt-1 font-prompt text-2xl font-extrabold text-hospital-ink">ลงเวลาวันนี้</h2>
+                            <h2 class="font-prompt text-2xl font-extrabold text-hospital-ink">Today Attendance</h2>
                         </div>
                         <span class="inline-flex items-center gap-2 rounded-full bg-hospital-mint px-3 py-2 text-xs font-extrabold text-hospital-teal">
                             <span class="live-dot"></span> อัปเดตอัตโนมัติ
@@ -550,7 +628,7 @@ $homeExportPayload = [
                             </thead>
                             <tbody id="activeUsersTableBody">
                                 <?php if ($activeUsersNow): ?>
-                                    <?php foreach (array_slice($activeUsersNow, 0, 5) as $row): ?>
+                                    <?php foreach (array_slice($activeUsersNow, 0, 10) as $row): ?>
                                         <tr>
                                             <td>
                                                 <div class="active-table-person">
@@ -577,14 +655,7 @@ $homeExportPayload = [
                             </tbody>
                         </table>
                     </div>
-                    <div id="activeUsersTableFooter" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-hospital-muted">
-                        <?php if ($activeUsersCount > 0): ?>
-                            <span>แสดง 1-<?= number_format(min(5, $activeUsersCount)) ?> จาก <?= number_format($activeUsersCount) ?> รายการ</span>
-                            <span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>
-                        <?php else: ?>
-                            <span>ไม่มีรายการ</span>
-                        <?php endif; ?>
-                    </div>
+                    <div id="activeUsersTableFooter"></div>
                 </article>
 
                 <article class="ot-table-card">
@@ -801,6 +872,8 @@ $homeExportPayload = [
 
             const realtimeEndpoint = '<?= htmlspecialchars($basePath) ?>/api/public/home/realtime.php';
             const homeExportData = <?= json_encode($homeExportPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            const homeInitialUsers = <?= json_encode($homeInitialUsers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            const paginationState = { allUsers: homeInitialUsers, currentPage: 1, perPage: 10 };
             const homeReportDefinitions = {
                 activeUsers: {
                     title: 'รายการบุคลากรที่ลงเวรตอนนี้',
@@ -929,7 +1002,7 @@ $homeExportPayload = [
                     return renderEmptyRow(includeMenu ? 7 : 6);
                 }
 
-                return users.slice(0, includeMenu ? 5 : users.length).map((user) => `
+                return users.map((user) => `
                     <tr>
                         <td>
                             <div class="active-table-person">
@@ -963,6 +1036,77 @@ $homeExportPayload = [
                     </tr>
                 `).join('');
             };
+            /* ── Pagination ── */
+            const buildPaginationFooterHtml = (total, curPage, totalPages, start, end) => {
+                const startDisplay = total > 0 ? start + 1 : 0;
+                const prevDisabled = curPage <= 1 ? 'disabled' : '';
+                const nextDisabled = curPage >= totalPages ? 'disabled' : '';
+                const perPageOptions = [10, 20, 50]
+                    .map((v) => `<option value="${v}"${paginationState.perPage === v ? ' selected' : ''}>${v} / หน้า</option>`)
+                    .join('');
+                return `
+                    <div class="ot-pagination-info">แสดง ${formatNumber(startDisplay)}–${formatNumber(end)} จาก ${formatNumber(total)} รายการ</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                        <select id="perPageSelect" class="ot-pagination-select">${perPageOptions}</select>
+                        <span class="ot-pagination-info">หน้า ${formatNumber(curPage)} / ${formatNumber(totalPages)}</span>
+                        <button type="button" id="prevPageBtn" class="ot-pagination-btn" ${prevDisabled} aria-label="ก่อนหน้า"><i class="bi bi-chevron-left"></i></button>
+                        <button type="button" id="nextPageBtn" class="ot-pagination-btn" ${nextDisabled} aria-label="ถัดไป"><i class="bi bi-chevron-right"></i></button>
+                    </div>`;
+            };
+            const bindPaginationEvents = () => {
+                const perPageSelect = document.getElementById('perPageSelect');
+                const prevBtn = document.getElementById('prevPageBtn');
+                const nextBtn = document.getElementById('nextPageBtn');
+                if (perPageSelect) {
+                    perPageSelect.addEventListener('change', (e) => {
+                        paginationState.perPage = parseInt(e.target.value, 10);
+                        paginationState.currentPage = 1;
+                        renderPaginatedTable();
+                    });
+                }
+                if (prevBtn) {
+                    prevBtn.addEventListener('click', () => {
+                        if (paginationState.currentPage > 1) {
+                            paginationState.currentPage--;
+                            renderPaginatedTable();
+                        }
+                    });
+                }
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', () => {
+                        const tp = Math.max(1, Math.ceil(paginationState.allUsers.length / paginationState.perPage));
+                        if (paginationState.currentPage < tp) {
+                            paginationState.currentPage++;
+                            renderPaginatedTable();
+                        }
+                    });
+                }
+            };
+            const renderPaginatedTable = () => {
+                const { allUsers, perPage } = paginationState;
+                const total = allUsers.length;
+                const totalPages = Math.max(1, Math.ceil(total / perPage));
+                paginationState.currentPage = Math.min(paginationState.currentPage, totalPages);
+                const curPage = paginationState.currentPage;
+                const start = (curPage - 1) * perPage;
+                const pageUsers = allUsers.slice(start, start + perPage);
+                const end = Math.min(start + perPage, total);
+
+                const tableBody = document.getElementById('activeUsersTableBody');
+                if (tableBody) tableBody.innerHTML = renderActiveUsersTable(pageUsers, true);
+
+                const footer = document.getElementById('activeUsersTableFooter');
+                if (footer) {
+                    if (total === 0) {
+                        footer.innerHTML = `<span class="ot-pagination-info">ไม่มีรายการ</span>`;
+                    } else {
+                        footer.innerHTML = buildPaginationFooterHtml(total, curPage, totalPages, start, end);
+                        bindPaginationEvents();
+                    }
+                }
+            };
+            /* ── end Pagination ── */
+
             const updateActionAvailability = (usersCount, departmentsCount) => {
                 document.querySelectorAll('[data-csv-target="activeUsersTable"], [data-csv-target="activeUsersModalTable"], [data-print-target="activeUsersModal"]').forEach((button) => {
                     button.toggleAttribute('disabled', usersCount === 0);
@@ -1005,20 +1149,17 @@ $homeExportPayload = [
                 if (usersPreview) usersPreview.innerHTML = renderActiveUsersPreview(activeUsers);
                 const departmentsPreview = document.getElementById('homeDepartmentsPreview');
                 if (departmentsPreview) departmentsPreview.innerHTML = renderDepartmentsPreview(activeDepartments);
-                const activeUsersTableBody = document.getElementById('activeUsersTableBody');
-                if (activeUsersTableBody) activeUsersTableBody.innerHTML = renderActiveUsersTable(activeUsers, true);
+                /* update paginated main table */
+                paginationState.allUsers = activeUsers;
+                paginationState.currentPage = 1;
+                renderPaginatedTable();
+                /* update modal table (shows all rows) */
                 const activeUsersModalTableBody = document.getElementById('activeUsersModalTableBody');
                 if (activeUsersModalTableBody) activeUsersModalTableBody.innerHTML = renderActiveUsersTable(activeUsers, false);
                 const departmentsTableBody = document.getElementById('departmentsTableBody');
                 if (departmentsTableBody) departmentsTableBody.innerHTML = renderDepartmentsTable(activeDepartments, true);
                 const departmentsModalTableBody = document.getElementById('departmentsModalTableBody');
                 if (departmentsModalTableBody) departmentsModalTableBody.innerHTML = renderDepartmentsTable(activeDepartments, false);
-                const activeUsersTableFooter = document.getElementById('activeUsersTableFooter');
-                if (activeUsersTableFooter) {
-                    activeUsersTableFooter.innerHTML = usersCount > 0
-                        ? `<span>แสดง 1-${formatNumber(Math.min(5, usersCount))} จาก ${formatNumber(usersCount)} รายการ</span><span class="inline-flex items-center gap-2 rounded-xl border border-hospital-navy/10 bg-white px-3 py-2">5 / หน้า <i class="bi bi-chevron-down"></i></span>`
-                        : '<span>ไม่มีรายการ</span>';
-                }
                 updateActionAvailability(usersCount, departmentsCount);
             };
             const fetchRealtime = async () => {
@@ -1035,6 +1176,7 @@ $homeExportPayload = [
             };
 
             updateActionAvailability(<?= (int) $activeUsersCount ?>, <?= (int) $activeDepartmentsCount ?>);
+            renderPaginatedTable();
             fetchRealtime();
             window.setInterval(fetchRealtime, 15000);
 

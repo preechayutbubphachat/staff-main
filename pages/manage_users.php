@@ -288,20 +288,6 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                     </div>
                 </form>
 
-                <div class="admin-users-toolbox">
-                    <h3>จัดการรายงาน</h3>
-                    <div class="admin-users-tool-grid">
-                        <a href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener" data-export-base="report_print.php" data-export-type="manage_users" class="admin-users-tool-button">
-                            <i class="bi bi-printer"></i> พิมพ์รายงาน
-                        </a>
-                        <a href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener" data-export-base="report_print.php" data-export-type="manage_users" data-export-download="pdf" class="admin-users-tool-button">
-                            <i class="bi bi-filetype-pdf"></i> ส่งออก PDF
-                        </a>
-                        <a href="export_report.php?<?= htmlspecialchars($csvQuery) ?>" data-export-base="export_report.php" data-export-type="manage_users" class="admin-users-tool-button">
-                            <i class="bi bi-filetype-csv"></i> ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="manageUsersResults" class="min-w-0">

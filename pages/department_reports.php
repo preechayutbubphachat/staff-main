@@ -243,20 +243,6 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                     </div>
                 </form>
 
-                <div class="department-report-tools-card">
-                    <h3>จัดการรายงาน</h3>
-                    <div class="department-report-tool-grid">
-                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="report_print.php" data-export-type="department" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="report_print.php" data-export-type="department" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost department-report-tool-btn" data-export-base="export_report.php" data-export-type="department" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="departmentReportsResults" class="min-w-0">

@@ -257,20 +257,6 @@ $notificationCount = app_get_unread_notification_count($conn, $userId);
                     </div>
                 </form>
 
-                <div class="my-report-tools-card">
-                    <h3>จัดการรายงาน</h3>
-                    <div class="my-report-tool-grid">
-                        <a class="dash-btn dash-btn-ghost my-report-tool-btn" data-export-base="report_print.php" data-export-type="my" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost my-report-tool-btn" data-export-base="report_print.php" data-export-type="my" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost my-report-tool-btn" data-export-base="export_report.php" data-export-type="my" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="myReportsResults" class="min-w-0">

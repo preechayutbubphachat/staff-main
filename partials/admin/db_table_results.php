@@ -113,4 +113,34 @@
                                                     <input type="hidden" name="return_q" value="<?= htmlspecialchars($filters['q']) ?>">
                                                     <input type="hidden" name="return_page" value="<?= (int) $page ?>">
                                                     <input type="hidden" name="return_per_page" value="<?= (int) $perPage ?>">
-   
+                                                    <label class="form-label fw-semibold small">พิมพ์ DELETE เพื่อยืนยัน</label>
+                                                    <input type="text" name="confirm_delete_text" class="form-control" required>
+                                                    <div class="modal-footer px-0 pb-0">
+                                                        <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal">ยกเลิก</button>
+                                                        <button type="submit" class="btn btn-danger btn-pill">ยืนยันลบข้อมูล</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <?php if ($totalPages > 1): ?>
+        <nav class="mt-4">
+            <ul class="pagination mb-0">
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                        <a class="page-link" href="?<?= htmlspecialchars(app_db_admin_query_string($filters, ['page' => $i, 'per_page' => $perPage])) ?>" data-table-page-link><?= $i ?></a>
+                    </li>
+                <?php endfor; ?>
+            </ul>
+        </nav>
+    <?php endif; ?>
+</section>

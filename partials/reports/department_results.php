@@ -71,15 +71,36 @@ $toRow = min($totalRows, $page * $perPage);
     </article>
 </section>
 
+<?php
+/* Compute export URLs from $queryBase (available on both full-page load and AJAX refresh) */
+$_deptExportBase = $queryBase ?? [];
+$_deptPrintQuery = app_build_table_query($_deptExportBase, ['type' => 'department']);
+$_deptPdfQuery   = app_build_table_query($_deptExportBase, ['type' => 'department', 'download' => 'pdf']);
+$_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'department']);
+?>
 <section class="dash-card department-report-results-panel" id="department-report-results-panel">
     <div class="department-report-results-header">
         <div>
             <h2 class="department-report-card-title">รายการสรุปรายแผนก</h2>
             <p class="department-report-card-copy">สรุปจำนวนเวร ชั่วโมงรวม และสถานะการตรวจของเจ้าหน้าที่ในขอบเขตรายงานที่เลือก</p>
         </div>
-        <div class="department-report-view-switch">
-            <a class="<?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
-            <a class="<?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
+        <div class="report-action-group">
+            <div class="department-report-view-switch">
+                <a class="<?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
+                <a class="<?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
+            </div>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="department"
+               href="report_print.php?<?= htmlspecialchars($_deptPrintQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-printer"></i>พิมพ์
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="department" data-export-download="pdf"
+               href="report_print.php?<?= htmlspecialchars($_deptPdfQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-filetype-pdf"></i>PDF
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="export_report.php" data-export-type="department"
+               href="export_report.php?<?= htmlspecialchars($_deptCsvQuery) ?>">
+                <i class="bi bi-filetype-csv"></i>CSV
+            </a>
         </div>
     </div>
 

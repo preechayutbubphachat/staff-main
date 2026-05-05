@@ -298,6 +298,8 @@ function render_notification_dropdown_items(array $notifications): void
                         class="notification-link"
                         data-notification-open
                         data-notification-id="<?= (int) $notification['id'] ?>"
+                        data-notification-url="<?= htmlspecialchars((string) ($notification['target_url'] ?? '')) ?>"
+                        data-notification-type="<?= htmlspecialchars((string) ($notification['type'] ?? '')) ?>"
                     >
                         <span class="notification-item-head">
                             <span class="notification-item-title" title="<?= htmlspecialchars($notification['title']) ?>"><?= htmlspecialchars($notification['title']) ?></span>
@@ -443,8 +445,19 @@ function render_dashboard_sidebar_links(string $currentPage): void
 
 function render_dashboard_sidebar(string $currentPage, string $displayName, string $roleLabel, ?string $profileImageSrc = null): void
 {
+    $uiStateContext = app_ui_state_context();
     ?>
-    <aside class="dash-sidebar" aria-label="เมนูหลัก">
+    <script src="../assets/js/page-state.js"></script>
+    <script src="../assets/js/dashboard-state.js"></script>
+    <script>
+        window.PageState && window.PageState.setContext({
+            userId: <?= (int) $uiStateContext['user_id'] ?>,
+            loginMarker: <?= json_encode((string) $uiStateContext['login_marker'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+        });
+    </script>
+    <aside class="dash-sidebar" aria-label="เมนูหลัก"
+           data-ui-user-id="<?= (int) $uiStateContext['user_id'] ?>"
+           data-ui-login-marker="<?= htmlspecialchars($uiStateContext['login_marker']) ?>">
         <div class="dash-sidebar-panel">
             <a href="dashboard.php" class="dash-sidebar-brand">
                 <span class="dash-sidebar-logo">
@@ -610,6 +623,7 @@ function render_app_navigation(string $currentPage = ''): void
     </nav>
     <link rel="stylesheet" href="../assets/css/loading-overlay.css">
     <script src="../assets/js/page-state.js"></script>
+    <script src="../assets/js/dashboard-state.js"></script>
     <script src="../assets/js/global-loading.js"></script>
     <script src="../assets/js/navbar-auto-hide.js"></script>
     <script src="../assets/js/thai-date-ui.js"></script>

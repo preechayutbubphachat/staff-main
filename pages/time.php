@@ -752,7 +752,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
 </main>
 <?php if ($editLog): ?>
     <div class="modal fade" id="editTimeLogModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content time-modal-surface border-0 rounded-4 shadow">
                 <?php require __DIR__ . '/../partials/time/edit_modal_body.php'; ?>
             </div>
@@ -760,7 +760,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
     </div>
 <?php endif; ?>
 <div class="modal fade" id="ajaxEditTimeLogModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content time-modal-surface border-0 rounded-4 shadow" id="ajaxEditTimeLogModalContent">
             <div class="modal-body text-center py-5 text-muted">กำลังโหลดข้อมูล...</div>
         </div>
