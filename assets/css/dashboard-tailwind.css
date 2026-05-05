@@ -23,6 +23,225 @@
   }
 }
 
+.shift-review-modal {
+  border: 0;
+  border-radius: 28px;
+  box-shadow: 0 28px 80px rgba(8, 47, 73, 0.24);
+}
+
+.shift-review-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.shift-review-staff-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(14, 116, 144, 0.14);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(236, 254, 255, 0.95), rgba(255, 255, 255, 0.96));
+}
+
+.shift-review-avatar {
+  display: inline-flex;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 1.45rem;
+  box-shadow: 0 14px 34px rgba(15, 118, 110, 0.22);
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.86);
+}
+
+.shift-review-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shift-review-staff-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.shift-review-label {
+  margin: 0 0 4px;
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.shift-review-staff-head h3 {
+  margin: 0;
+  color: #082f49;
+  font-family: Prompt, Sarabun, sans-serif;
+  font-size: clamp(1.12rem, 2vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.shift-review-staff-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.shift-review-staff-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(8, 47, 73, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #164e63;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.shift-review-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shift-review-field {
+  min-height: 88px;
+  padding: 14px 16px;
+  border: 1px solid rgba(8, 47, 73, 0.08);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.shift-review-field.span-2 {
+  grid-column: span 2;
+}
+
+.shift-review-field span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.shift-review-field strong {
+  display: block;
+  margin-top: 6px;
+  color: #082f49;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.shift-review-audit {
+  padding: 16px;
+  border: 1px solid rgba(8, 47, 73, 0.08);
+  border-radius: 20px;
+  background: #f8fafc;
+}
+
+.shift-review-audit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #475569;
+  font-size: 0.84rem;
+}
+
+.shift-review-audit-list {
+  display: grid;
+  gap: 8px;
+}
+
+.shift-review-audit-item,
+.shift-review-audit-empty {
+  padding: 10px 12px;
+  border: 1px solid rgba(8, 47, 73, 0.07);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.shift-review-audit-item {
+  display: grid;
+  gap: 2px;
+}
+
+.shift-review-audit-item strong {
+  color: #082f49;
+  font-size: 0.9rem;
+}
+
+.shift-review-audit-item span,
+.shift-review-audit-item small,
+.shift-review-audit-empty {
+  color: #64748b;
+}
+
+.shift-review-footer {
+  gap: 10px;
+}
+
+.shift-review-reject-panel {
+  padding: 16px;
+  border: 1px solid rgba(244, 63, 94, 0.18);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 241, 242, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.shift-review-reject-panel textarea {
+  min-height: 96px;
+  resize: vertical;
+  border-radius: 16px;
+  border-color: rgba(244, 63, 94, 0.22);
+}
+
+.shift-review-reject-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 991.98px) {
+  .shift-review-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .shift-review-staff-card,
+  .shift-review-staff-head,
+  .shift-review-audit-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .shift-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shift-review-field.span-2 {
+    grid-column: auto;
+  }
+}
+
 @layer components {
   .dash-shell {
     @apply min-h-screen overflow-x-hidden text-hospital-ink antialiased;
@@ -3169,16 +3388,18 @@
   /* ── Summary card bottom (Shift Management page) ─────────────────────── */
 
   .manage-time-bottom-strip {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1.08fr) 1px minmax(260px, 1.55fr);
     align-items: stretch;
     gap: 0;
     background: #ffffff;
-    border: 1px solid #e2f0ef;
+    border: 1px solid rgba(187, 216, 220, 0.72);
     border-radius: 24px;
-    box-shadow: 0 4px 24px 0 rgba(15,159,149,0.07), 0 1px 4px 0 rgba(8,43,69,0.05);
-    padding: 20px 24px;
-    margin-top: 14px;
+    box-shadow: 0 20px 48px rgba(8, 43, 69, 0.08), 0 2px 10px rgba(15, 159, 149, 0.05);
+    padding: 22px 28px;
+    margin-top: 18px;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
   }
 
@@ -3194,22 +3415,21 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 14px;
-    flex: 1 1 140px;
+    gap: 16px;
     min-width: 0;
-    padding: 8px 20px;
+    padding: 8px 22px;
   }
 
   .mtbs-item--wide {
-    flex: 1.45 1 180px;
+    padding-right: 4px;
   }
 
   .mtbs-divider {
     width: 1px;
-    background: rgba(15,159,149,0.13);
+    background: linear-gradient(180deg, transparent 0%, rgba(148, 163, 184, 0.26) 18%, rgba(148, 163, 184, 0.26) 82%, transparent 100%);
     align-self: stretch;
     flex-shrink: 0;
-    margin: 4px 0;
+    margin: 0;
   }
 
   .mtbs-icon {
@@ -3222,6 +3442,7 @@
     flex-shrink: 0;
     font-size: 1.15rem;
     line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
   }
 
   .mtbs-icon .bi,
@@ -3251,14 +3472,14 @@
     font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     margin: 0;
     white-space: nowrap;
   }
 
   .mtbs-value {
     @apply font-prompt;
-    font-size: 1.25rem;
+    font-size: 1.45rem;
     font-weight: 700;
     color: #082b45;
     letter-spacing: -0.03em;
@@ -3286,17 +3507,17 @@
 
   .mtbs-percent {
     @apply font-prompt;
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: #082b45;
+    color: #164e63;
     letter-spacing: -0.03em;
     white-space: nowrap;
     flex-shrink: 0;
   }
 
   .mtbs-progress-track {
-    height: 10px;
-    background: #e0f2f1;
+    height: 9px;
+    background: #e6f3f5;
     border-radius: 999px;
     overflow: hidden;
     width: 100%;
@@ -3306,10 +3527,37 @@
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #34d399 0%, #0f9f95 100%);
+    background: linear-gradient(90deg, #34c983 0%, #25b97c 100%);
     transition: width 0.4s ease;
     min-width: 0;
     max-width: 100%;
+  }
+
+  @media (min-width: 1025px) and (max-width: 1280px) {
+    .manage-time-bottom-strip {
+      grid-template-columns: minmax(0, 0.95fr) 1px minmax(0, 0.95fr) 1px minmax(0, 0.9fr) 1px minmax(0, 1.05fr) 1px minmax(230px, 1.35fr);
+      padding: 20px 18px;
+    }
+
+    .mtbs-item {
+      gap: 12px;
+      padding: 8px 14px;
+    }
+
+    .mtbs-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 1rem;
+    }
+
+    .mtbs-value {
+      font-size: 1.25rem;
+    }
+
+    .mtbs-label,
+    .mtbs-sub {
+      font-size: 0.68rem;
+    }
   }
 
   /* Tablet: 2-col grid */
@@ -3338,6 +3586,10 @@
     }
     .mtbs-value   { font-size: 1.1rem; }
     .mtbs-percent { font-size: 1.05rem; }
+    .mtbs-label,
+    .mtbs-sub {
+      white-space: normal;
+    }
   }
 
   @media (min-width: 1024px) {
@@ -6052,6 +6304,224 @@ body.manage-time-page-shell .manage-time-bottom-strip {
 
   body.manage-time-page-shell .manage-time-hero-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Shift Management foot summary: final scoped visual source of truth. */
+body.manage-time-page-shell .shift-summary-footer-card {
+  display: grid !important;
+  grid-template-columns:
+    minmax(0, 1fr) 1px
+    minmax(0, 1fr) 1px
+    minmax(0, 1fr) 1px
+    minmax(0, 1.08fr) 1px
+    minmax(280px, 1.58fr) !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 4px 0 0 !important;
+  padding: 24px 28px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(194, 218, 224, 0.82) !important;
+  border-radius: 24px !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 24px 54px rgba(8, 43, 69, 0.08),
+    0 2px 10px rgba(15, 159, 149, 0.05) !important;
+}
+
+body.manage-time-page-shell .shift-summary-metric {
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  gap: 16px !important;
+  padding: 6px 24px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+body.manage-time-page-shell .shift-summary-metric:first-child {
+  padding-left: 0 !important;
+}
+
+body.manage-time-page-shell .shift-summary-progress {
+  padding-right: 0 !important;
+}
+
+body.manage-time-page-shell .shift-summary-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  flex: 0 0 52px !important;
+  border-radius: 999px !important;
+  font-size: 1.28rem !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+body.manage-time-page-shell .shift-summary-icon > i,
+body.manage-time-page-shell .shift-summary-icon > i::before {
+  display: block !important;
+  width: 1em !important;
+  height: 1em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+body.manage-time-page-shell .shift-summary-icon > i {
+  flex: 0 0 auto !important;
+}
+
+body.manage-time-page-shell .mtbs-icon--blue { background: #e5f1ff !important; color: #2563eb !important; }
+body.manage-time-page-shell .mtbs-icon--green { background: #dcfce7 !important; color: #16a34a !important; }
+body.manage-time-page-shell .mtbs-icon--purple { background: #f0e7ff !important; color: #7c3aed !important; }
+body.manage-time-page-shell .mtbs-icon--amber { background: #fff0d8 !important; color: #f59e0b !important; }
+body.manage-time-page-shell .mtbs-icon--teal { background: #e6f7fb !important; color: #0f4c81 !important; }
+
+body.manage-time-page-shell .shift-summary-content {
+  min-width: 0 !important;
+  gap: 4px !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-label {
+  color: #5f7691 !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-value {
+  color: #0b3760 !important;
+  font-size: 1.55rem !important;
+  font-weight: 800 !important;
+  line-height: 1.14 !important;
+  letter-spacing: -0.01em !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-sub {
+  color: #7d91ab !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+body.manage-time-page-shell .shift-summary-divider {
+  display: block !important;
+  width: 1px !important;
+  min-width: 1px !important;
+  margin: 0 !important;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(151, 172, 195, 0.26) 16%,
+    rgba(151, 172, 195, 0.26) 84%,
+    transparent 100%
+  ) !important;
+}
+
+body.manage-time-page-shell .shift-summary-progress .mtbs-progress-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-percent {
+  color: #1d4f86 !important;
+  font-size: 0.94rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-progress-track {
+  width: 100% !important;
+  height: 9px !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  background: #e7eef5 !important;
+}
+
+body.manage-time-page-shell .shift-summary-footer-card .mtbs-progress-fill {
+  display: block !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #39c77f 0%, #31bd78 100%) !important;
+}
+
+@media (max-width: 1280px) {
+  body.manage-time-page-shell .shift-summary-footer-card {
+    grid-template-columns:
+      minmax(0, 1fr) 1px
+      minmax(0, 1fr) 1px
+      minmax(0, 1fr) 1px
+      minmax(0, 1.05fr) 1px
+      minmax(236px, 1.35fr) !important;
+    padding: 22px 20px !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-metric {
+    gap: 12px !important;
+    padding: 6px 14px !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-icon {
+    width: 44px !important;
+    height: 44px !important;
+    flex-basis: 44px !important;
+    font-size: 1.08rem !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-value {
+    font-size: 1.28rem !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-label,
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-sub {
+    font-size: 0.7rem !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  body.manage-time-page-shell .shift-summary-footer-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    padding: 18px !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-divider {
+    display: none !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-metric,
+  body.manage-time-page-shell .shift-summary-metric:first-child,
+  body.manage-time-page-shell .shift-summary-progress {
+    padding: 14px !important;
+    border: 1px solid rgba(15, 159, 149, 0.1) !important;
+    border-radius: 18px !important;
+    background: #f8fffe !important;
+  }
+}
+
+@media (max-width: 640px) {
+  body.manage-time-page-shell .shift-summary-footer-card {
+    grid-template-columns: 1fr !important;
+    padding: 16px !important;
+  }
+
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-label,
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-value,
+  body.manage-time-page-shell .shift-summary-footer-card .mtbs-sub {
+    white-space: normal !important;
   }
 }
 

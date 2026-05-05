@@ -255,9 +255,11 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
 </main>
 
 <?php render_staff_profile_modal(); ?>
+<?php require __DIR__ . '/../partials/modals/dept_report_detail_modal.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
+<script src="../assets/js/dept-report-detail.js"></script>
 <script>
 function moveDepartmentReportBlock(container, selector, targetId) {
     const mount = document.getElementById(targetId);

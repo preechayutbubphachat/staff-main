@@ -594,6 +594,91 @@ $reviewStatCards = [
     </div>
 </div>
 
+<div class="modal fade" id="shiftReviewDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content time-modal-surface shift-review-modal">
+            <div class="modal-header border-0 px-4 pt-4">
+                <div>
+                    <p class="approval-section-eyebrow mb-1">Review detail</p>
+                    <h5 class="modal-title font-prompt text-xl font-bold text-hospital-ink">รายละเอียดรายการลงเวลาเวร</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 pb-4 pt-2">
+                <div id="shiftReviewDetailError" class="alert alert-danger rounded-4 mb-3 d-none"></div>
+                <div id="shiftReviewDetailLoading" class="text-center py-5 text-muted">กำลังโหลดข้อมูลรายการลงเวลาเวร...</div>
+                <div id="shiftReviewDetailContent" class="shift-review-detail d-none">
+                    <section class="shift-review-staff-card" id="shiftReviewDetailRoot" data-time-log-id="" data-current-status="">
+                        <span class="shift-review-avatar" id="shiftDetailAvatar">
+                            <img id="shiftDetailAvatarImg" alt="รูปประจำตัวเจ้าหน้าที่" class="d-none">
+                            <i class="bi bi-person-badge" id="shiftDetailAvatarIcon"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <div class="shift-review-staff-head">
+                                <div class="min-w-0">
+                                    <p class="shift-review-label">ข้อมูลเจ้าหน้าที่</p>
+                                    <h3 id="shiftDetailFullname">-</h3>
+                                </div>
+                                <span id="shiftDetailStatus" class="status-chip warning">-</span>
+                            </div>
+                            <div class="shift-review-staff-meta">
+                                <span><i class="bi bi-briefcase"></i><span id="shiftDetailPosition">-</span></span>
+                                <span><i class="bi bi-building"></i><span id="shiftDetailDepartment">-</span></span>
+                                <span><i class="bi bi-hash"></i>รายการ <span id="shiftDetailRecordId">-</span></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="shift-review-grid" aria-label="ข้อมูลการลงเวลาเวร">
+                        <div class="shift-review-field"><span>วันที่เวร</span><strong id="shiftDetailWorkDate">-</strong></div>
+                        <div class="shift-review-field"><span>เวลาเข้า</span><strong id="shiftDetailTimeIn">-</strong></div>
+                        <div class="shift-review-field"><span>เวลาออก</span><strong id="shiftDetailTimeOut">-</strong></div>
+                        <div class="shift-review-field"><span>ชั่วโมงรวม</span><strong id="shiftDetailHours">-</strong></div>
+                        <div class="shift-review-field"><span>ประเภทเวร/กะ</span><strong id="shiftDetailType">-</strong></div>
+                        <div class="shift-review-field"><span>แผนกที่ลงเวร</span><strong id="shiftDetailWorkDepartment">-</strong></div>
+                        <div class="shift-review-field"><span>สถานะปัจจุบัน</span><strong id="shiftDetailStatusText">-</strong></div>
+                        <div class="shift-review-field"><span>ผู้ตรวจสอบ</span><strong id="shiftDetailChecker">-</strong></div>
+                        <div class="shift-review-field"><span>ส่งเมื่อ</span><strong id="shiftDetailCreatedAt">-</strong></div>
+                        <div class="shift-review-field"><span>แก้ไขล่าสุด</span><strong id="shiftDetailUpdatedAt">-</strong></div>
+                        <div class="shift-review-field span-2"><span>หมายเหตุ</span><strong id="shiftDetailNote">-</strong></div>
+                        <div class="shift-review-field span-2"><span>เหตุผลการตีกลับเดิม</span><strong id="shiftDetailApprovalNote">-</strong></div>
+                    </section>
+
+                    <section class="shift-review-audit">
+                        <div class="shift-review-audit-head">
+                            <p class="shift-review-label">ข้อมูลประกอบการตรวจสอบ</p>
+                            <span>อ้างอิงจาก time_logs.id: <strong id="shiftDetailRawId">-</strong></span>
+                        </div>
+                        <div id="shiftDetailAuditList" class="shift-review-audit-list">
+                            <div class="shift-review-audit-empty">-</div>
+                        </div>
+                    </section>
+
+                    <section class="shift-review-reject-panel d-none" id="shiftRejectPanel">
+                        <label for="shiftRejectReason" class="shift-review-label">เหตุผลการตีกลับ/ไม่อนุมัติ</label>
+                        <textarea id="shiftRejectReason" class="form-control" rows="3" maxlength="1000" placeholder="ระบุเหตุผลที่ต้องให้เจ้าหน้าที่แก้ไขรายการนี้"></textarea>
+                        <div class="shift-review-reject-actions">
+                            <button type="button" class="dash-btn dash-btn-ghost" id="shiftRejectCancelBtn">ยกเลิก</button>
+                            <button type="button" class="dash-btn approval-btn-reject" id="shiftRejectConfirmBtn">
+                                <i class="bi bi-send"></i>ยืนยันตีกลับ
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0 shift-review-footer">
+                <button type="button" class="dash-btn dash-btn-ghost" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="dash-btn approval-btn-reject" id="shiftDetailRejectBtn">
+                    <i class="bi bi-arrow-counterclockwise"></i>ตีกลับ/ไม่อนุมัติ
+                </button>
+                <button type="button" class="dash-btn dash-btn-primary" id="shiftDetailApproveBtn">
+                    <i class="bi bi-patch-check"></i>อนุมัติ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/table-filters.js"></script>

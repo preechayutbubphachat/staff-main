@@ -267,6 +267,26 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <?php
+                    $_mtAvatarUrl = app_resolve_user_image_url($row['profile_image_path'] ?? '');
+                    ?>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="shift-review-avatar" style="flex-shrink:0">
+                            <?php if ($_mtAvatarUrl): ?>
+                                <img src="<?= htmlspecialchars($_mtAvatarUrl) ?>"
+                                     alt="รูปประจำตัว"
+                                     style="width:100%;height:100%;object-fit:cover;border-radius:inherit"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                <i class="bi bi-person-badge" style="display:none"></i>
+                            <?php else: ?>
+                                <i class="bi bi-person-badge"></i>
+                            <?php endif; ?>
+                        </div>
+                        <div>
+                            <div class="fw-bold"><?= htmlspecialchars($row['fullname'] ?? '-') ?></div>
+                            <div class="text-muted small"><?= htmlspecialchars($row['position_name'] ?? '') ?> <?= !empty($row['department_name']) ? '· ' . htmlspecialchars($row['department_name']) : '' ?></div>
+                        </div>
+                    </div>
                     <div class="manage-time-detail-grid">
                         <div class="manage-time-detail-card"><strong>ชื่อพนักงาน</strong><span><?= htmlspecialchars($row['fullname'] ?? '-') ?></span></div>
                         <div class="manage-time-detail-card"><strong>ตำแหน่ง</strong><span><?= htmlspecialchars($row['position_name'] ?? '-') ?></span></div>

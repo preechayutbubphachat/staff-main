@@ -169,7 +169,7 @@ $_myCsvQuery   = app_build_table_query($_myExportBase, ['type' => 'my']);
                         </td>
                         <td>
                             <div class="my-report-row-actions">
-                                <button type="button" class="my-report-row-btn">ดูรายละเอียด</button>
+                                <button type="button" class="my-report-row-btn" data-time-log-detail-trigger data-time-log-id="<?= (int) ($log['id'] ?? 0) ?>">ดูรายละเอียด</button>
                                 <button type="button" class="my-report-row-menu" aria-label="ตัวเลือกเพิ่มเติม"><i class="bi bi-chevron-down"></i></button>
                             </div>
                         </td>

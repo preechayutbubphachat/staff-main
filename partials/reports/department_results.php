@@ -169,7 +169,11 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
                             <td><span class="department-report-count-badge is-warning"><?= $rowPending ?></span></td>
                             <td>
                                 <div class="department-report-row-actions">
-                                    <button type="button" class="department-report-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">ดูรายละเอียด</button>
+                                    <button type="button" class="department-report-row-btn"
+                                            data-dept-report-detail-trigger
+                                            data-user-id="<?= (int) ($row['id'] ?? 0) ?>"
+                                            data-year="<?= (int) ($filters['year_ce'] ?? date('Y')) ?>"
+                                            data-month="<?= (int) ($filters['month_number'] ?? date('n')) ?>">ดูรายละเอียด</button>
                                     <button type="button" class="department-report-row-menu" aria-label="ตัวเลือกเพิ่มเติม"><i class="bi bi-chevron-down"></i></button>
                                 </div>
                             </td>

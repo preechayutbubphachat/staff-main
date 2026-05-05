@@ -88,7 +88,7 @@ $thaiWeekdayShort = [
                 <?php
                 $rowId = (int) ($row['id'] ?? 0);
                 $rowNumber = app_table_row_number($page, $perPage, $index);
-                $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
+                $isApprovable = empty($row['checked_at']) && empty($row['checked_by']) && !empty($row['time_out']);
                 $isReturned = !empty($row['checked_by']) && empty($row['checked_at']);
                 $statusClass = !empty($row['checked_at']) ? 'success' : ($isReturned ? 'danger' : 'warning');
                 $statusLabel = !empty($row['checked_at']) ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับ' : 'รอตรวจ');
@@ -156,7 +156,7 @@ $thaiWeekdayShort = [
 
                     <!-- Card actions -->
                     <div class="approval-card-actions">
-                        <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                        <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-shift-review-detail data-time-log-id="<?= $rowId ?>">
                             ดูรายละเอียด
                         </button>
                         <?php if ($isApprovable): ?>
@@ -194,7 +194,7 @@ $thaiWeekdayShort = [
                     <?php
                     $rowId = (int) ($row['id'] ?? 0);
                     $rowNumber = app_table_row_number($page, $perPage, $index);
-                    $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
+                    $isApprovable = empty($row['checked_at']) && empty($row['checked_by']) && !empty($row['time_out']);
                     $isReturned = !empty($row['checked_by']) && empty($row['checked_at']);
                     $statusClass = !empty($row['checked_at']) ? 'success' : ($isReturned ? 'danger' : 'warning');
                     $statusLabel = !empty($row['checked_at']) ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับ' : 'รอตรวจ');
@@ -255,7 +255,7 @@ $thaiWeekdayShort = [
                         </div>
 
                         <div class="approval-row-actions">
-                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-shift-review-detail data-time-log-id="<?= $rowId ?>">
                                 ดูรายละเอียด
                             </button>
                             <?php if ($isApprovable): ?>

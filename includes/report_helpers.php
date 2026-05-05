@@ -1704,6 +1704,7 @@ function app_get_manage_time_logs(PDO $conn, array $filters, int $limit, int $of
             t.*,
             u.fullname,
             u.position_name,
+            u.profile_image_path,
             d.department_name,
             c.fullname AS checker_name
         FROM time_logs t
@@ -1828,6 +1829,7 @@ function app_get_time_log_by_id(PDO $conn, int $timeLogId): ?array
             t.*,
             u.fullname,
             u.position_name,
+            u.profile_image_path,
             d.department_name,
             c.fullname AS checker_name
         FROM time_logs t

@@ -269,9 +269,11 @@ $notificationCount = app_get_unread_notification_count($conn, $userId);
 </main>
 
 <?php render_staff_profile_modal(); ?>
+<?php require __DIR__ . '/../partials/modals/time_log_detail_modal.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
+<script src="../assets/js/time-log-detail.js"></script>
 <script>
 function moveMyReportBlock(container, selector, targetId) {
     const mount = document.getElementById(targetId);

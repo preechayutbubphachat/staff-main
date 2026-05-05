@@ -40,17 +40,32 @@
         // ── Modal elements ──
         const selectedItemsTableBody = document.getElementById('selectedItemsTableBody');
         const approveModalElement = document.getElementById('approveModal');
+        const shiftDetailModalElement = document.getElementById('shiftReviewDetailModal');
+        const shiftDetailLoading = document.getElementById('shiftReviewDetailLoading');
+        const shiftDetailContent = document.getElementById('shiftReviewDetailContent');
+        const shiftDetailError = document.getElementById('shiftReviewDetailError');
+        const shiftDetailApproveBtn = document.getElementById('shiftDetailApproveBtn');
+        const shiftDetailRejectBtn = document.getElementById('shiftDetailRejectBtn');
+        const shiftDetailRoot = document.getElementById('shiftReviewDetailRoot');
+        const shiftDetailAvatarImg = document.getElementById('shiftDetailAvatarImg');
+        const shiftDetailAvatarIcon = document.getElementById('shiftDetailAvatarIcon');
+        const shiftRejectPanel = document.getElementById('shiftRejectPanel');
+        const shiftRejectReason = document.getElementById('shiftRejectReason');
+        const shiftRejectCancelBtn = document.getElementById('shiftRejectCancelBtn');
+        const shiftRejectConfirmBtn = document.getElementById('shiftRejectConfirmBtn');
 
         if (!form || !resultsContainer || !filterForm || !approveModalElement || typeof bootstrap === 'undefined') {
             return;
         }
 
         const approveModal = bootstrap.Modal.getOrCreateInstance(approveModalElement);
+        const shiftDetailModal = shiftDetailModalElement ? bootstrap.Modal.getOrCreateInstance(shiftDetailModalElement) : null;
         const interactiveSelector = 'a,button,input,select,textarea,label,[data-bs-toggle],[role="button"],.btn';
         const pageStateKey = config.pageStateKey || filterForm.getAttribute('data-page-state-key') || '';
         const canUsePageState = !!(window.PageState && pageStateKey);
         const loadingApi = window.GlobalLoading || null;
         let selectedIds = new Set();
+        let activeDetailLogId = null;
         let restoredStateOnLoad = false;
         let searchTimer = null;
 
@@ -63,6 +78,46 @@
             messageContainer.innerHTML = message
                 ? '<div class="alert alert-' + type + ' rounded-4 mb-4">' + message + '</div>'
                 : '';
+        }
+
+        function setText(id, value) {
+            const node = document.getElementById(id);
+            if (node) node.textContent = value || '-';
+        }
+
+        function escapeHtml(value) {
+            return String(value || '-')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function setShiftAvatar(url) {
+            if (!shiftDetailAvatarImg || !shiftDetailAvatarIcon) return;
+            const safeUrl = typeof url === 'string' ? url.trim() : '';
+            if (!safeUrl) {
+                shiftDetailAvatarImg.classList.add('d-none');
+                shiftDetailAvatarImg.removeAttribute('src');
+                shiftDetailAvatarIcon.classList.remove('d-none');
+                return;
+            }
+            shiftDetailAvatarImg.onerror = function () {
+                shiftDetailAvatarImg.classList.add('d-none');
+                shiftDetailAvatarImg.removeAttribute('src');
+                shiftDetailAvatarIcon.classList.remove('d-none');
+            };
+            shiftDetailAvatarImg.onload = function () {
+                shiftDetailAvatarIcon.classList.add('d-none');
+                shiftDetailAvatarImg.classList.remove('d-none');
+            };
+            shiftDetailAvatarImg.src = safeUrl;
+        }
+
+        function resetRejectPanel() {
+            if (shiftRejectPanel) shiftRejectPanel.classList.add('d-none');
+            if (shiftRejectReason) shiftRejectReason.value = '';
         }
 
         function savePageState() {
@@ -197,6 +252,102 @@
                     + '<td>' + (row.time_range || '-') + '</td>'
                     + '</tr>';
             }).join('');
+        }
+
+        function setShiftDetailState(state, message) {
+            if (!shiftDetailLoading || !shiftDetailContent || !shiftDetailError) return;
+            shiftDetailLoading.classList.toggle('d-none', state !== 'loading');
+            shiftDetailContent.classList.toggle('d-none', state !== 'ready');
+            shiftDetailError.classList.toggle('d-none', state !== 'error');
+            shiftDetailError.textContent = state === 'error' ? (message || 'ไม่สามารถโหลดข้อมูลรายการลงเวลาเวรได้') : '';
+        }
+
+        function renderShiftDetail(payload) {
+            const record = payload && payload.record ? payload.record : {};
+            activeDetailLogId = record.id ? String(record.id) : null;
+
+            if (shiftDetailRoot) {
+                shiftDetailRoot.setAttribute('data-time-log-id', activeDetailLogId || '');
+                shiftDetailRoot.setAttribute('data-current-status', record.status_label || '');
+            }
+            resetRejectPanel();
+            setShiftAvatar(record.profile_image_url || '');
+
+            setText('shiftDetailFullname', record.fullname);
+            setText('shiftDetailPosition', record.position_name);
+            setText('shiftDetailDepartment', record.department_name);
+            setText('shiftDetailRecordId', record.id ? '#' + record.id : '-');
+            setText('shiftDetailRawId', record.id ? record.id : '-');
+            setText('shiftDetailWorkDate', record.work_date);
+            setText('shiftDetailTimeIn', record.time_in);
+            setText('shiftDetailTimeOut', record.time_out);
+            setText('shiftDetailHours', record.work_hours);
+            setText('shiftDetailType', record.shift_type);
+            setText('shiftDetailWorkDepartment', record.department_name);
+            setText('shiftDetailStatusText', record.status_label);
+            setText('shiftDetailChecker', record.checker_name);
+            setText('shiftDetailCreatedAt', record.created_at);
+            setText('shiftDetailUpdatedAt', record.updated_at);
+            setText('shiftDetailNote', record.note);
+            setText('shiftDetailApprovalNote', record.approval_note);
+
+            const statusChip = document.getElementById('shiftDetailStatus');
+            if (statusChip) {
+                statusChip.className = 'status-chip ' + (record.status_class || 'warning');
+                statusChip.textContent = record.status_label || '-';
+            }
+
+            if (shiftDetailApproveBtn) {
+                shiftDetailApproveBtn.disabled = !record.can_review || !activeDetailLogId || (openApproveModalBtn && openApproveModalBtn.hasAttribute('data-signature-required'));
+                shiftDetailApproveBtn.title = record.can_review ? '' : 'รายการนี้ไม่อยู่ในสถานะรอตรวจ';
+            }
+
+            if (shiftDetailRejectBtn) {
+                shiftDetailRejectBtn.disabled = !record.can_review || !activeDetailLogId;
+                shiftDetailRejectBtn.title = record.can_review ? '' : 'รายการนี้ไม่อยู่ในสถานะรอตรวจ';
+            }
+
+            if (shiftRejectConfirmBtn) {
+                shiftRejectConfirmBtn.disabled = false;
+            }
+
+            const auditList = document.getElementById('shiftDetailAuditList');
+            const audits = Array.isArray(payload.audit) ? payload.audit : [];
+            if (auditList) {
+                auditList.innerHTML = audits.length
+                    ? audits.map(function (item) {
+                        return '<div class="shift-review-audit-item">'
+                            + '<strong>' + escapeHtml(item.action_type) + '</strong>'
+                            + '<span>' + escapeHtml(item.created_at) + ' โดย ' + escapeHtml(item.actor_name) + '</span>'
+                            + '<small>' + escapeHtml(item.note) + '</small>'
+                            + '</div>';
+                    }).join('')
+                    : '<div class="shift-review-audit-empty">-</div>';
+            }
+        }
+
+        async function openShiftReviewDetail(timeLogId) {
+            if (!shiftDetailModal || !timeLogId) return;
+
+            activeDetailLogId = String(timeLogId);
+            resetRejectPanel();
+            setShiftAvatar('');
+            setShiftDetailState('loading');
+            shiftDetailModal.show();
+
+            try {
+                const response = await fetch('../ajax/approval/get_time_log_detail.php?id=' + encodeURIComponent(timeLogId), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || 'ไม่สามารถโหลดข้อมูลรายการลงเวลาเวรได้');
+                }
+                renderShiftDetail(payload);
+                setShiftDetailState('ready');
+            } catch (error) {
+                setShiftDetailState('error', error.message);
+            }
         }
 
         // ─────────────────────────────────────────
@@ -369,6 +520,13 @@
                 return;
             }
 
+            const detailButton = event.target.closest('[data-shift-review-detail]');
+            if (detailButton) {
+                event.preventDefault();
+                openShiftReviewDetail(detailButton.getAttribute('data-time-log-id'));
+                return;
+            }
+
             const row = event.target.closest('[data-select-row]');
             if (!row || !resultsContainer.contains(row)) return;
 
@@ -406,6 +564,111 @@
         if (bulkRejectBtn) {
             bulkRejectBtn.addEventListener('click', function () {
                 setMessage('ฟีเจอร์ตีกลับแบบกลุ่มยังไม่เปิดใช้งานในรุ่นนี้', 'warning');
+            });
+        }
+
+        if (shiftDetailRejectBtn) {
+            shiftDetailRejectBtn.addEventListener('click', function () {
+                if (!activeDetailLogId || shiftDetailRejectBtn.disabled) {
+                    setMessage('รายการนี้ไม่อยู่ในสถานะที่ตีกลับได้', 'warning');
+                    return;
+                }
+                if (shiftRejectPanel) shiftRejectPanel.classList.remove('d-none');
+                if (shiftRejectReason) shiftRejectReason.focus();
+            });
+        }
+
+        if (shiftRejectCancelBtn) {
+            shiftRejectCancelBtn.addEventListener('click', resetRejectPanel);
+        }
+
+        if (shiftRejectConfirmBtn) {
+            shiftRejectConfirmBtn.addEventListener('click', async function () {
+                if (!activeDetailLogId) {
+                    setMessage('ไม่พบรหัสรายการลงเวลาเวรที่ต้องการตีกลับ', 'warning');
+                    return;
+                }
+                const reason = shiftRejectReason ? shiftRejectReason.value.trim() : '';
+                if (!reason) {
+                    setMessage('กรุณาระบุเหตุผลการตีกลับ/ไม่อนุมัติ', 'warning');
+                    if (shiftRejectReason) shiftRejectReason.focus();
+                    return;
+                }
+                if (!window.confirm('ยืนยันตีกลับ/ไม่อนุมัติรายการลงเวลาเวรนี้?')) {
+                    return;
+                }
+
+                const csrf = form.querySelector('input[name="_csrf"]');
+                const body = new FormData();
+                body.append('_csrf', csrf ? csrf.value : '');
+                body.append('id', activeDetailLogId);
+                body.append('reason', reason);
+
+                shiftRejectConfirmBtn.disabled = true;
+                if (shiftDetailRejectBtn) shiftDetailRejectBtn.disabled = true;
+
+                try {
+                    const response = loadingApi && typeof loadingApi.withGlobalLoading === 'function'
+                        ? await loadingApi.withGlobalLoading(fetch('../ajax/approval/reject_time_log.php', {
+                            method: 'POST', body: body,
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        }), 'กำลังตีกลับรายการ...', { trigger: shiftRejectConfirmBtn })
+                        : await fetch('../ajax/approval/reject_time_log.php', {
+                            method: 'POST', body: body,
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'ไม่สามารถตีกลับรายการได้');
+                    }
+                    setMessage(result.message || 'ตีกลับรายการเรียบร้อยแล้ว', 'success');
+                    if (shiftDetailModal) shiftDetailModal.hide();
+                    await refreshResults(collectQuery(false), false, true);
+                } catch (error) {
+                    setMessage(error.message || 'ไม่สามารถตีกลับรายการได้ กรุณาลองใหม่อีกครั้ง', 'danger');
+                    shiftRejectConfirmBtn.disabled = false;
+                    if (shiftDetailRejectBtn) shiftDetailRejectBtn.disabled = false;
+                }
+            });
+        }
+
+        if (shiftDetailApproveBtn) {
+            shiftDetailApproveBtn.addEventListener('click', async function () {
+                if (!activeDetailLogId) {
+                    setMessage('ไม่พบรหัสรายการลงเวลาเวรที่ต้องการอนุมัติ', 'warning');
+                    return;
+                }
+                if (!window.confirm('ยืนยันอนุมัติรายการลงเวลาเวรนี้?')) {
+                    return;
+                }
+
+                const csrf = form.querySelector('input[name="_csrf"]');
+                const body = new FormData();
+                body.append('_csrf', csrf ? csrf.value : '');
+                body.append('selected_ids[]', activeDetailLogId);
+                shiftDetailApproveBtn.disabled = true;
+
+                try {
+                    const response = loadingApi && typeof loadingApi.withGlobalLoading === 'function'
+                        ? await loadingApi.withGlobalLoading(fetch('../ajax/approval/bulk_approve.php', {
+                            method: 'POST', body: body,
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        }), 'กำลังอนุมัติรายการ...', { trigger: shiftDetailApproveBtn })
+                        : await fetch('../ajax/approval/bulk_approve.php', {
+                            method: 'POST', body: body,
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'ไม่สามารถอนุมัติรายการได้');
+                    }
+                    setMessage(result.message || 'อนุมัติรายการเรียบร้อยแล้ว', 'success');
+                    if (shiftDetailModal) shiftDetailModal.hide();
+                    await refreshResults(collectQuery(false), false, true);
+                } catch (error) {
+                    setMessage(error.message || 'ไม่สามารถอนุมัติรายการได้ กรุณาลองใหม่อีกครั้ง', 'danger');
+                    shiftDetailApproveBtn.disabled = false;
+                }
             });
         }
 

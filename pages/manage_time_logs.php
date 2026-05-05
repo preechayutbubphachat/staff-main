@@ -122,6 +122,8 @@ $completedPercent = $totalLogs > 0 ? ($checkedCount / $totalLogs) * 100 : 0;
 $pendingPercent = $totalLogs > 0 ? ($pendingCount / $totalLogs) * 100 : 0;
 $issuePercent = $totalLogs > 0 ? ($issueCount / $totalLogs) * 100 : 0;
 $dataCompleteness = $totalLogs > 0 ? (($totalLogs - $issueCount) / $totalLogs) * 100 : 0;
+$averageHoursPerLog = $totalLogs > 0 ? ($totalHours / $totalLogs) : 0;
+$dataCompletenessClamped = is_finite($dataCompleteness) ? min(100, max(0, $dataCompleteness)) : 0;
 
 $selectedDateFrom = trim((string) ($filters['date_from'] ?? ''));
 $selectedDateTo = trim((string) ($filters['date_to'] ?? ''));
@@ -361,71 +363,71 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
             </div>
         </section>
 
-        <section class="dash-card manage-time-bottom-strip" aria-label="สรุปข้อมูลจัดการลงเวลาเวร">
+        <section class="dash-card manage-time-bottom-strip shift-summary-footer-card" aria-label="สรุปข้อมูลจัดการลงเวลาเวร">
             <!-- Metric 1: รายการทั้งหมด -->
-            <div class="mtbs-item">
-                <span class="mtbs-icon mtbs-icon--blue" aria-hidden="true">
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--blue" aria-hidden="true">
                     <i class="bi bi-list-check"></i>
                 </span>
-                <div class="mtbs-content">
+                <div class="mtbs-content shift-summary-content">
                     <p class="mtbs-label">รายการทั้งหมด</p>
                     <strong class="mtbs-value"><?= number_format($totalLogs) ?> รายการ</strong>
                     <span class="mtbs-sub">จากทั้งหมด <?= number_format($totalLogs) ?> รายการ</span>
                 </div>
             </div>
-            <div class="mtbs-divider" aria-hidden="true"></div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
             <!-- Metric 2: พนักงาน -->
-            <div class="mtbs-item">
-                <span class="mtbs-icon mtbs-icon--green" aria-hidden="true">
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--green" aria-hidden="true">
                     <i class="bi bi-people-fill"></i>
                 </span>
-                <div class="mtbs-content">
+                <div class="mtbs-content shift-summary-content">
                     <p class="mtbs-label">พนักงาน</p>
                     <strong class="mtbs-value"><?= number_format($uniqueStaff) ?> คน</strong>
                     <span class="mtbs-sub">จากทั้งหมด <?= number_format($uniqueStaff) ?> คน</span>
                 </div>
             </div>
-            <div class="mtbs-divider" aria-hidden="true"></div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
             <!-- Metric 3: แผนก -->
-            <div class="mtbs-item">
-                <span class="mtbs-icon mtbs-icon--purple" aria-hidden="true">
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--purple" aria-hidden="true">
                     <i class="bi bi-building"></i>
                 </span>
-                <div class="mtbs-content">
+                <div class="mtbs-content shift-summary-content">
                     <p class="mtbs-label">แผนก</p>
                     <strong class="mtbs-value"><?= number_format($uniqueDepartments) ?> แผนก</strong>
                     <span class="mtbs-sub">จากทั้งหมด <?= number_format($uniqueDepartments) ?> แผนก</span>
                 </div>
             </div>
-            <div class="mtbs-divider" aria-hidden="true"></div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
             <!-- Metric 4: ชั่วโมงรวม -->
-            <div class="mtbs-item">
-                <span class="mtbs-icon mtbs-icon--amber" aria-hidden="true">
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--amber" aria-hidden="true">
                     <i class="bi bi-clock-history"></i>
                 </span>
-                <div class="mtbs-content">
+                <div class="mtbs-content shift-summary-content">
                     <p class="mtbs-label">ชั่วโมงรวม</p>
                     <strong class="mtbs-value"><?= number_format($totalHours, 2) ?> ชม.</strong>
-                    <span class="mtbs-sub">เฉลี่ย <?= $totalLogs > 0 ? number_format($totalHours / $totalLogs, 2) : '0.00' ?> ชม./รายการ</span>
+                    <span class="mtbs-sub">เฉลี่ย <?= number_format($averageHoursPerLog, 2) ?> ชม./รายการ</span>
                 </div>
             </div>
-            <div class="mtbs-divider" aria-hidden="true"></div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
             <!-- Metric 5: ความสมบูรณ์ของข้อมูล -->
-            <div class="mtbs-item mtbs-item--wide">
-                <span class="mtbs-icon mtbs-icon--teal" aria-hidden="true">
+            <div class="mtbs-item mtbs-item--wide shift-summary-metric shift-summary-progress">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--teal" aria-hidden="true">
                     <i class="bi bi-graph-up-arrow"></i>
                 </span>
-                <div class="mtbs-content mtbs-content--progress">
+                <div class="mtbs-content mtbs-content--progress shift-summary-content">
                     <div class="mtbs-progress-header">
                         <p class="mtbs-label">ความสมบูรณ์ของข้อมูล</p>
-                        <strong class="mtbs-percent"><?= number_format($dataCompleteness, 2) ?>%</strong>
+                        <strong class="mtbs-percent"><?= number_format($dataCompletenessClamped, 2) ?>%</strong>
                     </div>
                     <div class="mtbs-progress-track" role="progressbar"
-                         aria-valuenow="<?= (int) min(100, max(0, $dataCompleteness)) ?>"
+                         aria-valuenow="<?= (int) round($dataCompletenessClamped) ?>"
                          aria-valuemin="0" aria-valuemax="100"
-                         aria-label="ความสมบูรณ์ข้อมูล <?= number_format($dataCompleteness, 2) ?>%">
+                         aria-label="ความสมบูรณ์ข้อมูล <?= number_format($dataCompletenessClamped, 2) ?>%">
                         <span class="mtbs-progress-fill"
-                              style="width:<?= htmlspecialchars((string) min(100, max(0, round($dataCompleteness, 2)))) ?>%"></span>
+                              style="width:<?= htmlspecialchars((string) round($dataCompletenessClamped, 2)) ?>%"></span>
                     </div>
                     <span class="mtbs-sub">ลงเวลาแล้ว <?= number_format($checkedCount) ?> / <?= number_format($totalLogs) ?> รายการ</span>
                 </div>

@@ -230,7 +230,7 @@ $_dailyCsvQuery   = app_build_table_query($_dailyExportBase, ['type' => 'daily']
                             <span class="daily-status-chip is-<?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span>
                         </div>
                         <div class="daily-row-actions">
-                            <button type="button" class="daily-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($log['user_id'] ?? 0) ?>">ดูรายละเอียด</button>
+                            <button type="button" class="daily-row-btn" data-time-log-detail-trigger data-time-log-id="<?= (int) ($log['id'] ?? 0) ?>">ดูรายละเอียด</button>
                             <?php if ($phone !== ''): ?>
                                 <a class="daily-row-btn is-ghost" href="tel:<?= htmlspecialchars($phone) ?>">ติดต่อ</a>
                             <?php else: ?>
