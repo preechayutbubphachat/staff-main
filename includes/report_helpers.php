@@ -525,10 +525,11 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
     ];
 }
 
-function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): array
+function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters, ?array $filteredStaffRows = null): array
 {
     $yearCe = (int) ($filters['year_ce'] ?? date('Y'));
     $monthNumber = (int) ($filters['month_number'] ?? date('n'));
+    $status = (string) ($filters['status'] ?? 'checked');
     $departmentIds = (int) ($filters['selected_department_id'] ?? 0) > 0
         ? [(int) $filters['selected_department_id']]
         : ($filters['scope']['ids'] ?? []);
@@ -543,21 +544,52 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
     $days = app_build_daily_schedule_matrix_days($yearCe, $monthNumber);
     $placeholders = implode(', ', array_fill(0, count($departmentIds), '?'));
 
-    $staffStmt = $conn->prepare("
-        SELECT
-            u.id AS user_id,
-            u.fullname,
-            COALESCE(u.position_name, '') AS position_name,
-            d.department_name
-        FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE u.department_id IN ($placeholders)
-        ORDER BY d.department_name ASC, u.fullname ASC
-    ");
-    $staffStmt->execute($departmentIds);
-    $staffRows = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($filteredStaffRows !== null) {
+        $staffRows = array_values(array_map(static function (array $row): array {
+            return [
+                'user_id' => (int) ($row['id'] ?? $row['user_id'] ?? 0),
+                'fullname' => (string) ($row['fullname'] ?? '-'),
+                'position_name' => (string) ($row['position_name'] ?? '-'),
+                'department_name' => (string) ($row['department_name'] ?? '-'),
+            ];
+        }, $filteredStaffRows));
+    } else {
+        $staffStmt = $conn->prepare("
+            SELECT
+                u.id AS user_id,
+                u.fullname,
+                COALESCE(u.position_name, '') AS position_name,
+                d.department_name
+            FROM users u
+            LEFT JOIN departments d ON u.department_id = d.id
+            WHERE u.department_id IN ($placeholders)
+            ORDER BY d.department_name ASC, u.fullname ASC
+        ");
+        $staffStmt->execute($departmentIds);
+        $staffRows = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-    $logParams = array_merge([$yearCe, $monthNumber], $departmentIds);
+    $staffUserIds = array_values(array_filter(array_map(
+        static fn(array $row): int => (int) ($row['user_id'] ?? 0),
+        $staffRows
+    )));
+
+    if (!$staffUserIds) {
+        return [
+            'days' => $days,
+            'rows' => [],
+        ];
+    }
+
+    $userPlaceholders = implode(', ', array_fill(0, count($staffUserIds), '?'));
+    $statusWhereClause = '';
+    if ($status === 'checked') {
+        $statusWhereClause = ' AND t.checked_at IS NOT NULL';
+    } elseif ($status === 'pending') {
+        $statusWhereClause = ' AND t.checked_at IS NULL';
+    }
+
+    $logParams = array_merge([$yearCe, $monthNumber], $departmentIds, $staffUserIds);
     $logStmt = $conn->prepare("
         SELECT
             t.id,
@@ -576,7 +608,8 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters): a
         WHERE YEAR(t.work_date) = ?
           AND MONTH(t.work_date) = ?
           AND t.department_id IN ($placeholders)
-          AND t.checked_at IS NOT NULL
+          AND t.user_id IN ($userPlaceholders)
+          {$statusWhereClause}
         ORDER BY t.work_date ASC, t.time_in ASC, t.id ASC
     ");
     $logStmt->execute($logParams);
@@ -678,10 +711,6 @@ function app_is_bd_shift(array $row): bool
 
 function app_match_shift_abbreviation(array $row): string
 {
-    if (!empty($row['checked_at']) === false) {
-        return '';
-    }
-
     if (app_is_bd_shift($row)) {
         return 'BD';
     }
@@ -713,18 +742,15 @@ function app_get_department_monthly_matrix_day_resolution(array $recordsForOneDa
         ];
     }
 
-    $hasExplicitBd = false;
-    $bdHours = 0.0;
+    $bdMatches = [];
     $standardMatches = [];
 
     foreach ($recordsForOneDay as $row) {
-        if (empty($row['checked_at'])) {
-            continue;
-        }
-
         if (app_is_bd_shift($row)) {
-            $hasExplicitBd = true;
-            $bdHours += (float) ($row['work_hours'] ?? 0);
+            $bdMatches[] = [
+                'code' => 'BD',
+                'hours' => (float) ($row['work_hours'] ?? 0),
+            ];
             continue;
         }
 
@@ -737,29 +763,29 @@ function app_get_department_monthly_matrix_day_resolution(array $recordsForOneDa
         }
     }
 
-    if ($hasExplicitBd) {
-        return [
-            'code' => 'BD',
-            'counted_shifts' => 1,
-            'counted_hours' => $bdHours > 0 ? $bdHours : 0.0,
-            'remark' => '',
-        ];
+    $hoursByCode = [];
+    foreach ($standardMatches as $match) {
+        $code = (string) ($match['code'] ?? '');
+        $hoursByCode[$code] = max((float) ($hoursByCode[$code] ?? 0), (float) ($match['hours'] ?? 0));
+    }
+    if ($bdMatches) {
+        $hoursByCode['BD'] = max(array_column($bdMatches, 'hours') ?: [0]);
     }
 
-    $uniqueStandardCodes = array_values(array_unique(array_column($standardMatches, 'code')));
-    if (count($uniqueStandardCodes) === 1) {
-        return [
-            'code' => $uniqueStandardCodes[0],
-            'counted_shifts' => 1,
-            'counted_hours' => array_sum(array_column($standardMatches, 'hours')),
-            'remark' => '',
-        ];
+    $orderedCodes = [];
+    foreach (['ช', 'บ', 'ด'] as $code) {
+        if (array_key_exists($code, $hoursByCode)) {
+            $orderedCodes[] = $code;
+        }
+    }
+    if (array_key_exists('BD', $hoursByCode)) {
+        $orderedCodes[] = 'BD';
     }
 
     return [
-        'code' => '',
-        'counted_shifts' => 0,
-        'counted_hours' => 0.0,
+        'code' => implode('/', $orderedCodes),
+        'counted_shifts' => count($orderedCodes),
+        'counted_hours' => array_sum(array_intersect_key($hoursByCode, array_flip($orderedCodes))),
         'remark' => '',
     ];
 }

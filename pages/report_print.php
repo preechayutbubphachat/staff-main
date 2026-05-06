@@ -27,6 +27,7 @@ $reportLayout = 'table';
 $monthlyMatrixShowTailColumns = false;
 $monthlyDays = [];
 $monthlyRows = [];
+$monthlyRowPages = [];
 $footerLegendItems = [];
 $signatureLabel = '';
 $signatureName = '';
@@ -34,6 +35,9 @@ $notesBlockText = '';
 $title = '';
 $subtitle = '';
 $reportTypeLabel = '';
+$isDepartmentOfficialReport = false;
+$departmentOfficialHeaderLines = [];
+$departmentOfficialPeriodLines = [];
 
 function app_db_table_print_headers(array $config): array
 {
@@ -78,23 +82,48 @@ if ($type === 'my') {
     app_require_permission('can_view_department_reports');
     $reportData = app_fetch_department_report_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_department_report_heading_context($reportData['filters']);
-    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $reportData['filters']);
+    $filters = $reportData['filters'];
+    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $filters, $reportData['staff_rows']);
+    $thaiMonthName = (string) ($filters['month_label_th'] ?? '');
+    $thaiYear = (int) ($filters['year_be'] ?? ((int) date('Y') + 543));
+    $yearCe = (int) ($filters['year_ce'] ?? max(1, $thaiYear - 543));
+    $monthNumber = (int) ($filters['month_number'] ?? date('n'));
+    $daysInReportMonth = cal_days_in_month(CAL_GREGORIAN, $monthNumber, $yearCe);
+    $thaiMonths = app_thai_month_names();
+    $runtimeNow = new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok'));
+    $runtimeMonthName = $thaiMonths[(int) $runtimeNow->format('n')] ?? $runtimeNow->format('F');
+    $runtimeYearBe = (int) $runtimeNow->format('Y') + 543;
 
-    $title = $headingContext['heading_text'];
-    $subtitle = $headingContext['subheading_text'];
+    $title = 'ที่ 159/' . $thaiYear;
+    $subtitle = 'ประจำเดือน ' . $thaiMonthName . ' พ.ศ. ' . $thaiYear;
     $reportTypeLabel = 'รายงานแผนกประจำเดือน';
     $reportLayout = 'monthly_matrix';
+    $isDepartmentOfficialReport = true;
     $monthlyMatrixShowTailColumns = true;
     $monthlyDays = $matrixData['days'] ?? [];
     $monthlyRows = $matrixData['rows'] ?? [];
+    $monthlyRowPages = array_chunk($monthlyRows, 15);
     $footerLegendItems = [
         'ช = เวรเช้า เวลา 08.30 - 16.30 น.',
         'บ = เวรบ่าย เวลา 16.30 - 00.30 น.',
         'ด = เวรดึก เวลา 00.30 - 08.30 น.',
-        'BD = เวรบ่ายนอกเวลาราชการ',
+        'BD = เวรนอกเวลาราชการ',
     ];
     $signatureLabel = 'ผู้ตรวจสอบเวร';
-    $notesBlockText = 'เอกสารนี้สรุปเวรประจำเดือนแบบตารางรายบุคคล โดยวันในอนาคตของเดือนปัจจุบันจะปล่อยว่างตามข้อมูลจริง';
+    $notesBlockText = '';
+    $departmentOfficialHeaderLines = [
+        'ที่ 159/' . $thaiYear,
+        'เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานตามตามเวลาราชการนอกเวลาราชการและวันหยุดราชการ (IM)',
+        'ประจำเดือน ' . $thaiMonthName . ' พ.ศ. ' . $thaiYear,
+        'ด้วยโรงพยาบาลหนองพอกเป็นสถานบริการสาธารณสุขที่ให้บริการสนับสนุนหรือร่วมบริการด้านการรักษาพยาบาลหรือบริการด้านการรักษาพยาบาลหรือบริการสาธารณสุขที่เป็นบริการอันเป็นสาธารณประโยชน์จึงจำเป็นต้องให้บริการตลอดเวลา',
+        'ฉะนั้น เพื่อมิให้บริการเกิดความเสียหายแก่ทางราชการและประชาชนผู้มาขอรับบริการสามารถได้รับบริการตลอดเวลาจึงให้เจ้าหน้าที่ปฏิบัติงานนอกเวลาราชการและวันหยุดราชกาชโดยให้อยู่ในความควบคุมของ',
+        'หัวหน้าหน่วยงาน โดยให้เบิกค่าตอบแทนตามข้อบังคับกระทรวงสาธารณสุข ตามประกาศคณะกรรมการพิจารณาค่าตอบแทนจังหวัดร้อยเอ็ด ฉบับที่ 54 ลงวันที่ 22 กันยายน 2565',
+        'และประกาศคณะกรรมการพิจารณาค่าตอบแทนจังหวัดร้อยเอ็ด (ฉบับที่ 64) ลงวันที่ 28 กุมภาพันธ์ 2566 ดังมีรายชื่อต่อไปนี้',
+    ];
+    $departmentOfficialPeriodLines = [
+        sprintf('ทั้งนี้ตั้งแต่วันที่ 1 %s %d ถึงวันที่ %d %s %d', $thaiMonthName, $thaiYear, $daysInReportMonth, $thaiMonthName, $thaiYear),
+        sprintf('สั่ง ณ วันที่ %d เดือน %s %d', (int) $runtimeNow->format('j'), $runtimeMonthName, $runtimeYearBe),
+    ];
 } elseif ($type === 'daily') {
     $reportData = app_fetch_daily_schedule_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_daily_schedule_heading_context($reportData);
@@ -343,7 +372,32 @@ if ($type === 'my') {
         .signature-box{min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center}
         .signature-line{width:82%;border-bottom:1px solid var(--ink);height:42px;margin-bottom:8px}
         .signature-role{color:var(--muted);font-size:.92rem}
-        @media print{body{background:#fff}.print-actions{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}}
+        .official-report-page{padding:10mm 10mm 8mm;min-height:calc(210mm - 20mm);page-break-after:always}
+        .official-report-page:last-child{page-break-after:auto}
+        .official-header{text-align:center;margin:0 auto 8px;font-size:.96rem;line-height:1.55;color:#111827}
+        .official-header-line{margin:0}
+        .official-header-line.is-ref{margin-bottom:4px}
+        .official-header-line.is-subject{font-weight:600}
+        .official-header-line.is-period{margin-bottom:8px}
+        .official-header-line.is-body{text-align:center}
+        .official-table{table-layout:fixed;width:100%;border-collapse:collapse}
+        .official-table th,.official-table td{border:1px solid #1f2937;color:#111827;font-size:9.5px;padding:2px 3px;text-align:center;line-height:1.22;vertical-align:middle;overflow:hidden}
+        .official-table th{background:#fff;font-weight:700;white-space:normal}
+        .official-table .monthly-col-no,.official-table .monthly-col-name,.official-table .monthly-col-position,.official-table .monthly-col-day,.official-table .monthly-col-total,.official-table .monthly-col-hours,.official-table .monthly-col-ot,.official-table .monthly-col-remark{width:auto!important;min-width:0}
+        .official-table td.monthly-col-name,.official-table td.monthly-col-position,.official-table td.monthly-col-remark{text-align:left}
+        .official-table th.monthly-col-name,.official-table th.monthly-col-position,.official-table th.monthly-col-remark{text-align:center}
+        .official-table .monthly-col-day{font-size:8.5px;padding-left:1px;padding-right:1px;white-space:nowrap}
+        .official-table .official-day-heading{text-align:center;font-size:10px;letter-spacing:0}
+        .official-period{margin:12px 0 8px;color:#111827;font-size:.9rem;line-height:1.6}
+        .official-period p{margin:0}
+        .official-footer{display:grid;grid-template-columns:1fr 360px;gap:24px;margin-top:12px;align-items:start;color:#111827}
+        .official-footer.legend-only{grid-template-columns:1fr}
+        .official-legend-title{margin:0 0 6px;font-weight:700}
+        .official-legend-list{margin:0;padding-left:18px;font-size:.86rem;line-height:1.6}
+        .official-signature{padding-top:18px;text-align:center;font-size:.92rem;justify-self:end;width:340px}
+        .official-signature-line{height:28px;border-bottom:1px solid #111827;margin:0 0 8px}
+        .official-signature-role{font-weight:700;margin-top:4px}
+        @media print{body{background:#fff}.print-actions{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}.official-report-page{width:100%;margin:0;box-shadow:none;break-after:page}.official-report-page:last-child{break-after:auto}}
     </style>
 </head>
 <body>
@@ -353,7 +407,131 @@ if ($type === 'my') {
         <button class="primary" type="button" onclick="window.print()">พิมพ์รายงาน</button>
     </div>
 
-    <main class="page" id="reportSurface">
+    <div id="reportSurface">
+    <?php if ($isDepartmentOfficialReport): ?>
+        <?php if (!$monthlyRows): ?>
+            <main class="page official-report-page">
+                <header class="official-header">
+                    <?php foreach ($departmentOfficialHeaderLines as $lineIndex => $line): ?>
+                        <p class="official-header-line <?= $lineIndex === 0 ? 'is-ref' : ($lineIndex === 1 ? 'is-subject' : ($lineIndex === 2 ? 'is-period' : 'is-body')) ?>"><?= htmlspecialchars($line) ?></p>
+                    <?php endforeach; ?>
+                </header>
+                <div class="empty-state">ไม่พบข้อมูลสำหรับจัดทำรายงานในช่วงเวลาหรือขอบเขตที่เลือก</div>
+                <?php if ($departmentOfficialPeriodLines): ?>
+                    <div class="official-period">
+                        <?php foreach ($departmentOfficialPeriodLines as $periodLine): ?>
+                            <p><?= htmlspecialchars($periodLine) ?></p>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                <footer class="official-footer has-signature">
+                    <div>
+                        <p class="official-legend-title">หมายเหตุ</p>
+                        <ul class="official-legend-list">
+                            <?php foreach ($footerLegendItems as $legendItem): ?>
+                                <li><?= htmlspecialchars($legendItem) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <div class="official-signature">
+                        <div class="official-signature-line"></div>
+                        <div>ลงชื่อ ...............................................................</div>
+                        <div>(<?= htmlspecialchars($signatureName !== '' ? $signatureName : '...............................................................') ?>)</div>
+                        <div class="official-signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
+                    </div>
+                </footer>
+            </main>
+        <?php else: ?>
+            <?php $totalOfficialPages = count($monthlyRowPages); ?>
+            <?php foreach ($monthlyRowPages as $pageIndex => $rowsForPage): ?>
+                <?php $isLastOfficialPage = $pageIndex === $totalOfficialPages - 1; ?>
+                <main class="page official-report-page">
+                    <header class="official-header">
+                        <?php foreach ($departmentOfficialHeaderLines as $lineIndex => $line): ?>
+                            <p class="official-header-line <?= $lineIndex === 0 ? 'is-ref' : ($lineIndex === 1 ? 'is-subject' : ($lineIndex === 2 ? 'is-period' : 'is-body')) ?>"><?= htmlspecialchars($line) ?></p>
+                        <?php endforeach; ?>
+                    </header>
+                    <table class="monthly-matrix-table official-table">
+                        <?php $officialDayColumnWidth = count($monthlyDays) > 0 ? 58 / count($monthlyDays) : 0; ?>
+                        <colgroup>
+                            <col style="width:3.5%">
+                            <col style="width:12%">
+                            <col style="width:10%">
+                            <?php foreach ($monthlyDays as $_dayMeta): ?>
+                                <col style="width:<?= htmlspecialchars(number_format($officialDayColumnWidth, 4, '.', '')) ?>%">
+                            <?php endforeach; ?>
+                            <col style="width:4.5%">
+                            <col style="width:5%">
+                            <col style="width:2.5%">
+                            <col style="width:4.5%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th class="monthly-col-no" rowspan="2">ลำดับที่</th>
+                                <th class="monthly-col-name" rowspan="2">ชื่อ-สกุล</th>
+                                <th class="monthly-col-position" rowspan="2">ตำแหน่ง</th>
+                                <th class="monthly-col-day official-day-heading" colspan="<?= count($monthlyDays) ?>">วันที่ปฏิบัติงาน</th>
+                                <th class="monthly-col-total" rowspan="2">จำนวนเวร</th>
+                                <th class="monthly-col-hours" rowspan="2">จำนวนชั่วโมง</th>
+                                <th class="monthly-col-ot" rowspan="2">OT</th>
+                                <th class="monthly-col-remark" rowspan="2">หมายเหตุ</th>
+                            </tr>
+                            <tr>
+                                <?php foreach ($monthlyDays as $dayMeta): ?>
+                                    <th class="monthly-col-day"><?= (int) $dayMeta['day'] ?></th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($rowsForPage as $row): ?>
+                                <tr>
+                                    <td class="monthly-col-no"><?= (int) ($row['row_number'] ?? 0) ?></td>
+                                    <td class="monthly-col-name"><?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?></td>
+                                    <td class="monthly-col-position"><?= htmlspecialchars((string) ($row['position_name'] ?? '-')) ?></td>
+                                    <?php foreach ($monthlyDays as $dayMeta): ?>
+                                        <?php $cellCode = $row['day_cells'][(int) $dayMeta['day']] ?? ''; ?>
+                                        <td class="monthly-col-day <?= !empty($dayMeta['is_future']) ? 'monthly-matrix-future' : '' ?>"><?= htmlspecialchars((string) $cellCode) ?></td>
+                                    <?php endforeach; ?>
+                                    <td class="monthly-col-total"><?= (int) ($row['total_shifts'] ?? 0) ?></td>
+                                    <td class="monthly-col-hours"><?= number_format((float) ($row['total_hours'] ?? 0), 2) ?></td>
+                                    <td class="monthly-col-ot"><?= htmlspecialchars((string) ($row['ot_value'] ?? '')) ?></td>
+                                    <td class="monthly-col-remark"><?= htmlspecialchars((string) ($row['remark'] ?? '')) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php if ($isLastOfficialPage): ?>
+                        <?php if ($departmentOfficialPeriodLines): ?>
+                            <div class="official-period">
+                                <?php foreach ($departmentOfficialPeriodLines as $periodLine): ?>
+                                    <p><?= htmlspecialchars($periodLine) ?></p>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <footer class="official-footer <?= $isLastOfficialPage ? 'has-signature' : 'legend-only' ?>">
+                        <div>
+                            <p class="official-legend-title">หมายเหตุ</p>
+                            <ul class="official-legend-list">
+                                <?php foreach ($footerLegendItems as $legendItem): ?>
+                                    <li><?= htmlspecialchars($legendItem) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php if ($isLastOfficialPage): ?>
+                            <div class="official-signature">
+                                <div class="official-signature-line"></div>
+                                <div>ลงชื่อ ...............................................................</div>
+                                <div>(<?= htmlspecialchars($signatureName !== '' ? $signatureName : '...............................................................') ?>)</div>
+                                <div class="official-signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
+                            </div>
+                        <?php endif; ?>
+                    </footer>
+                </main>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    <?php else: ?>
+    <main class="page">
         <header class="page-head">
             <div class="doc-topline">
                 <div class="doc-brand">
@@ -483,6 +661,8 @@ if ($type === 'my') {
             <?php endif; ?>
         </section>
     </main>
+    <?php endif; ?>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
