@@ -30,6 +30,8 @@ $queryBase = [
     'month' => $filters['month_number'],
     'year_be' => $filters['year_be'],
     'per_page' => $perPage,
+    'status' => $filters['status'] ?? 'checked',
+    'search' => $filters['search'] !== '' ? $filters['search'] : '',
 ];
 $printQuery = app_build_table_query($queryBase, ['type' => 'department']);
 $pdfQuery = app_build_table_query($queryBase, ['type' => 'department', 'download' => 'pdf']);
@@ -131,7 +133,7 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                         </p>
                         <div class="dash-hero-chips">
                             <span class="dash-hero-chip"><i class="bi bi-calendar-event"></i><span data-department-report-period><?= htmlspecialchars($monthYearLabel) ?></span></span>
-                            <span class="dash-hero-chip"><i class="bi bi-diagram-3"></i>ขอบเขตรายงาน: <span data-department-report-scope><?= htmlspecialchars($scopeLabel) ?></span></span>
+            <span class="dash-hero-chip"><i class="bi bi-diagram-3"></i>แผนก: <span data-department-report-scope><?= htmlspecialchars($scopeLabel) ?></span></span>
                             <span class="dash-hero-chip"><i class="bi bi-clock-history"></i>อัปเดตล่าสุด: <?= htmlspecialchars($latestLabel) ?></span>
                         </div>
                     </div>
@@ -187,9 +189,9 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                     <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
 
                     <div class="department-report-filter-field is-wide">
-                        <label class="department-report-field-label">ขอบเขตรายงาน</label>
-                        <select name="department_id" class="form-select">
-                            <option value="">ทุกแผนกในระบบ</option>
+                        <label class="department-report-field-label" for="dept-filter-department">แผนก</label>
+                        <select id="dept-filter-department" name="department_id" class="form-select">
+                            <option value="">แผนกทั้งหมด</option>
                             <?php foreach ($departments as $department): ?>
                                 <option value="<?= (int) $department['id'] ?>" <?= $filters['selected_department_id'] === (int) $department['id'] ? 'selected' : '' ?>><?= htmlspecialchars($department['department_name']) ?></option>
                             <?php endforeach; ?>
@@ -209,18 +211,12 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                             <label class="department-report-field-label">ปี (พ.ศ.)</label>
                             <input type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $filters['year_be']) ?>" inputmode="numeric">
                         </div>
-                        <div class="department-report-filter-field">
-                            <label class="department-report-field-label">แผนก</label>
-                            <select class="form-select" aria-label="แผนก">
-                                <option><?= htmlspecialchars($scopeLabel) ?></option>
-                            </select>
-                        </div>
-                        <div class="department-report-filter-field">
+                        <div class="department-report-filter-field is-wide">
                             <label class="department-report-field-label">สถานะ</label>
-                            <select class="form-select" aria-label="สถานะ">
-                                <option>ทั้งหมดสถานะ</option>
-                                <option>ตรวจแล้ว</option>
-                                <option>รอตรวจ</option>
+                            <select id="dept-filter-status" name="status" class="form-select">
+                                <option value="all" <?= ($filters['status'] ?? 'checked') === 'all' ? 'selected' : '' ?>>ทั้งหมดสถานะ</option>
+                                <option value="checked" <?= ($filters['status'] ?? 'checked') === 'checked' ? 'selected' : '' ?>>ตรวจแล้ว</option>
+                                <option value="pending" <?= ($filters['status'] ?? 'checked') === 'pending' ? 'selected' : '' ?>>รอตรวจ</option>
                             </select>
                         </div>
                     </div>
@@ -228,13 +224,13 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                     <div class="department-report-filter-field is-wide">
                         <label class="department-report-field-label">ค้นหาชื่อเจ้าหน้าที่ / ตำแหน่ง</label>
                         <label class="department-report-search-field">
-                            <input type="search" placeholder="พิมพ์ชื่อ, ตำแหน่ง หรือคำค้น" aria-label="ค้นหาชื่อเจ้าหน้าที่หรือตำแหน่ง">
+                            <input id="dept-filter-search" type="search" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>" placeholder="พิมพ์ชื่อ, ตำแหน่ง หรือคำค้น" aria-label="ค้นหาชื่อเจ้าหน้าที่หรือตำแหน่ง">
                             <i class="bi bi-search"></i>
                         </label>
                     </div>
 
                     <div class="department-report-filter-actions">
-                        <a class="dash-btn dash-btn-ghost department-report-action-btn" href="department_reports.php">
+                        <a class="dash-btn dash-btn-ghost department-report-action-btn" href="department_reports.php?status=checked">
                             <i class="bi bi-arrow-clockwise"></i>ล้างตัวกรอง
                         </a>
                         <button type="submit" class="dash-btn dash-btn-primary department-report-action-btn">
@@ -284,7 +280,7 @@ function updateDepartmentReportHero(summaryBlock, form) {
         const yearLabel = yearField ? String(yearField.value || '').trim() : '';
         const departmentLabel = departmentField && departmentField.value !== ''
             ? departmentField.options[departmentField.selectedIndex].textContent.trim()
-            : 'ทุกแผนกในระบบ';
+            : 'แผนกทั้งหมด';
 
         const periodTarget = document.querySelector('[data-department-report-period]');
         const scopeTarget = document.querySelector('[data-department-report-scope]');

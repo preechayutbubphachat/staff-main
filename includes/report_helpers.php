@@ -336,6 +336,13 @@ function app_normalize_department_report_filters(PDO $conn, array $input): array
     $view = trim((string) ($input['view'] ?? 'table'));
     $view = in_array($view, ['cards', 'table'], true) ? $view : 'table';
 
+    $validStatuses = ['all', 'checked', 'pending'];
+    $status = trim((string) ($input['status'] ?? 'checked'));
+    if (!in_array($status, $validStatuses, true)) {
+        $status = 'checked';
+    }
+    $search = trim((string) ($input['search'] ?? ''));
+
     return [
         'month' => $month,
         'month_number' => $monthFilter['month_number'],
@@ -348,6 +355,8 @@ function app_normalize_department_report_filters(PDO $conn, array $input): array
             ? app_find_department_name($scope['departments'], $selectedDepartmentId)
             : '',
         'view' => $view,
+        'status' => $status,
+        'search' => $search,
         'scope' => $scope,
         'scope_helper' => 'ค่าเริ่มต้นจะแสดงสรุปรายบุคคลทั้งหมดตามสิทธิ์ที่เข้าถึงได้',
     ];
@@ -440,7 +449,27 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
     }
 
     $placeholders = implode(', ', array_fill(0, count($departmentIds), '?'));
+    $status = (string) ($filters['status'] ?? 'checked');
+    $search = trim((string) ($filters['search'] ?? ''));
+
+    // Build params: year, month, ...departmentIds [, search, search]
     $params = array_merge([(int) $yearNum, (int) $monthNum], $departmentIds);
+    $searchWhereClause = '';
+    if ($search !== '') {
+        $searchWhereClause = " AND (u.fullname LIKE ? OR COALESCE(u.position_name, '') LIKE ?)";
+        $likeVal = '%' . $search . '%';
+        $params[] = $likeVal;
+        $params[] = $likeVal;
+    }
+
+    // Build HAVING clause for status filter
+    $havingClause = '';
+    if ($status === 'checked') {
+        $havingClause = 'HAVING SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END) > 0';
+    } elseif ($status === 'pending') {
+        $havingClause = 'HAVING (COUNT(t.id) - SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END)) > 0';
+    }
+
 
     $summaryStmt = $conn->prepare("
         SELECT
@@ -457,8 +486,9 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
             ON t.user_id = u.id
             AND YEAR(t.work_date) = ?
             AND MONTH(t.work_date) = ?
-        WHERE u.department_id IN ($placeholders)
+        WHERE u.department_id IN ($placeholders){$searchWhereClause}
         GROUP BY u.id, u.fullname, u.position_name, d.department_name
+        {$havingClause}
         ORDER BY u.fullname ASC
     ");
     $summaryStmt->execute($params);

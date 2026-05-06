@@ -10,6 +10,13 @@ $perPage = (int) ($perPage ?? 20);
 $totalRows = (int) ($totalRows ?? count($staffRows ?: $pagedRows));
 $totalPages = (int) ($totalPages ?? 1);
 $queryBase = $queryBase ?? [];
+// Ensure status and search are always included in export/pagination query base
+if (!isset($queryBase['status']) && isset($filters['status'])) {
+    $queryBase['status'] = $filters['status'];
+}
+if (!isset($queryBase['search']) && !empty($filters['search'])) {
+    $queryBase['search'] = $filters['search'];
+}
 $staffCount = (int) ($departmentTotals['staff_count'] ?? 0);
 $totalLogs = (int) ($departmentTotals['total_logs'] ?? 0);
 $totalHours = (float) ($departmentTotals['total_hours'] ?? 0);
@@ -40,9 +47,9 @@ $toRow = min($totalRows, $page * $perPage);
     <article class="dash-kpi-card department-report-summary-card">
         <span class="department-report-summary-icon is-blue"><i class="bi bi-grid-3x3-gap"></i></span>
         <div>
-            <p>ขอบเขตรายงาน</p>
+            <p>แผนก</p>
             <strong><?= htmlspecialchars($scopeLabel) ?></strong>
-            <span>ครอบคลุมทั้งหมด</span>
+            <span>ขอบเขตรายงาน</span>
         </div>
     </article>
     <article class="dash-kpi-card department-report-summary-card">
@@ -108,7 +115,7 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
         <div class="department-report-empty-state">
             <i class="bi bi-folder-x"></i>
             <strong>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</strong>
-            <span>ลองเปลี่ยนเดือน ปี หรือขอบเขตรายงานอีกครั้ง</span>
+            <span>ลองเปลี่ยนแผนก เดือน ปี สถานะ หรือคำค้นหาอีกครั้ง</span>
         </div>
     <?php elseif ($view === 'cards'): ?>
         <div class="department-report-card-list">
@@ -195,7 +202,7 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
             <span>รายการ</span>
         </label>
 
-        <div class="department-report-page-meta"><?= number_format($fromRow) ?>-<?= number_format($toRow) ?> จาก <?= number_format($totalRows) ?> รายการ</div>
+        <div class="department-report-page-meta"><?= $totalRows > 0 ? number_format($fromRow) . '-' . number_format($toRow) . ' จาก ' . number_format($totalRows) . ' รายการ' : 'ไม่มีรายการ' ?></div>
 
         <?php if ($totalPages > 1): ?>
             <nav class="department-report-pagination" aria-label="เปลี่ยนหน้ารายงานแผนก">
