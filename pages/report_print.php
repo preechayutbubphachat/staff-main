@@ -323,12 +323,13 @@ if ($type === 'my') {
     <style>
         :root{--ink:#12263f;--muted:#52657c;--line:#cdd9e5;--soft:#f5f8fb;--accent:#1f5f8b}
         *{box-sizing:border-box}
-        @page{size:A4 landscape;margin:10mm}
+        @page{size:A4 landscape;margin:8mm}
         body{margin:0;background:#eef3f7;color:var(--ink);font-family:'Sarabun',sans-serif}
         .print-actions{width:min(1560px,calc(100% - 32px));margin:18px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .print-actions button,.print-actions a{border:0;border-radius:999px;padding:11px 18px;text-decoration:none;font:inherit;cursor:pointer}
         .print-actions .primary{background:var(--ink);color:#fff}
         .print-actions .secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+        .print-hint{width:297mm;margin:10px auto 0;color:#334155;font-size:.86rem;text-align:right}
         .page{width:min(1560px,calc(100% - 32px));margin:16px auto 28px;background:#fff;box-shadow:0 24px 56px rgba(18,38,63,.12)}
         .page-head{padding:18px 24px 16px;border-bottom:2px solid var(--ink)}
         .doc-topline{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:16px}
@@ -372,32 +373,38 @@ if ($type === 'my') {
         .signature-box{min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center}
         .signature-line{width:82%;border-bottom:1px solid var(--ink);height:42px;margin-bottom:8px}
         .signature-role{color:var(--muted);font-size:.92rem}
-        .official-report-page{padding:10mm 10mm 8mm;min-height:calc(210mm - 20mm);page-break-after:always}
+        .report-paper,.official-report-page{width:297mm;min-height:210mm;padding:8mm 9mm 8mm;margin:16px auto 28px;page-break-after:always}
         .official-report-page:last-child{page-break-after:auto}
-        .official-header{text-align:center;margin:0 auto 8px;font-size:.96rem;line-height:1.55;color:#111827}
+        .official-header{text-align:center;margin:0 auto 3px;font-size:.67rem;line-height:1.26;color:#111827}
         .official-header-line{margin:0}
-        .official-header-line.is-ref{margin-bottom:4px}
-        .official-header-line.is-subject{font-weight:600}
-        .official-header-line.is-period{margin-bottom:8px}
+        .official-header-line.is-ref{margin-bottom:1px;font-size:.72rem}
+        .official-header-line.is-subject{font-weight:600;font-size:.74rem;line-height:1.22}
+        .official-header-line.is-period{margin-bottom:3px;font-size:.72rem}
         .official-header-line.is-body{text-align:center}
-        .official-table{table-layout:fixed;width:100%;border-collapse:collapse}
-        .official-table th,.official-table td{border:1px solid #1f2937;color:#111827;font-size:9.5px;padding:2px 3px;text-align:center;line-height:1.22;vertical-align:middle;overflow:hidden}
+        .official-table{table-layout:fixed;width:96.5%;margin-left:auto;margin-right:auto;border-collapse:collapse}
+        .official-table th,.official-table td{border:1px solid #1f2937;color:#111827;font-size:8px;padding:1.5px 2px;text-align:center;line-height:1.22;vertical-align:middle;overflow:hidden}
         .official-table th{background:#fff;font-weight:700;white-space:normal}
         .official-table .monthly-col-no,.official-table .monthly-col-name,.official-table .monthly-col-position,.official-table .monthly-col-day,.official-table .monthly-col-total,.official-table .monthly-col-hours,.official-table .monthly-col-ot,.official-table .monthly-col-remark{width:auto!important;min-width:0}
         .official-table td.monthly-col-name,.official-table td.monthly-col-position,.official-table td.monthly-col-remark{text-align:left}
+        .official-table td.monthly-col-name,.official-table td.monthly-col-position{font-size:8.8px;font-weight:500}
         .official-table th.monthly-col-name,.official-table th.monthly-col-position,.official-table th.monthly-col-remark{text-align:center}
-        .official-table .monthly-col-day{font-size:8.5px;padding-left:1px;padding-right:1px;white-space:nowrap}
-        .official-table .official-day-heading{text-align:center;font-size:10px;letter-spacing:0}
-        .official-period{margin:12px 0 8px;color:#111827;font-size:.9rem;line-height:1.6}
+        .official-table .monthly-col-day{font-size:6.8px;padding-left:0;padding-right:0;white-space:nowrap}
+        .official-table .official-day-heading{text-align:center;font-size:7.6px;letter-spacing:0}
+        .official-period{width:96.5%;margin:8px auto 5px;color:#111827;font-size:.76rem;line-height:1.52}
         .official-period p{margin:0}
-        .official-footer{display:grid;grid-template-columns:1fr 360px;gap:24px;margin-top:12px;align-items:start;color:#111827}
+        .official-footer{width:96.5%;display:grid;grid-template-columns:1fr 60mm;gap:12mm;margin:7px auto 0;align-items:start;color:#111827}
         .official-footer.legend-only{grid-template-columns:1fr}
-        .official-legend-title{margin:0 0 6px;font-weight:700}
-        .official-legend-list{margin:0;padding-left:18px;font-size:.86rem;line-height:1.6}
-        .official-signature{padding-top:18px;text-align:center;font-size:.92rem;justify-self:end;width:340px}
-        .official-signature-line{height:28px;border-bottom:1px solid #111827;margin:0 0 8px}
-        .official-signature-role{font-weight:700;margin-top:4px}
-        @media print{body{background:#fff}.print-actions{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}.official-report-page{width:100%;margin:0;box-shadow:none;break-after:page}.official-report-page:last-child{break-after:auto}}
+        .official-legend-title{margin:0 0 3px;font-weight:700;font-size:.78rem}
+        .official-legend-list{margin:0;padding-left:14px;font-size:.72rem;line-height:1.58}
+        .official-signature{--signature-label-width:10mm;--signature-line-width:46mm;display:grid;grid-template-columns:var(--signature-label-width) var(--signature-line-width);column-gap:1.5mm;justify-content:end;padding-top:10px;text-align:left;font-size:.78rem;line-height:1.45;justify-self:end;width:60mm}
+        .official-sign-row{display:contents}
+        .official-sign-label{grid-column:1;text-align:right;white-space:nowrap}
+        .official-sign-dots{grid-column:2;display:block;width:100%;border-bottom:1px dotted #111827;height:1em}
+        .official-sign-name{grid-column:2;display:flex;align-items:flex-end;margin-top:3px;width:100%;line-height:1.4;text-align:center}
+        .official-sign-name-paren{flex:0 0 auto}
+        .official-sign-name-dots{display:block;flex:1 1 auto;border-bottom:1px dotted #111827;min-height:1em;text-align:center}
+        .official-signature-role{grid-column:2;width:100%;font-weight:700;margin-top:5px;text-align:center}
+        @media print{html,body{width:297mm;min-height:210mm;background:#fff}.print-actions,.print-hint{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}.report-paper,.official-report-page{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none;break-after:page}.official-report-page:last-child{break-after:auto}}
     </style>
 </head>
 <body>
@@ -406,11 +413,12 @@ if ($type === 'my') {
         <button class="secondary" type="button" id="downloadPdfBtn">ดาวน์โหลด PDF</button>
         <button class="primary" type="button" onclick="window.print()">พิมพ์รายงาน</button>
     </div>
+    <div class="print-hint">เพื่อให้เอกสารถูกต้อง กรุณาปิดตัวเลือก Headers and footers ในหน้าต่างพิมพ์ของเบราว์เซอร์</div>
 
     <div id="reportSurface">
     <?php if ($isDepartmentOfficialReport): ?>
         <?php if (!$monthlyRows): ?>
-            <main class="page official-report-page">
+            <main class="page official-report-page report-paper">
                 <header class="official-header">
                     <?php foreach ($departmentOfficialHeaderLines as $lineIndex => $line): ?>
                         <p class="official-header-line <?= $lineIndex === 0 ? 'is-ref' : ($lineIndex === 1 ? 'is-subject' : ($lineIndex === 2 ? 'is-period' : 'is-body')) ?>"><?= htmlspecialchars($line) ?></p>
@@ -434,9 +442,11 @@ if ($type === 'my') {
                         </ul>
                     </div>
                     <div class="official-signature">
-                        <div class="official-signature-line"></div>
-                        <div>ลงชื่อ ...............................................................</div>
-                        <div>(<?= htmlspecialchars($signatureName !== '' ? $signatureName : '...............................................................') ?>)</div>
+                        <div class="official-sign-row">
+                            <span class="official-sign-label">ลงชื่อ</span>
+                            <span class="official-sign-dots"></span>
+                        </div>
+                        <div class="official-sign-name"><span class="official-sign-name-paren">(</span><span class="official-sign-name-dots"><?= htmlspecialchars($signatureName) ?></span><span class="official-sign-name-paren">)</span></div>
                         <div class="official-signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
                     </div>
                 </footer>
@@ -445,18 +455,18 @@ if ($type === 'my') {
             <?php $totalOfficialPages = count($monthlyRowPages); ?>
             <?php foreach ($monthlyRowPages as $pageIndex => $rowsForPage): ?>
                 <?php $isLastOfficialPage = $pageIndex === $totalOfficialPages - 1; ?>
-                <main class="page official-report-page">
+                <main class="page official-report-page report-paper">
                     <header class="official-header">
                         <?php foreach ($departmentOfficialHeaderLines as $lineIndex => $line): ?>
                             <p class="official-header-line <?= $lineIndex === 0 ? 'is-ref' : ($lineIndex === 1 ? 'is-subject' : ($lineIndex === 2 ? 'is-period' : 'is-body')) ?>"><?= htmlspecialchars($line) ?></p>
                         <?php endforeach; ?>
                     </header>
                     <table class="monthly-matrix-table official-table">
-                        <?php $officialDayColumnWidth = count($monthlyDays) > 0 ? 58 / count($monthlyDays) : 0; ?>
+                        <?php $officialDayColumnWidth = count($monthlyDays) > 0 ? 56 / count($monthlyDays) : 0; ?>
                         <colgroup>
                             <col style="width:3.5%">
-                            <col style="width:12%">
-                            <col style="width:10%">
+                            <col style="width:13%">
+                            <col style="width:11%">
                             <?php foreach ($monthlyDays as $_dayMeta): ?>
                                 <col style="width:<?= htmlspecialchars(number_format($officialDayColumnWidth, 4, '.', '')) ?>%">
                             <?php endforeach; ?>
@@ -520,9 +530,11 @@ if ($type === 'my') {
                         </div>
                         <?php if ($isLastOfficialPage): ?>
                             <div class="official-signature">
-                                <div class="official-signature-line"></div>
-                                <div>ลงชื่อ ...............................................................</div>
-                                <div>(<?= htmlspecialchars($signatureName !== '' ? $signatureName : '...............................................................') ?>)</div>
+                                <div class="official-sign-row">
+                                    <span class="official-sign-label">ลงชื่อ</span>
+                                    <span class="official-sign-dots"></span>
+                                </div>
+                                <div class="official-sign-name"><span class="official-sign-name-paren">(</span><span class="official-sign-name-dots"><?= htmlspecialchars($signatureName) ?></span><span class="official-sign-name-paren">)</span></div>
                                 <div class="official-signature-role"><?= htmlspecialchars($signatureLabel !== '' ? $signatureLabel : 'ผู้รับผิดชอบรายงาน') ?></div>
                             </div>
                         <?php endif; ?>

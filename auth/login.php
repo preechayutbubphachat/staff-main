@@ -191,19 +191,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .brand-logo {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 18px;
+            margin-bottom: clamp(8px, 1.6vh, 16px);
         }
 
         .brand-logo-icon {
-            width: 46px;
-            height: 46px;
-            border-radius: 14px;
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
             background: rgba(255, 255, 255, .12);
             border: 1px solid rgba(255, 255, 255, .22);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.35rem;
+            font-size: 1.65rem;
             color: #5EE8E2;
             flex-shrink: 0;
         }
@@ -211,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .brand-logo-text strong {
             display: block;
             font-family: 'Prompt', sans-serif;
-            font-size: 1.2rem;
+            font-size: clamp(1.45rem, 2vw, 1.72rem);
             font-weight: 700;
             line-height: 1.1;
             letter-spacing: -.02em;
@@ -219,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .brand-logo-text span {
-            font-size: 0.73rem;
+            font-size: 0.84rem;
             color: rgba(255, 255, 255, .65);
         }
 
@@ -230,16 +231,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-direction: column;
             justify-content: center;
             padding: clamp(24px, 4vh, 44px) 0;
-        }
-
-        .brand-label {
-            font-family: 'Prompt', sans-serif;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: .16em;
-            text-transform: uppercase;
-            color: #5EE8E2;
-            margin-bottom: 12px;
         }
 
         .brand-desc {
@@ -567,6 +558,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 width: 100%;
             }
             .brand-body { padding: 16px 0; }
+            .brand-logo {
+                gap: 14px;
+                margin-bottom: 12px;
+            }
+            .brand-logo-icon {
+                width: 52px;
+                height: 52px;
+                border-radius: 16px;
+                font-size: 1.45rem;
+            }
+            .brand-logo-text strong {
+                font-size: 1.35rem;
+            }
+            .brand-logo-text span {
+                font-size: 0.78rem;
+            }
             .brand-features { gap: 10px; }
             .brand-cta { flex-direction: column; align-items: flex-start; gap: 10px; }
             .modal-header,
@@ -588,7 +595,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="bi bi-arrow-left"></i>หน้าแรก
             </a>
 
-            <!-- Brand logo — ระบบ Over Time -->
+            <!-- Brand logo -->
             <div class="brand-logo">
                 <div class="brand-logo-icon">
                     <i class="bi bi-clock-history"></i>
@@ -601,7 +608,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Body copy -->
             <div class="brand-body">
-                <div class="brand-label">ระบบ Over Time</div>
                 <p class="brand-desc">เข้าสู่ระบบเพื่อดูสถานะการลงเวลางานของบุคลากรและแผนกต่าง ๆ แบบเรียลไทม์ พร้อมจัดการสิทธิ์ตามบทบาทผู้ใช้งาน</p>
 
                 <div class="brand-features">
@@ -753,4 +759,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <div class="mb-0">
                             <label class="field-label">ยืนยันรหัสผ่านใหม่</label>
-                            <input type="password" class="form-control" name="confirm_password" placeholder="กรอกรหัส�
+                            <input type="password" class="form-control" name="confirm_password" placeholder="กรอกรหัสผ่านใหม่ซ้ำอีกครั้ง" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-action" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" form="resetPasswordForm" class="btn btn-submit w-auto px-4">บันทึกรหัสผ่านใหม่</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const eyeOpen = document.getElementById('eyeOpen');
+        const eyeClosed = document.getElementById('eyeClosed');
+
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function () {
+                const showPassword = passwordInput.type === 'password';
+                passwordInput.type = showPassword ? 'text' : 'password';
+                eyeOpen.classList.toggle('d-none', showPassword);
+                eyeClosed.classList.toggle('d-none', !showPassword);
+            });
+        }
+
+        <?php if ($openResetModal): ?>
+        window.addEventListener('load', function () {
+            const modalElement = document.getElementById('forgotPasswordModal');
+            if (!modalElement) {
+                return;
+            }
+
+            const resetModal = new bootstrap.Modal(modalElement);
+            resetModal.show();
+        });
+        <?php endif; ?>
+    </script>
+</body>
+</html>
