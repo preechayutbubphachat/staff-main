@@ -39,44 +39,143 @@ $thaiWeekdayShort = [
     6 => 'ส.',
 ];
 ?>
-<section class="dash-card approval-review-panel" id="approval-review-panel" data-current-view="<?= htmlspecialchars($view ?? 'table') ?>" data-current-page="<?= (int) $page ?>">
-    <div class="approval-review-header">
-        <div>
-            <p class="approval-section-eyebrow">Review queue</p>
-            <h2 class="approval-card-title">รายการรอตรวจสอบ</h2>
-            <p class="approval-card-copy">เลือกหลายรายการหรืออนุมัติทีละรายการได้ทันที พร้อมคงตัวกรองและการแบ่งหน้าตามบริบทที่ใช้งานอยู่</p>
-        </div>
-        <div class="approval-review-toolbar">
-            <div class="approval-select-all">
-                <label class="approval-select-all-check">
-                    <input type="checkbox" class="form-check-input" id="selectAllTable">
-                    <span>เลือกทั้งหมด</span>
-                </label>
-                <button type="button" class="dash-btn dash-btn-ghost approval-select-all-btn" data-select-all-visible>
-                    <i class="bi bi-check2-square"></i>เลือกทั้งหมดในหน้าที่เห็น
-                </button>
-            </div>
-            <div class="approval-view-switch">
-                <a class="dash-btn <?= ($view ?? 'table') === 'cards' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($cardsQuery) ?>" data-approval-view-link="cards">
-                    <i class="bi bi-grid-3x2-gap"></i>การ์ด
-                </a>
-                <a class="dash-btn <?= ($view ?? 'table') === 'table' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($tableQuery) ?>" data-approval-view-link="table">
-                    <i class="bi bi-table"></i>ตาราง
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="approval-results-inner"
+     data-current-view="<?= htmlspecialchars($view ?? 'table') ?>"
+     data-current-page="<?= (int) $page ?>">
 
-    <div class="approval-list-caption">
-        <span>ทั้งหมด <?= number_format($totalRows) ?> รายการ</span>
-        <?php if ($checkerSignature === ''): ?>
-            <span class="status-chip warning">ยังไม่สามารถอนุมัติได้จนกว่าจะตั้งค่าลายเซ็น</span>
-        <?php endif; ?>
+    <!-- Controls row: select-all + caption + view switch -->
+    <div class="approval-review-controls-bar">
+        <div class="approval-select-all">
+            <label class="approval-select-all-check">
+                <input type="checkbox" class="form-check-input" id="selectAllTable">
+                <span>เลือกทั้งหมด</span>
+            </label>
+            <button type="button" class="dash-btn dash-btn-ghost approval-select-all-btn" data-select-all-visible>
+                <i class="bi bi-check2-square"></i>เลือกทั้งหมดในหน้านี้
+            </button>
+            <button type="button"
+                    class="dash-btn dash-btn-ghost"
+                    id="clearSelectionBtn"
+                    disabled>
+                <i class="bi bi-x-circle"></i>ล้างการเลือก
+            </button>
+        </div>
+
+        <div class="approval-list-caption">
+            <span>ทั้งหมด <?= number_format($totalRows) ?> รายการ</span>
+            <?php if ($checkerSignature === ''): ?>
+                <span class="status-chip warning">ยังไม่สามารถอนุมัติได้จนกว่าจะตั้งค่าลายเซ็น</span>
+            <?php endif; ?>
+        </div>
+
+        <div class="approval-view-switch">
+            <a class="dash-btn <?= ($view ?? 'table') === 'cards' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($cardsQuery) ?>" data-approval-view-link="cards">
+                <i class="bi bi-grid-3x2-gap"></i>การ์ด
+            </a>
+            <a class="dash-btn <?= ($view ?? 'table') === 'table' ? 'dash-btn-primary' : 'dash-btn-ghost' ?>" href="?<?= htmlspecialchars($tableQuery) ?>" data-approval-view-link="table">
+                <i class="bi bi-table"></i>ตาราง
+            </a>
+        </div>
     </div>
 
     <?php if (!$rows): ?>
         <div class="ops-empty">ไม่พบรายการที่ตรงกับตัวกรองในขณะนี้</div>
+    <?php elseif (($view ?? 'table') === 'cards'): ?>
+
+        <!-- ── Card view ── -->
+        <div class="approval-card-grid">
+            <?php foreach ($rows as $index => $row): ?>
+                <?php
+                $rowId = (int) ($row['id'] ?? 0);
+                $rowNumber = app_table_row_number($page, $perPage, $index);
+                $isApprovable = empty($row['checked_at']) && empty($row['checked_by']) && !empty($row['time_out']);
+                $isReturned = !empty($row['checked_by']) && empty($row['checked_at']);
+                $statusClass = !empty($row['checked_at']) ? 'success' : ($isReturned ? 'danger' : 'warning');
+                $statusLabel = !empty($row['checked_at']) ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับ' : 'รอตรวจ');
+                $workDate = trim((string) ($row['work_date'] ?? ''));
+                $dateTimestamp = $workDate !== '' ? strtotime($workDate) : false;
+                $dayNumber = $dateTimestamp ? date('j', $dateTimestamp) : '-';
+                $monthYearCompact = $dateTimestamp
+                    ? sprintf('%s %d', $thaiMonthShort[(int) date('n', $dateTimestamp)] ?? date('M', $dateTimestamp), (int) date('Y', $dateTimestamp) + 543)
+                    : '-';
+                $weekdayCompact = $dateTimestamp ? ($thaiWeekdayShort[(int) date('w', $dateTimestamp)] ?? '') : '';
+                $timeInLabel = !empty($row['time_in']) ? date('H:i', strtotime((string) $row['time_in'])) : '--:--';
+                $timeOutLabel = !empty($row['time_out']) ? date('H:i', strtotime((string) $row['time_out'])) : '--:--';
+                $detailText = trim((string) ($row['approval_note'] ?? '')) ?: trim((string) ($row['note'] ?? ''));
+                if ($detailText === '') {
+                    $detailText = '-';
+                }
+                ?>
+                <article class="approval-card<?= $isReturned ? ' is-returned' : '' ?><?= !empty($row['checked_at']) ? ' is-approved' : ''?>" data-select-row>
+
+                    <!-- Card header: checkbox + status chip + row number -->
+                    <div class="approval-card-header">
+                        <input
+                            type="checkbox"
+                            class="form-check-input row-checkbox"
+                            name="selected_ids[]"
+                            value="<?= $rowId ?>"
+                            data-fullname="<?= htmlspecialchars((string) ($row['fullname'] ?? '-'), ENT_QUOTES) ?>"
+                            data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>"
+                            data-department="<?= htmlspecialchars((string) ($row['department_name'] ?? '-'), ENT_QUOTES) ?>"
+                            <?= $isApprovable ? '' : 'disabled' ?>
+                        >
+                        <span class="status-chip <?= htmlspecialchars($statusClass) ?>"><?= htmlspecialchars($statusLabel) ?></span>
+                        <span class="approval-card-index ms-auto">#<?= $rowNumber ?></span>
+                    </div>
+
+                    <!-- Date tile -->
+                    <div class="approval-card-date">
+                        <div class="approval-date-tile">
+                            <strong><?= htmlspecialchars($dayNumber) ?></strong>
+                            <span><?= htmlspecialchars($monthYearCompact) ?></span>
+                            <?php if ($weekdayCompact !== ''): ?><small><?= htmlspecialchars($weekdayCompact) ?></small><?php endif; ?>
+                        </div>
+                        <div class="approval-card-shift">
+                            <i class="bi bi-clock"></i>
+                            <?= htmlspecialchars($timeInLabel) ?> – <?= htmlspecialchars($timeOutLabel) ?>
+                            <span class="approval-card-hours">(<?= number_format((float) ($row['work_hours'] ?? 0), 2) ?> ชม.)</span>
+                        </div>
+                    </div>
+
+                    <!-- Staff info -->
+                    <div class="approval-card-body">
+                        <button type="button" class="approval-staff-link" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                            <?= htmlspecialchars((string) ($row['fullname'] ?? '-')) ?>
+                        </button>
+                        <div class="approval-card-meta">
+                            <?php if (!empty($row['position_name'])): ?>
+                                <span><i class="bi bi-person-badge"></i><?= htmlspecialchars((string) $row['position_name']) ?></span>
+                            <?php endif; ?>
+                            <span><i class="bi bi-building"></i><?= htmlspecialchars((string) ($row['department_name'] ?? '-') ?: '-') ?></span>
+                        </div>
+                        <?php if ($detailText !== '-'): ?>
+                            <p class="approval-card-note"><i class="bi bi-chat-left-text"></i><?= htmlspecialchars($detailText) ?></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Card actions -->
+                    <div class="approval-card-actions">
+                        <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-shift-review-detail data-time-log-id="<?= $rowId ?>">
+                            ดูรายละเอียด
+                        </button>
+                        <?php if ($isApprovable): ?>
+                            <button type="button" class="dash-btn dash-btn-primary approval-row-btn is-approve" data-approve-single="<?= $rowId ?>">
+                                อนุมัติ
+                            </button>
+                        <?php elseif (!empty($row['checked_at'])): ?>
+                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn is-disabled" disabled>อนุมัติแล้ว</button>
+                        <?php else: ?>
+                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn is-disabled" disabled>ตีกลับ</button>
+                        <?php endif; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+
     <?php else: ?>
+
+        <!-- ── Table view (default) ── -->
         <div class="approval-list-shell">
             <div class="approval-list-head">
                 <span></span>
@@ -95,7 +194,7 @@ $thaiWeekdayShort = [
                     <?php
                     $rowId = (int) ($row['id'] ?? 0);
                     $rowNumber = app_table_row_number($page, $perPage, $index);
-                    $isApprovable = empty($row['checked_at']) && !empty($row['time_out']);
+                    $isApprovable = empty($row['checked_at']) && empty($row['checked_by']) && !empty($row['time_out']);
                     $isReturned = !empty($row['checked_by']) && empty($row['checked_at']);
                     $statusClass = !empty($row['checked_at']) ? 'success' : ($isReturned ? 'danger' : 'warning');
                     $statusLabel = !empty($row['checked_at']) ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับ' : 'รอตรวจ');
@@ -156,7 +255,7 @@ $thaiWeekdayShort = [
                         </div>
 
                         <div class="approval-row-actions">
-                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>">
+                            <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-shift-review-detail data-time-log-id="<?= $rowId ?>">
                                 ดูรายละเอียด
                             </button>
                             <?php if ($isApprovable): ?>
@@ -168,9 +267,7 @@ $thaiWeekdayShort = [
                             <?php else: ?>
                                 <button type="button" class="dash-btn dash-btn-ghost approval-row-btn is-disabled" disabled>ตีกลับ</button>
                             <?php endif; ?>
-                            <button type="button" class="dash-icon-button approval-row-menu" disabled aria-label="เมนูเพิ่มเติม">
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
+
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -202,4 +299,5 @@ $thaiWeekdayShort = [
             </ul>
         </nav>
     <?php endif; ?>
-</section>
+
+</div><!-- /.approval-results-inner -->

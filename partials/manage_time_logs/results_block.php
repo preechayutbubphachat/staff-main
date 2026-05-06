@@ -76,15 +76,45 @@ $toRow = min($totalRows, $page * $perPage);
     </article>
 </section>
 
+<?php
+/* Build export query from $filters (available on both full-page load and AJAX refresh).
+   $queryBase may not be passed in the AJAX closure for this partial, so we derive it here. */
+$_mtExportBase = isset($queryBase) ? $queryBase : [
+    'name'          => $filters['name']          ?? '',
+    'position_name' => $filters['position_name'] ?? '',
+    'department'    => $filters['department']    ?? '',
+    'date_from'     => $filters['date_from']     ?? '',
+    'date_to'       => $filters['date_to']       ?? '',
+    'status'        => $filters['status']        ?? 'all',
+    'per_page'      => $perPage,
+];
+$_mtPrintQuery = app_build_table_query($_mtExportBase, ['type' => 'manage']);
+$_mtPdfQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage', 'download' => 'pdf']);
+$_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
+?>
 <section class="dash-card manage-time-results-panel" id="manage-time-results-panel">
     <div class="manage-time-results-header">
         <div>
             <h2 class="manage-time-card-title">รายการลงเวลาเวรที่จัดการได้</h2>
             <p class="manage-time-card-copy">เปิดดูรายละเอียด แก้ไข และจัดการรายการลงเวลาตามสิทธิ์ของผู้ดูแลระบบ</p>
         </div>
-        <div class="manage-time-view-switch" aria-label="ตัวเลือกมุมมอง">
-            <button type="button"><i class="bi bi-grid-3x3-gap"></i>ตัวเลือกคอลัมน์</button>
-            <button type="button" class="active"><i class="bi bi-table"></i>มุมมองตาราง</button>
+        <div class="report-action-group">
+            <div class="manage-time-view-switch" aria-label="ตัวเลือกมุมมอง">
+                <button type="button"><i class="bi bi-grid-3x3-gap"></i>ตัวเลือกคอลัมน์</button>
+                <button type="button" class="active"><i class="bi bi-table"></i>มุมมองตาราง</button>
+            </div>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="manage"
+               href="report_print.php?<?= htmlspecialchars($_mtPrintQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-printer"></i>พิมพ์
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="manage" data-export-download="pdf"
+               href="report_print.php?<?= htmlspecialchars($_mtPdfQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-filetype-pdf"></i>PDF
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="export_report.php" data-export-type="manage"
+               href="export_report.php?<?= htmlspecialchars($_mtCsvQuery) ?>">
+                <i class="bi bi-filetype-csv"></i>CSV
+            </a>
         </div>
     </div>
 
@@ -237,6 +267,26 @@ $toRow = min($totalRows, $page * $perPage);
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <?php
+                    $_mtAvatarUrl = app_resolve_user_image_url($row['profile_image_path'] ?? '');
+                    ?>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="shift-review-avatar" style="flex-shrink:0">
+                            <?php if ($_mtAvatarUrl): ?>
+                                <img src="<?= htmlspecialchars($_mtAvatarUrl) ?>"
+                                     alt="รูปประจำตัว"
+                                     style="width:100%;height:100%;object-fit:cover;border-radius:inherit"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                <i class="bi bi-person-badge" style="display:none"></i>
+                            <?php else: ?>
+                                <i class="bi bi-person-badge"></i>
+                            <?php endif; ?>
+                        </div>
+                        <div>
+                            <div class="fw-bold"><?= htmlspecialchars($row['fullname'] ?? '-') ?></div>
+                            <div class="text-muted small"><?= htmlspecialchars($row['position_name'] ?? '') ?> <?= !empty($row['department_name']) ? '· ' . htmlspecialchars($row['department_name']) : '' ?></div>
+                        </div>
+                    </div>
                     <div class="manage-time-detail-grid">
                         <div class="manage-time-detail-card"><strong>ชื่อพนักงาน</strong><span><?= htmlspecialchars($row['fullname'] ?? '-') ?></span></div>
                         <div class="manage-time-detail-card"><strong>ตำแหน่ง</strong><span><?= htmlspecialchars($row['position_name'] ?? '-') ?></span></div>

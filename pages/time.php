@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/auth.php';
@@ -79,9 +79,9 @@ if ($historyFilters['query'] !== '') {
     $historyRedirectBase['query'] = $historyFilters['query'];
 }
 $shiftPresets = [
-    'morning' => ['label' => 'เวรเช้า', 'time_in' => '08:30', 'time_out' => '16:30'],
-    'afternoon' => ['label' => 'เวรบ่าย', 'time_in' => '16:30', 'time_out' => '00:30'],
-    'night' => ['label' => 'เวรดึก', 'time_in' => '00:30', 'time_out' => '08:30'],
+    'morning' => ['label' => 'เช้า', 'time_in' => '08:30', 'time_out' => '16:30'],
+    'afternoon' => ['label' => 'บ่าย', 'time_in' => '16:30', 'time_out' => '00:30'],
+    'night' => ['label' => 'ดึก', 'time_in' => '00:30', 'time_out' => '08:30'],
 ];
 $defaultTimeParts = app_time_to_parts($shiftPresets['morning']['time_in']);
 $defaultTimeOutParts = app_time_to_parts($shiftPresets['morning']['time_out']);
@@ -98,7 +98,7 @@ $minuteOptions = array_map(static fn ($minute) => sprintf('%02d', $minute), rang
 if (isset($_POST['change_department']) && $canViewDepartmentReports) {
     $departmentId = (int) ($_POST['department_id'] ?? $departmentId);
     $_SESSION['department_id'] = $departmentId;
-    $message = 'เปลี่ยนแผนกสำหรับการลงเวลารอบนี้เรียบร้อยแล้ว';
+    $message = 'เปลี่ยนแผนกสำหรับการลงเวลาเรียบร้อยแล้ว';
 }
 
 if (($_POST['create_time_log'] ?? '') === '1' || isset($_POST['save_all_time'])) {
@@ -111,7 +111,7 @@ if (($_POST['create_time_log'] ?? '') === '1' || isset($_POST['save_all_time']))
     $timeOutVal = app_parse_time_input($_POST, 'manual_time_out', '24h');
 
     if ($timeInVal === null || $timeOutVal === null) {
-        $message = 'กรุณาระบุเวลาเข้าและเวลาออกให้ครบถ้วน';
+        $message = 'กรุณาระบุเวลาเข้าและเวลาออกให้ถูกต้อง';
         $messageType = 'danger';
     } else {
         $fullTimeIn = $today . ' ' . $timeInVal . ':00';
@@ -130,7 +130,7 @@ if (($_POST['create_time_log'] ?? '') === '1' || isset($_POST['save_all_time']))
         if ($overlap) {
             $messageType = 'danger';
             $message = sprintf(
-                'ช่วงเวลานี้ชนกับรายการเดิมวันที่ %s เวลา %s - %s กรุณาตรวจสอบก่อนบันทึกอีกครั้ง',
+                'ช่วงเวลานี้ซ้อนกับรายการวันที่ %s เวลา %s - %s กรุณาตรวจสอบก่อนบันทึก',
                 date('d/m/Y', strtotime($overlap['work_date'])),
                 date('H:i', strtotime($overlap['time_in'])),
                 date('H:i', strtotime($overlap['time_out']))
@@ -157,7 +157,7 @@ if (($_POST['create_time_log'] ?? '') === '1' || isset($_POST['save_all_time']))
             ");
             $stmt->execute([$userId, $departmentId, $today, $fullTimeIn, $fullTimeOut, $hours, $newForm['note']]);
             app_sync_reviewer_queue_notifications($conn);
-            $_SESSION['time_page_flash'] = 'บันทึกรายการลงเวลาเวรเรียบร้อยแล้ว และส่งเข้าคิวตรวจสอบแล้ว';
+            $_SESSION['time_page_flash'] = 'บันทึกลงเวลาเวรเรียบร้อยแล้ว ส่งรายการเข้าคิวตรวจสอบ';
             $_SESSION['time_page_flash_type'] = 'success';
 
             header('Location: time.php?' . app_build_table_query($historyRedirectBase, ['p' => 1]));
@@ -183,7 +183,7 @@ $canPrivilegedLockedEdit = app_can('can_edit_locked_time_logs');
 
 if (isset($_POST['update_time_log']) && $editLog) {
     if (!app_verify_csrf_token($_POST['_csrf'] ?? null, 'time_page_edit')) {
-        $message = 'โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+        $message = 'ไม่สามารถยืนยันคำขอได้ กรุณาลองใหม่อีกครั้ง';
         $messageType = 'danger';
     } else {
         $editNote = trim((string) ($_POST['edit_note'] ?? ''));
@@ -192,22 +192,22 @@ if (isset($_POST['update_time_log']) && $editLog) {
         $timeOutVal = app_parse_time_input($_POST, 'edit_time_out', '24h');
 
         if (app_time_log_is_locked($editLog) && !$canPrivilegedLockedEdit) {
-            $message = 'รายการนี้ได้รับการอนุมัติแล้ว ไม่สามารถแก้ไขได้ กรุณาติดต่อผู้ดูแลระบบ หากจำเป็นต้องดำเนินการเพิ่มเติม';
+            $message = 'รายการนี้ได้รับการตรวจสอบแล้ว ไม่สามารถแก้ไขได้ กรุณาติดต่อผู้ดูแลระบบ';
             $messageType = 'danger';
         } elseif ($timeInVal === null || $timeOutVal === null) {
-            $message = 'กรุณาระบุเวลาเข้าและเวลาออกในรูปแบบ 24 ชั่วโมงให้ถูกต้อง';
+            $message = 'กรุณาระบุเวลาเข้าและเวลาออกในรูปแบบ 24 ชั่วโมง';
             $messageType = 'danger';
         } else {
             $range = app_build_time_log_range((string) $editLog['work_date'], $timeInVal, $timeOutVal);
             if ($range === null) {
-                $message = 'ไม่สามารถคำนวณช่วงเวลาได้';
+                $message = 'ช่วงเวลาที่ระบุไม่ถูกต้อง';
                 $messageType = 'danger';
             } else {
                 $overlap = app_find_overlapping_time_log($conn, $userId, $range['time_in'], $range['time_out'], (int) $editLog['id']);
                 if ($overlap) {
                     $messageType = 'danger';
                     $message = sprintf(
-                        'การแก้ไขนี้ชนกับรายการเดิมวันที่ %s เวลา %s - %s กรุณาตรวจสอบก่อนบันทึกอีกครั้ง',
+                        'ช่วงเวลานี้ซ้อนกับรายการวันที่ %s เวลา %s - %s กรุณาตรวจสอบก่อนบันทึก',
                         date('d/m/Y', strtotime($overlap['work_date'])),
                         date('H:i', strtotime($overlap['time_in'])),
                         date('H:i', strtotime($overlap['time_out']))
@@ -236,10 +236,10 @@ if (isset($_POST['update_time_log']) && $editLog) {
                         ]),
                         $userId,
                         (string) ($_SESSION['fullname'] ?? $fullName),
-                        'แก้ไขจากหน้าลงเวลาเวร'
+                        'แก้ไขรายการลงเวลาเวรจากหน้าลงเวลา'
                     );
                     app_sync_reviewer_queue_notifications($conn);
-                    $_SESSION['time_page_flash'] = 'แก้ไขรายการลงเวลาเวรเรียบร้อยแล้ว และส่งกลับเข้าคิวตรวจสอบแล้ว';
+                    $_SESSION['time_page_flash'] = 'บันทึกการแก้ไขเรียบร้อยแล้ว ส่งรายการเข้าคิวตรวจสอบ';
                     $_SESSION['time_page_flash_type'] = 'success';
                     header('Location: time.php?' . app_build_table_query($historyRedirectBase, ['p' => max(1, $historyPageState)]));
                     exit;
@@ -251,10 +251,10 @@ if (isset($_POST['update_time_log']) && $editLog) {
 
 if (isset($_POST['delete_time_log']) && $editLog) {
     if (!app_verify_csrf_token($_POST['delete_csrf'] ?? null, 'time_page_delete')) {
-        $message = 'โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+        $message = 'ไม่สามารถยืนยันคำขอได้ กรุณาลองใหม่อีกครั้ง';
         $messageType = 'danger';
     } elseif (app_time_log_is_locked($editLog) && !$canPrivilegedLockedEdit) {
-        $message = 'รายการนี้ได้รับการอนุมัติแล้ว ไม่สามารถลบได้';
+        $message = 'รายการนี้ได้รับการตรวจสอบแล้ว ไม่สามารถลบได้';
         $messageType = 'danger';
     } else {
         $deleteStmt = $conn->prepare("DELETE FROM time_logs WHERE id = ? AND user_id = ?");
@@ -267,7 +267,7 @@ if (isset($_POST['delete_time_log']) && $editLog) {
             null,
             $userId,
             (string) ($_SESSION['fullname'] ?? $fullName),
-            'ลบจากหน้าลงเวลาเวร'
+            'ลบรายการลงเวลาเวร'
         );
         app_sync_reviewer_queue_notifications($conn);
         $_SESSION['time_page_flash'] = 'ลบรายการลงเวลาเวรเรียบร้อยแล้ว';
@@ -373,12 +373,12 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 $monthlyTargetHours = 160.0;
 $monthlyProgressPercent = $monthlyTargetHours > 0 ? min(100, (int) round(($monthHours / $monthlyTargetHours) * 100)) : 0;
 $monthlyRemainingHours = max(0, $monthlyTargetHours - $monthHours);
-$latestWorkDateLabel = $latestLog ? app_format_thai_date((string) $latestLog['work_date'], true) : 'ยังไม่มีรายการ';
+$latestWorkDateLabel = $latestLog ? app_format_thai_date((string) $latestLog['work_date'], true) : 'ยังไม่มีข้อมูล';
 $latestTimeRangeLabel = $latestLog && !empty($latestLog['time_in']) && !empty($latestLog['time_out'])
     ? date('H:i', strtotime((string) $latestLog['time_in'])) . ' - ' . date('H:i', strtotime((string) $latestLog['time_out']))
-    : 'ยังไม่ระบุเวลา';
+    : 'ยังไม่มีข้อมูล';
 $latestLogHours = $latestLog ? number_format((float) ($latestLog['work_hours'] ?? 0), 2) : '0.00';
-$todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' รายการ' : 'ยังไม่มีรายการวันนี้';
+$todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' เวร' : 'ยังไม่มีเวรวันนี้';
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -409,13 +409,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาประวัติหรือเมนูที่เกี่ยวข้อง">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
-            <i class="bi bi-bell"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
             <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
@@ -442,7 +436,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                             Time Workspace
                         </span>
                         <h2 class="dash-hero-title">ลงเวลาเวรจากพื้นที่เดียว</h2>
-                        <p class="dash-hero-copy">บันทึกเวลา ตรวจสอบชั่วโมง และดูประวัติย้อนหลังได้จากพื้นที่เดียว โดยคง workflow งานจริงของโรงพยาบาลให้เร็ว ชัด และใช้งานง่ายขึ้น</p>
+                        <p class="dash-hero-copy">บันทึกเวลา ตรวจสอบชั่วโมง และดูประวัติย้อนหลังได้จากพื้นที่เดียว โดยคง workflow งานเวรของโรงพยาบาลให้ครบถ้วน</p>
 
                         <div class="dash-hero-chip-row">
                             <span class="dash-hero-chip"><i class="bi bi-person-badge"></i><?= htmlspecialchars($displayName) ?></span>
@@ -471,11 +465,11 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
             </article>
         </section>
 
-        <section class="time-kpi-row" aria-label="สรุปตัวชี้วัด">
+        <section class="time-kpi-row" aria-label="สรุปการลงเวลา">
             <article class="dash-kpi-card time-kpi-card">
                 <span class="dash-icon-badge time-kpi-icon"><i class="bi bi-clock-history"></i></span>
                 <div class="time-kpi-copy">
-                    <p class="time-kpi-label">ชั่วโมงเดือนนี้</p>
+                    <p class="time-kpi-label">ชั่วโมงสะสมเดือนนี้</p>
                     <strong class="time-kpi-value"><?= number_format($monthHours, 2) ?> <span>ชั่วโมง</span></strong>
                     <p class="time-kpi-subtitle">รวมทุกเวรในเดือนปัจจุบัน</p>
                 </div>
@@ -483,7 +477,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
             <article class="dash-kpi-card time-kpi-card">
                 <span class="dash-icon-badge time-kpi-icon is-blue"><i class="bi bi-clock"></i></span>
                 <div class="time-kpi-copy">
-                    <p class="time-kpi-label">ชั่วโมงสะสมของเดือน</p>
+                    <p class="time-kpi-label">ชั่วโมงตรวจแล้วเดือนนี้</p>
                     <strong class="time-kpi-value"><?= number_format($approvedMonthHours, 2) ?> <span>ชั่วโมง</span></strong>
                     <p class="time-kpi-subtitle">เฉพาะรายการที่อนุมัติแล้ว</p>
                 </div>
@@ -504,7 +498,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                         <strong class="time-kpi-value time-kpi-value-compact"><?= htmlspecialchars($latestLogHours) ?> ชม.</strong>
                         <span class="status-chip <?= htmlspecialchars($latestStatusMeta['class']) ?>"><?= htmlspecialchars($latestStatusMeta['label']) ?></span>
                     </div>
-                    <p class="time-kpi-subtitle"><?= htmlspecialchars($latestWorkDateLabel) ?></p>
+                    <p class="time-kpi-subtitle">รายการที่บันทึกของวันนี้</p>
                 </div>
             </article>
         </section>
@@ -522,7 +516,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                         <div>
                             <span class="time-surface-eyebrow">Today Entry</span>
                             <h2 class="time-surface-title">บันทึกเวรของวันนี้</h2>
-                            <p class="time-surface-copy">เริ่มจากเลือกแผนกและช่วงเวลาเวร จากนั้นตรวจสรุปก่อนบันทึกจริง</p>
+                            <p class="time-surface-copy">เลือกแผนก รูปแบบเวร และตรวจสอบชั่วโมงก่อนบันทึกจริง</p>
                         </div>
                         <span class="time-date-pill"><?= htmlspecialchars(app_format_thai_date($today)) ?></span>
                     </div>
@@ -544,14 +538,14 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                     <?php else: ?>
                         <div class="time-department-card">
                             <div>
-                                <div class="small text-muted">แผนกที่ใช้งาน</div>
+                                <div class="small text-muted">แผนกปัจจุบัน</div>
                                 <div class="fw-bold"><?= htmlspecialchars($departmentLabel) ?></div>
                             </div>
-                            <span class="time-chip-muted">สิทธิ์ส่วนตัว</span>
+                            <span class="time-chip-muted">ข้อมูลปัจจุบัน</span>
                         </div>
                     <?php endif; ?>
 
-                    <form method="post" class="row g-3" id="createLogForm" data-global-loading-form data-loading-message="กำลังบันทึกข้อมูล...">
+                    <form method="post" class="row g-3" id="createLogForm" data-global-loading-form data-loading-message="กำลังบันทึกเวลา...">
                         <input type="hidden" name="create_time_log" value="1">
                         <input type="hidden" name="history_date" value="<?= htmlspecialchars($searchDate) ?>">
                         <input type="hidden" name="history_date_from" value="<?= htmlspecialchars($dateFrom) ?>">
@@ -599,7 +593,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                                     </div>
 
                                     <div class="col-sm-6">
-                                        <label class="form-label fw-semibold small text-muted">เวลาสิ้นสุด</label>
+                                        <label class="form-label fw-semibold small text-muted">เวลาออก</label>
                                         <div class="time-select-grid">
                                             <select name="manual_time_out_hour" id="manual_time_out_hour" class="form-select">
                                                 <?php foreach ($hourOptions as $hourOption): ?>
@@ -638,7 +632,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                                     </div>
                                 </div>
                                 <div class="time-selection-footnote">
-                                    ช่วงเวร <span id="createShiftLabel" class="fw-semibold text-dark">เวรเช้า</span>
+                                    ช่วงเวร <span id="createShiftLabel" class="fw-semibold text-dark">เช้า</span>
                                     <span class="time-chip-muted">ชั่วโมงรวมโดยประมาณ <span id="createHoursPreview" class="fw-semibold text-dark">0.00 ชม.</span></span>
                                     <span id="createOvernightFlag" class="time-chip-muted">ไม่ข้ามวัน</span>
                                 </div>
@@ -687,7 +681,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                                 <option value="all" <?= $historyStatus === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
                                 <option value="pending" <?= $historyStatus === 'pending' ? 'selected' : '' ?>>รอตรวจ</option>
                                 <option value="approved" <?= $historyStatus === 'approved' ? 'selected' : '' ?>>อนุมัติแล้ว</option>
-                                <option value="issue" <?= $historyStatus === 'issue' ? 'selected' : '' ?>>ต้องตรวจทาน</option>
+                                <option value="issue" <?= $historyStatus === 'issue' ? 'selected' : '' ?>>ต้องแก้ไข</option>
                             </select>
                         </div>
                         <div class="time-filter-field time-filter-field-wide">
@@ -708,7 +702,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
                     </form>
 
                     <div class="time-history-header-row">
-                        <div class="time-history-caption">ทั้งหมด <?= number_format($totalRows) ?> รายการ<?= $historyQuery !== '' ? ' • คำค้นหา "' . htmlspecialchars($historyQuery) . '"' : '' ?></div>
+                        <div class="time-history-caption">ทั้งหมด <?= number_format($totalRows) ?> รายการ<?= $historyQuery !== '' ? ' • ค้นหา "' . htmlspecialchars($historyQuery) . '"' : '' ?></div>
                         <?php if ($historyStatus !== 'all' || $dateFrom !== '' || $dateTo !== '' || $historyQuery !== ''): ?>
                             <a href="time.php" class="dash-btn dash-btn-ghost">ล้างตัวกรอง <i class="bi bi-arrow-counterclockwise"></i></a>
                         <?php endif; ?>
@@ -736,7 +730,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
             <article class="time-bottom-item">
                 <span class="time-bottom-label">สถานะล่าสุด</span>
                 <strong class="time-bottom-value"><?= htmlspecialchars($latestStatusMeta['label']) ?></strong>
-                <span class="time-bottom-meta"><?= htmlspecialchars($latestWorkDateLabel) ?></span>
+                <span class="time-bottom-meta">รวมทุกเวรที่บันทึกของวันนี้</span>
             </article>
             <article class="time-bottom-item">
                 <span class="time-bottom-label">คงเหลือเป้าหมายเดือนนี้</span>
@@ -758,7 +752,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
 </main>
 <?php if ($editLog): ?>
     <div class="modal fade" id="editTimeLogModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content time-modal-surface border-0 rounded-4 shadow">
                 <?php require __DIR__ . '/../partials/time/edit_modal_body.php'; ?>
             </div>
@@ -766,7 +760,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
     </div>
 <?php endif; ?>
 <div class="modal fade" id="ajaxEditTimeLogModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content time-modal-surface border-0 rounded-4 shadow" id="ajaxEditTimeLogModalContent">
             <div class="modal-body text-center py-5 text-muted">กำลังโหลดข้อมูล...</div>
         </div>
@@ -795,10 +789,10 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
     function resolveShiftLabel(startHour, startMinute, endHour, endMinute) {
         const start = `${pad(startHour)}:${pad(startMinute)}`;
         const end = `${pad(endHour)}:${pad(endMinute)}`;
-        if (start === '08:30' && end === '16:30') return 'เวรเช้า';
-        if (start === '16:30' && end === '00:30') return 'เวรบ่าย';
-        if (start === '00:30' && end === '08:30') return 'เวรดึก';
-        return 'กำหนดเอง';
+        if (start === '08:30' && end === '16:30') return 'เช้า';
+        if (start === '16:30' && end === '00:30') return 'เช้า';
+        if (start === '00:30' && end === '08:30') return 'ดึก';
+        return 'เช้า?';
     }
 
     function setActivePreset(start, end) {
@@ -918,6 +912,7 @@ $todaySavedSummary = $todayShiftCount > 0 ? number_format($todayShiftCount) . ' 
         });
     })();
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>
 

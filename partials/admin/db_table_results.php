@@ -1,11 +1,11 @@
 <?php $visibleColumns = app_db_admin_visible_browse_columns($config); ?>
 <section class="panel ops-results-panel">
-    <div class="ops-results-header">
+    <div class="ops-results-header db-table-selected-results-header">
         <div>
             <h2 class="ops-results-title">รายการข้อมูลในตาราง</h2>
             <p class="ops-results-subtitle">ข้อมูลในตารางจะเปลี่ยนตามตัวกรองปัจจุบัน และการจัดการแต่ละแถวจะถูกจำกัดตามกติกาความปลอดภัยของระบบ</p>
         </div>
-        <div class="ops-summary-chip">
+        <div class="ops-summary-chip db-table-selected-summary-chip">
             <i class="bi bi-table"></i>
             <span><?= number_format($totalRows) ?> รายการ</span>
         </div>
@@ -52,11 +52,39 @@
                         <td class="actions-cell">
                             <div class="ops-actions">
                                 <?php if (!empty($config['edit_allowed'])): ?>
-                                    <?php $editHref = $table === 'users' ? 'edit_user.php?id=' . $rowId : 'db_row_edit.php?table=' . urlencode($table) . '&id=' . $rowId; ?>
-                                    <a href="<?= htmlspecialchars($editHref) ?>" class="btn btn-sm btn-outline-dark ops-action-btn">
+                                    <?php
+                                    $editHref = $table === 'users'
+                                        ? 'edit_user.php?id=' . $rowId
+                                        : 'db_row_edit.php?table=' . urlencode($table) . '&id=' . $rowId;
+
+                                    // Modal meta สำหรับแต่ละ table
+                                    static $tableModalLabels = [
+                                        'users'       => ['title' => 'แก้ไขข้อมูลผู้ใช้งาน',    'desc' => 'แก้ไขข้อมูลผู้ใช้ สิทธิ์ และแผนก ระบบจะบันทึก audit log ทุกครั้ง'],
+                                        'departments' => ['title' => 'แก้ไขข้อมูลแผนก',          'desc' => 'แก้ไขชื่อและรหัสแผนก ระบบจะบันทึก audit log ทุกครั้ง'],
+                                        'time_logs'   => ['title' => 'แก้ไขข้อมูลลงเวลาเวร',     'desc' => 'แก้ไขวันที่ เวลาเข้า/ออก และหมายเหตุ ระบบจะบันทึก audit log ทุกครั้ง'],
+                                    ];
+                                    $modalMeta = $tableModalLabels[$table] ?? [
+                                        'title' => 'แก้ไขข้อมูล ' . ($config['label'] ?? $table),
+                                        'desc'  => 'ระบบจะบันทึก audit log ทุกครั้งที่มีการเปลี่ยนแปลง',
+                                    ];
+                                    ?>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-dark ops-action-btn btn-edit-row"
+                                        data-open-user-edit
+                                        data-user-id="<?= (int) $rowId ?>"
+                                        data-edit-url="<?= htmlspecialchars($editHref) ?>"
+                                        data-modal-title="<?= htmlspecialchars($modalMeta['title']) ?>"
+                                        data-modal-desc="<?= htmlspecialchars($modalMeta['desc']) ?>"
+                                        data-modal-eyebrow="Admin Only · <?= htmlspecialchars($config['label'] ?? $table) ?>"
+                                    >
                                         <i class="bi bi-pencil-square"></i>
                                         <span>แก้ไข</span>
-                                    </a>
+                                    </button>
+                                <?php else: ?>
+                                    <span class="badge text-bg-secondary ops-readonly-badge">
+                                        <i class="bi bi-lock"></i> อ่านอย่างเดียว
+                                    </span>
                                 <?php endif; ?>
                                 <?php if (!empty($config['delete_allowed'])): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger ops-action-btn" data-bs-toggle="modal" data-bs-target="#deleteModal<?= $rowId ?>">

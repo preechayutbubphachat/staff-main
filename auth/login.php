@@ -99,11 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --ink: #10243b;
-            --teal: #1c6b63;
-            --gold: #d3a448;
-            --fog: #eef4f4;
-            --line: rgba(16, 36, 59, 0.14);
+            --ink: #082B45;
+            --teal: #0F9F95;
+            --teal-dark: #063B4F;
+            --teal-mid: #075D6E;
+            --fog: #EAF7F8;
+            --line: rgba(8, 43, 69, 0.13);
         }
 
         * { box-sizing: border-box; }
@@ -111,138 +112,227 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body {
             min-height: 100vh;
             margin: 0;
-            font-family: 'Sarabun', sans-serif;
+            font-family: 'Prompt', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at 15% 15%, rgba(211, 164, 72, 0.18), transparent 28%),
-                radial-gradient(circle at 85% 80%, rgba(28, 107, 99, 0.14), transparent 32%),
-                linear-gradient(135deg, #f7fafc 0%, #edf3f5 46%, #f8fbfb 100%);
+                radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 35%),
+                radial-gradient(circle at top right, rgba(125, 211, 252, 0.18), transparent 35%),
+                linear-gradient(135deg, #F7FEFF 0%, #EAF7F8 100%);
             display: grid;
             place-items: center;
-            padding: 24px;
+            padding: 24px 20px;
         }
 
+        /* ── Shell ── */
         .login-shell {
-            width: min(1120px, 100%);
+            width: min(1180px, 100%);
+            max-width: 100%;
+            min-width: 0;
+            max-height: calc(100vh - 48px);
+            max-height: min(820px, calc(100vh - 48px));
             display: grid;
-            grid-template-columns: 1.08fr 0.92fr;
-            border-radius: 34px;
+            grid-template-columns: 55% 45%;
+            border-radius: 32px;
             overflow: hidden;
-            background: rgba(255,255,255,0.72);
-            border: 1px solid rgba(255,255,255,0.75);
-            backdrop-filter: blur(18px);
-            box-shadow: 0 28px 70px rgba(16, 36, 59, 0.14);
+            background: #fff;
+            border: 1px solid #D8E7EA;
+            box-shadow: 0 24px 72px rgba(6, 59, 79, 0.14);
         }
 
+        /* ── Left (Brand) Panel — same visual language as register page ── */
         .visual-side {
-            min-height: 740px;
-            padding: 54px;
+            padding: clamp(28px, 3vw, 42px);
             background:
-                linear-gradient(160deg, rgba(16, 36, 59, 0.98), rgba(24, 80, 92, 0.94)),
-                url('../LOGO/nongphok_logo.png') center 28%/240px no-repeat;
-            color: #f6fbff;
+                radial-gradient(circle at 15% 15%,  rgba(34, 211, 238, .20), transparent 18rem),
+                radial-gradient(circle at 88% 88%,  rgba(15, 159, 148, .35), transparent 18rem),
+                linear-gradient(145deg, #042840 0%, #07395A 42%, #0C6E6A 100%);
+            color: #fff;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            gap: 0;
             position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            min-width: 0;
         }
 
+        /* subtle grid pattern — same as reg-brand */
+        .visual-side::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            opacity: .07;
+            background-image:
+                linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px);
+            background-size: 36px 36px;
+            pointer-events: none;
+        }
+
+        /* decorative circle — same as reg-brand */
         .visual-side::after {
             content: "";
             position: absolute;
-            inset: auto -12% -16% auto;
+            right: -100px;
+            bottom: -100px;
             width: 360px;
             height: 360px;
-            background: radial-gradient(circle, rgba(211, 164, 72, 0.46), transparent 68%);
-            filter: blur(10px);
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, .12);
+            z-index: -1;
+            pointer-events: none;
         }
 
-        .brand-line {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Prompt', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.82rem;
-        }
+        .visual-side > * { position: relative; z-index: 1; }
 
-        .brand-line img {
-            width: 44px;
-            height: 44px;
-            object-fit: contain;
-            border-radius: 14px;
-            padding: 6px;
-            background: rgba(255,255,255,0.08);
-        }
-
-        .visual-copy {
-            max-width: 520px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .visual-copy .badge-soft {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 14px;
-            border-radius: 999px;
-            font-size: 0.82rem;
-            font-weight: 600;
-        }
-
-        .visual-copy h1 {
-            font-family: 'Prompt', sans-serif;
-            font-size: clamp(2.3rem, 4.2vw, 4.4rem);
-            line-height: 1.06;
-            margin: 18px 0 16px;
-        }
-
-        .visual-copy p {
-            max-width: 470px;
-            font-size: 1.02rem;
-            line-height: 1.85;
-            color: rgba(246,251,255,0.82);
-        }
-
-        .mini-grid {
-            display: grid;
-            gap: 14px;
-            margin-top: 30px;
-        }
-
-        .mini-grid div {
+        /* ── Brand logo row */
+        .brand-logo {
             display: flex;
-            gap: 12px;
-            align-items: start;
-            color: rgba(246,251,255,0.82);
+            align-items: center;
+            gap: 18px;
+            margin-bottom: clamp(8px, 1.6vh, 16px);
         }
 
-        .mini-grid i { color: var(--gold); }
-
-        .login-side {
-            padding: 42px;
+        .brand-logo-icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .22);
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.65rem;
+            color: #5EE8E2;
+            flex-shrink: 0;
+        }
+
+        .brand-logo-text strong {
+            display: block;
+            font-family: 'Prompt', sans-serif;
+            font-size: clamp(1.45rem, 2vw, 1.72rem);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -.02em;
+            color: #fff;
+        }
+
+        .brand-logo-text span {
+            font-size: 0.84rem;
+            color: rgba(255, 255, 255, .65);
+        }
+
+        /* ── Body (center) */
+        .brand-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(24px, 4vh, 44px) 0;
+        }
+
+        .brand-desc {
+            font-size: 0.95rem;
+            line-height: 1.78;
+            color: rgba(255, 255, 255, .78);
+            margin: 0 0 26px;
+            max-width: 380px;
+        }
+
+        /* ── Feature list */
+        .brand-features {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .brand-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .brand-feature-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: rgba(94, 232, 226, .14);
+            border: 1px solid rgba(94, 232, 226, .22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            color: #5EE8E2;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .brand-feature-text strong {
+            display: block;
+            font-size: 0.87rem;
+            font-weight: 600;
+            margin-bottom: 1px;
+            color: #fff;
+        }
+
+        .brand-feature-text span {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, .62);
+            line-height: 1.5;
+        }
+
+        /* ── Bottom glass CTA card */
+        .brand-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 16px 20px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .10);
+            border: 1px solid rgba(255, 255, 255, .18);
+            backdrop-filter: blur(12px);
+        }
+
+        .brand-cta p {
+            margin: 0;
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, .72);
+        }
+
+        .brand-cta strong {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* ── Right (Form) Panel ── */
+        .login-side {
+            padding: 40px 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            min-width: 0;
         }
 
         .login-panel {
             width: 100%;
-            max-width: 430px;
+            max-width: 440px;
         }
 
         .panel-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 14px;
+            padding: 7px 14px;
             border-radius: 999px;
             background: var(--fog);
             color: var(--teal);
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 700;
         }
 
@@ -252,47 +342,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .login-panel h2 {
-            font-size: 2.1rem;
-            margin: 20px 0 8px;
+            font-size: clamp(2rem, 3.2vw, 2.6rem);
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            margin: 16px 0 10px;
+            color: #082B45;
         }
 
-        .login-panel p,
+        .login-panel > p,
         .modal-subtitle {
             color: #64748b;
-            line-height: 1.75;
+            line-height: 1.65;
         }
 
-        .login-panel p {
-            margin-bottom: 28px;
+        .login-panel > p {
+            margin-bottom: 22px;
+            font-size: 0.92rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .field-label {
-            font-size: 0.86rem;
+            font-size: 0.84rem;
             font-weight: 700;
             color: #425166;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .field-help {
-            margin-top: 8px;
+            margin-top: 6px;
             color: #708296;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
         }
 
-        .input-wrap {
-            position: relative;
-        }
+        .input-wrap { position: relative; }
 
         .form-control {
-            border-radius: 18px;
+            min-height: 50px;
+            border-radius: 14px;
             border: 1px solid var(--line);
-            padding: 15px 50px 15px 16px;
-            background: rgba(255,255,255,0.88);
+            padding: 12px 46px 12px 16px;
+            background: #fafcfc;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .form-control:focus {
-            border-color: rgba(28, 107, 99, 0.55);
-            box-shadow: 0 0 0 4px rgba(28, 107, 99, 0.12);
+            border-color: rgba(15, 159, 148, 0.55);
+            box-shadow: 0 0 0 4px rgba(15, 159, 148, 0.12);
+            background: #fff;
         }
 
         .input-icon,
@@ -300,79 +400,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            color: #708296;
+            color: #a0aec0;
         }
 
-        .input-icon { right: 16px; }
+        .input-icon { right: 14px; pointer-events: none; }
 
         .toggle-password {
-            right: 16px;
+            right: 14px;
             border: 0;
             background: transparent;
             padding: 0;
+            cursor: pointer;
         }
 
         .btn-submit,
         .btn-outline-action {
-            border-radius: 18px;
-            padding: 15px 18px;
+            border-radius: 14px;
+            min-height: 50px;
+            padding: 12px 20px;
             font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform .16s ease, box-shadow .16s ease;
         }
 
         .btn-submit {
             border: 0;
             width: 100%;
-            background: linear-gradient(135deg, var(--ink), #24586a);
+            background: linear-gradient(135deg, #073B5A 0%, #0F9F95 100%);
             color: #fff;
-            box-shadow: 0 18px 34px rgba(16, 36, 59, 0.16);
+            box-shadow: 0 14px 30px rgba(6, 59, 79, 0.22);
+            font-size: 0.97rem;
         }
 
-        .btn-submit:hover { color: #fff; }
+        .btn-submit:hover {
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 18px 38px rgba(6, 59, 79, 0.30);
+        }
 
         .btn-outline-action {
-            border: 1px solid rgba(16, 36, 59, 0.16);
+            border: 1px solid rgba(15, 37, 68, 0.16);
             background: #fff;
             color: var(--ink);
         }
 
-        .page-back {
-            position: fixed;
-            top: 18px;
-            left: 18px;
-            z-index: 10;
-        }
+        .btn-outline-action:hover { transform: translateY(-1px); }
 
+        .page-back { display: none; }
+
+        /* SSO hidden — no SSO flow implemented yet */
+        .login-divider,
+        .sso-button { display: none !important; }
+
+        /* Back button — pill outline white on dark panel */
         .btn-back {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            padding: 12px 16px;
+            min-height: 38px;
+            padding: 0 16px;
             border-radius: 999px;
-            border: 1px solid rgba(16, 36, 59, 0.12);
-            background: rgba(255,255,255,0.92);
-            color: var(--ink);
+            border: 1px solid rgba(255, 255, 255, .35);
+            background: rgba(255, 255, 255, .10);
+            color: #fff;
             font-weight: 700;
-            box-shadow: 0 12px 26px rgba(16, 36, 59, 0.08);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: background .16s, transform .16s;
+            align-self: flex-start;
+            width: auto;
+            margin-bottom: 20px;
         }
 
-        .quick-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 18px;
-        }
-
-        .quick-links button,
-        .quick-links a {
+        .btn-back:hover {
+            background: rgba(255, 255, 255, .20);
+            transform: translateY(-1px);
+            color: #fff;
             text-decoration: none;
         }
 
         .support-note {
-            margin-top: 24px;
-            padding-top: 22px;
-            border-top: 1px solid rgba(16, 36, 59, 0.08);
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(15, 37, 68, 0.08);
             color: #64748b;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
         }
 
         .text-link {
@@ -381,82 +497,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 700;
         }
 
+        .text-link:hover { color: var(--teal-mid); text-decoration: underline; }
+
         .modal-content {
             border: 0;
-            border-radius: 28px;
-            box-shadow: 0 30px 70px rgba(16, 36, 59, 0.16);
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(6, 47, 79, 0.16);
         }
 
         .modal-header,
         .modal-body,
         .modal-footer {
-            padding-left: 28px;
-            padding-right: 28px;
+            padding-left: 26px;
+            padding-right: 26px;
         }
 
         .modal-header {
-            padding-top: 24px;
-            padding-bottom: 8px;
+            padding-top: 22px;
+            padding-bottom: 6px;
             border-bottom: 0;
         }
 
         .modal-footer {
             border-top: 0;
-            padding-top: 8px;
-            padding-bottom: 24px;
+            padding-top: 6px;
+            padding-bottom: 22px;
         }
 
+        /* ── Responsive ── */
         @media (max-width: 980px) {
             .login-shell {
                 grid-template-columns: 1fr;
+                max-height: none;
             }
 
             .visual-side {
-                min-height: 380px;
-                padding: 34px 28px;
+                padding: 28px 26px;
+                min-height: 360px;
             }
+
+            .brand-body { padding: 20px 0; }
+
+            .login-side { padding: 32px 26px; }
         }
 
         @media (max-width: 640px) {
-            body { padding: 12px; }
-            .login-side { padding: 22px; }
-            .visual-side { min-height: 320px; }
+            body {
+                padding: 10px;
+                overflow-x: hidden;
+            }
+            .login-shell {
+                width: calc(100vw - 20px);
+                max-width: calc(100vw - 20px);
+                border-radius: 20px;
+            }
+            .login-side { padding: 22px 18px; }
+            .visual-side {
+                min-height: auto;
+                padding: 22px 18px 24px;
+                width: 100%;
+            }
+            .brand-body { padding: 16px 0; }
+            .brand-logo {
+                gap: 14px;
+                margin-bottom: 12px;
+            }
+            .brand-logo-icon {
+                width: 52px;
+                height: 52px;
+                border-radius: 16px;
+                font-size: 1.45rem;
+            }
+            .brand-logo-text strong {
+                font-size: 1.35rem;
+            }
+            .brand-logo-text span {
+                font-size: 0.78rem;
+            }
+            .brand-features { gap: 10px; }
+            .brand-cta { flex-direction: column; align-items: flex-start; gap: 10px; }
             .modal-header,
             .modal-body,
-            .modal-footer {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
+            .modal-footer { padding-left: 16px; padding-right: 16px; }
+        }
+
+        @media (max-width: 520px) {
+            .login-shell { max-width: 370px; }
         }
     </style>
 </head>
 <body>
-    <div class="page-back">
-        <button type="button" class="btn btn-back" data-simple-back data-fallback-href="/staff-main/">
-            <i class="bi bi-arrow-left"></i>ย้อนกลับ
-        </button>
-    </div>
-
     <div class="login-shell">
         <section class="visual-side">
-            <div class="brand-line">
-                <img src="../LOGO/nongphok_logo.png" alt="Logo">
-                <span>Nong Phok Hospital</span>
-            </div>
 
-            <div class="visual-copy">
-                <div class="badge-soft"><i class="bi bi-diagram-3"></i> Unified Access</div>
-                <h1>เข้าสู่ระบบครั้งเดียว แล้วใช้งานตามสิทธิ์ได้ทันที</h1>
-                <p>ระบบจะอ่านบทบาทจากบัญชีผู้ใช้โดยอัตโนมัติ เพื่อพาไปยังหน้าที่เหมาะกับการทำงานจริงของแต่ละคน ทั้งงานลงเวลาเวร รายงาน และคิวตรวจสอบ</p>
+            <!-- ปุ่มหน้าแรก — link ตรงไป /staff-main/ -->
+            <a href="/staff-main/" class="btn-back">
+                <i class="bi bi-arrow-left"></i>หน้าแรก
+            </a>
 
-                <div class="mini-grid">
-                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่ทั่วไปดูข้อมูลและจัดการรายการของตัวเองได้อย่างชัดเจน</span></div>
-                    <div><i class="bi bi-check2-circle"></i><span>เจ้าหน้าที่การเงินและผู้ได้รับสิทธิ์ดูรายงานตามขอบเขตที่กำหนด</span></div>
-                    <div><i class="bi bi-check2-circle"></i><span>ผู้ตรวจสอบและผู้ดูแลระบบเข้าถึงคิวตรวจสอบและงานหลังบ้านได้ครบถ้วน</span></div>
+            <!-- Brand logo -->
+            <div class="brand-logo">
+                <div class="brand-logo-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="brand-logo-text">
+                    <strong>Over Time</strong>
+                    <span>ระบบลงเวลางานสำหรับโรงพยาบาล</span>
                 </div>
             </div>
 
-            <div class="text-white-50 small">Role-driven sign in for attendance, reports, and approvals</div>
+            <!-- Body copy -->
+            <div class="brand-body">
+                <p class="brand-desc">เข้าสู่ระบบเพื่อดูสถานะการลงเวลางานของบุคลากรและแผนกต่าง ๆ แบบเรียลไทม์ พร้อมจัดการสิทธิ์ตามบทบาทผู้ใช้งาน</p>
+
+                <div class="brand-features">
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-check2-circle"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>ดูและจัดการรายการของตัวเองได้ทันที</strong>
+                            <span>เจ้าหน้าที่เข้าถึงประวัติเวรและข้อมูลส่วนตัวได้ชัดเจน</span>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-bar-chart-line"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>รายงานตามขอบเขตสิทธิ์ที่กำหนด</strong>
+                            <span>เจ้าหน้าที่การเงินและหัวหน้าแผนกดูรายงานได้ตามสิทธิ์</span>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon"><i class="bi bi-shield-check"></i></div>
+                        <div class="brand-feature-text">
+                            <strong>ระบบสิทธิ์และตรวจสอบครบถ้วน</strong>
+                            <span>ผู้ดูแลระบบเข้าถึงคิวตรวจสอบและงานหลังบ้านได้ครบ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom glass card — hospital info -->
+            <div class="brand-cta">
+                <div>
+                    <strong>โรงพยาบาลหนองพอก</strong>
+                    <p>ลงเวลาเวร รายงาน และตรวจสอบสิทธิ์ในจุดเดียว</p>
+                </div>
+                <i class="bi bi-shield-check" style="font-size:1.6rem;color:rgba(255,255,255,.65);flex-shrink:0"></i>
+            </div>
+
         </section>
 
         <section class="login-side">
@@ -509,6 +696,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <button type="submit" class="btn btn-submit">เข้าสู่ระบบและไปยัง Dashboard</button>
                 </form>
+
+                <div class="login-divider">หรือ</div>
+
+                <button type="button" class="btn sso-button" aria-disabled="true" title="ยังไม่ได้เชื่อมต่อ SSO ในระบบนี้">
+                    <i class="bi bi-shield-check"></i>
+                    เข้าสู่ระบบด้วย SSO (องค์กร)
+                </button>
 
                 <div class="support-note">
                     ยังไม่มีบัญชี?
@@ -579,20 +773,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('[data-simple-back]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const fallbackHref = button.getAttribute('data-fallback-href') || '/staff-main/';
-                const hasHistory = window.history.length > 1 && document.referrer;
-
-                if (hasHistory) {
-                    window.history.back();
-                    return;
-                }
-
-                window.location.href = fallbackHref;
-            });
-        });
-
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('password');
         const eyeOpen = document.getElementById('eyeOpen');

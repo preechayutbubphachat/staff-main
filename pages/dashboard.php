@@ -221,6 +221,7 @@ if (app_can('can_approve_logs')) {
     app_sync_reviewer_queue_notifications($conn);
 }
 $notificationCount = app_get_unread_notification_count($conn, (int) $uiStateContext['user_id']);
+$dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
 $bottomCardCount = ($latestLog ? 1 : 0) + (app_can('can_approve_logs') ? 1 : 0) + ($todayIssueCount > 0 ? 1 : 0);
 $quickActionCount = count($quickActions);
 $primaryActions = array_slice($quickActions, 0, min(3, $quickActionCount));
@@ -254,7 +255,7 @@ $heroSecondaryAction = app_can('can_approve_logs')
     <title>แดชบอร์ด | ระบบลงเวลาเวร</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../assets/css/dashboard-tailwind.output.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
 </head>
 <body class="dash-shell">
 <?php render_dashboard_sidebar('dashboard.php', $displayName, $roleLabel, $profileImageSrc); ?>
@@ -274,13 +275,7 @@ $heroSecondaryAction = app_can('can_approve_logs')
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาเมนูหรือรายงาน">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
-            <i class="bi bi-bell"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
             <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
@@ -502,5 +497,6 @@ $heroSecondaryAction = app_can('can_approve_logs')
         });
     })();
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

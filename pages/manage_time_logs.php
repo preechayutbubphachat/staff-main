@@ -57,7 +57,7 @@ $filters = $reportData['filters'];
 $summary = $reportData['summary'];
 $departments = $filters['scope']['departments'];
 $page = app_parse_table_page($_GET);
-$perPage = app_parse_table_page_size($_GET, 20);
+$perPage = app_parse_table_page_size($_GET, 10);
 $totalRows = (int) ($summary['total_rows'] ?? 0);
 $totalPages = max(1, (int) ceil($totalRows / $perPage));
 $page = min($page, $totalPages);
@@ -122,6 +122,8 @@ $completedPercent = $totalLogs > 0 ? ($checkedCount / $totalLogs) * 100 : 0;
 $pendingPercent = $totalLogs > 0 ? ($pendingCount / $totalLogs) * 100 : 0;
 $issuePercent = $totalLogs > 0 ? ($issueCount / $totalLogs) * 100 : 0;
 $dataCompleteness = $totalLogs > 0 ? (($totalLogs - $issueCount) / $totalLogs) * 100 : 0;
+$averageHoursPerLog = $totalLogs > 0 ? ($totalHours / $totalLogs) : 0;
+$dataCompletenessClamped = is_finite($dataCompleteness) ? min(100, max(0, $dataCompleteness)) : 0;
 
 $selectedDateFrom = trim((string) ($filters['date_from'] ?? ''));
 $selectedDateTo = trim((string) ($filters['date_to'] ?? ''));
@@ -163,15 +165,7 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -358,21 +352,6 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
                     </div>
                 </form>
 
-                <div class="manage-time-tools-card">
-                    <h3>เครื่องมือ</h3>
-                    <div class="manage-time-tool-grid">
-                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="report_print.php" data-export-type="manage" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="report_print.php" data-export-type="manage" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost manage-time-tool-btn" data-export-base="export_report.php" data-export-type="manage" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
-
                 <div class="manage-time-filter-total">
                     <i class="bi bi-list-check"></i>
                     <span><?= number_format($totalLogs) ?> รายการทั้งหมด</span>
@@ -384,37 +363,74 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
             </div>
         </section>
 
-        <section class="dash-card manage-time-bottom-strip" aria-label="สรุปจัดการลงเวลาเวร">
-            <div class="manage-time-bottom-heading">สรุปข้อมูลจัดการลงเวลาเวร</div>
-            <div class="manage-time-bottom-item">
-                <span>รายการทั้งหมด</span>
-                <strong><?= number_format($totalLogs) ?> รายการ</strong>
-                <small>จากทั้งหมด <?= number_format($totalLogs) ?> รายการ</small>
-            </div>
-            <div class="manage-time-bottom-item">
-                <span>พนักงาน</span>
-                <strong><?= number_format($uniqueStaff) ?> คน</strong>
-                <small>จากทั้งหมด <?= number_format($uniqueStaff) ?> คน</small>
-            </div>
-            <div class="manage-time-bottom-item">
-                <span>แผนก</span>
-                <strong><?= number_format($uniqueDepartments) ?> แผนก</strong>
-                <small>จากทั้งหมด <?= number_format($uniqueDepartments) ?> แผนก</small>
-            </div>
-            <div class="manage-time-bottom-item">
-                <span>ชั่วโมงรวม</span>
-                <strong><?= number_format($totalHours, 2) ?> ชม.</strong>
-                <small>เฉลี่ย <?= $totalLogs > 0 ? number_format($totalHours / $totalLogs, 2) : '0.00' ?> ชม./รายการ</small>
-            </div>
-            <div class="manage-time-bottom-progress">
-                <div>
-                    <span>ความสมบูรณ์ของข้อมูล</span>
-                    <strong><?= number_format($dataCompleteness, 2) ?>%</strong>
+        <section class="dash-card manage-time-bottom-strip shift-summary-footer-card" aria-label="สรุปข้อมูลจัดการลงเวลาเวร">
+            <!-- Metric 1: รายการทั้งหมด -->
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--blue" aria-hidden="true">
+                    <i class="bi bi-list-check"></i>
+                </span>
+                <div class="mtbs-content shift-summary-content">
+                    <p class="mtbs-label">รายการทั้งหมด</p>
+                    <strong class="mtbs-value"><?= number_format($totalLogs) ?> รายการ</strong>
+                    <span class="mtbs-sub">จากทั้งหมด <?= number_format($totalLogs) ?> รายการ</span>
                 </div>
-                <div class="manage-time-progress-track">
-                    <span style="width: <?= htmlspecialchars((string) min(100, max(0, $dataCompleteness))) ?>%"></span>
+            </div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
+            <!-- Metric 2: พนักงาน -->
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--green" aria-hidden="true">
+                    <i class="bi bi-people-fill"></i>
+                </span>
+                <div class="mtbs-content shift-summary-content">
+                    <p class="mtbs-label">พนักงาน</p>
+                    <strong class="mtbs-value"><?= number_format($uniqueStaff) ?> คน</strong>
+                    <span class="mtbs-sub">จากทั้งหมด <?= number_format($uniqueStaff) ?> คน</span>
                 </div>
-                <small>ลงเวลาแล้ว <?= number_format($checkedCount) ?> / <?= number_format($totalLogs) ?> รายการ</small>
+            </div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
+            <!-- Metric 3: แผนก -->
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--purple" aria-hidden="true">
+                    <i class="bi bi-building"></i>
+                </span>
+                <div class="mtbs-content shift-summary-content">
+                    <p class="mtbs-label">แผนก</p>
+                    <strong class="mtbs-value"><?= number_format($uniqueDepartments) ?> แผนก</strong>
+                    <span class="mtbs-sub">จากทั้งหมด <?= number_format($uniqueDepartments) ?> แผนก</span>
+                </div>
+            </div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
+            <!-- Metric 4: ชั่วโมงรวม -->
+            <div class="mtbs-item shift-summary-metric">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--amber" aria-hidden="true">
+                    <i class="bi bi-clock-history"></i>
+                </span>
+                <div class="mtbs-content shift-summary-content">
+                    <p class="mtbs-label">ชั่วโมงรวม</p>
+                    <strong class="mtbs-value"><?= number_format($totalHours, 2) ?> ชม.</strong>
+                    <span class="mtbs-sub">เฉลี่ย <?= number_format($averageHoursPerLog, 2) ?> ชม./รายการ</span>
+                </div>
+            </div>
+            <div class="mtbs-divider shift-summary-divider" aria-hidden="true"></div>
+            <!-- Metric 5: ความสมบูรณ์ของข้อมูล -->
+            <div class="mtbs-item mtbs-item--wide shift-summary-metric shift-summary-progress">
+                <span class="mtbs-icon shift-summary-icon mtbs-icon--teal" aria-hidden="true">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </span>
+                <div class="mtbs-content mtbs-content--progress shift-summary-content">
+                    <div class="mtbs-progress-header">
+                        <p class="mtbs-label">ความสมบูรณ์ของข้อมูล</p>
+                        <strong class="mtbs-percent"><?= number_format($dataCompletenessClamped, 2) ?>%</strong>
+                    </div>
+                    <div class="mtbs-progress-track" role="progressbar"
+                         aria-valuenow="<?= (int) round($dataCompletenessClamped) ?>"
+                         aria-valuemin="0" aria-valuemax="100"
+                         aria-label="ความสมบูรณ์ข้อมูล <?= number_format($dataCompletenessClamped, 2) ?>%">
+                        <span class="mtbs-progress-fill"
+                              style="width:<?= htmlspecialchars((string) round($dataCompletenessClamped, 2)) ?>%"></span>
+                    </div>
+                    <span class="mtbs-sub">ลงเวลาแล้ว <?= number_format($checkedCount) ?> / <?= number_format($totalLogs) ?> รายการ</span>
+                </div>
             </div>
         </section>
     </div>
@@ -437,9 +453,7 @@ $latestLabel = app_format_thai_datetime(date('Y-m-d H:i:s'), true);
 <script>
 StaffProfileModal.init({ modalId: 'staffProfileModal', bodyId: 'staffProfileModalBody', endpoint: '../ajax/profile/get_staff_profile.php' });
 ManageTimeLogsPage.init({ filterFormId: 'manageTimeLogsFilterForm', resultsId: 'manageTimeLogsResults', summaryId: 'manageTimeLogsSummary', modalId: 'manageTimeLogModal', modalContentId: 'manageTimeLogModalContent', messageId: 'manageTimeLogsMessage' });
-if (window.TableFilters && typeof window.TableFilters.syncSummaryBlock === 'function') {
-    window.TableFilters.syncSummaryBlock('manageTimeLogsResults', 'manageTimeLogsSummary');
-}
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

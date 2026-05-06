@@ -39,6 +39,9 @@ if (!function_exists('app_manage_users_account_state')) {
 
 $rangeStart = $totalRows > 0 ? (($page - 1) * $perPage) + 1 : 0;
 $rangeEnd = min($totalRows, $page * $perPage);
+$_muPrintQuery = app_manage_users_query($filters, ['type' => 'manage_users']);
+$_muPdfQuery   = app_manage_users_query($filters, ['type' => 'manage_users', 'download' => 'pdf']);
+$_muCsvQuery   = app_manage_users_query($filters, ['type' => 'manage_users']);
 ?>
 <section class="admin-users-table-card admin-users-table-panel">
     <div class="admin-users-results-header">
@@ -47,9 +50,22 @@ $rangeEnd = min($totalRows, $page * $perPage);
             <h2>รายการผู้ใช้งาน</h2>
             <p>จัดการบัญชีผู้ใช้ บทบาท สิทธิ์ และสถานะการใช้งาน</p>
         </div>
-        <div class="admin-users-view-switch" aria-label="ตัวเลือกมุมมอง">
-            <button type="button" class="is-active"><i class="bi bi-table"></i> ตาราง</button>
-            <button type="button"><i class="bi bi-grid"></i> การ์ด</button>
+        <div class="admin-users-header-right">
+            <div class="report-action-group">
+                <a href="report_print.php?<?= htmlspecialchars($_muPrintQuery) ?>" target="_blank" rel="noopener" class="dash-btn dash-btn-ghost">
+                    <i class="bi bi-printer"></i>พิมพ์
+                </a>
+                <a href="report_print.php?<?= htmlspecialchars($_muPdfQuery) ?>" target="_blank" rel="noopener" class="dash-btn dash-btn-ghost">
+                    <i class="bi bi-filetype-pdf"></i>PDF
+                </a>
+                <a href="export_report.php?<?= htmlspecialchars($_muCsvQuery) ?>" class="dash-btn dash-btn-ghost">
+                    <i class="bi bi-filetype-csv"></i>CSV
+                </a>
+            </div>
+            <div class="admin-users-view-switch" aria-label="ตัวเลือกมุมมอง">
+                <button type="button" class="is-active"><i class="bi bi-table"></i> ตาราง</button>
+                <button type="button"><i class="bi bi-grid"></i> การ์ด</button>
+            </div>
         </div>
     </div>
 

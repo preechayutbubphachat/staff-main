@@ -42,9 +42,14 @@ if ($type === 'my') {
     app_require_permission('can_view_department_reports');
     $reportData = app_fetch_department_report_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_department_report_heading_context($reportData['filters']);
-    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $reportData['filters']);
-    fputcsv($output, [$headingContext['heading_text']]);
-    fputcsv($output, [$headingContext['subheading_text']]);
+    $filters = $reportData['filters'];
+    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $filters, $reportData['staff_rows']);
+    $thaiMonthName = (string) ($filters['month_label_th'] ?? '');
+    $thaiYear = (int) ($filters['year_be'] ?? ((int) date('Y') + 543));
+    fputcsv($output, ['ที่ 159/' . $thaiYear]);
+    fputcsv($output, ['เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานตามตามเวลาราชการนอกเวลาราชการและวันหยุดราชการ (IM)']);
+    fputcsv($output, ['ประจำเดือน ' . $thaiMonthName . ' พ.ศ. ' . $thaiYear]);
+    fputcsv($output, [$headingContext['department_label'] ?? 'แผนกทั้งหมด']);
     fputcsv($output, []);
 
     $headers = ['ลำดับ', 'ชื่อ-สกุล', 'ตำแหน่ง', 'แผนก'];

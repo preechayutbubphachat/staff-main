@@ -21,6 +21,8 @@ $queryBase = [
     'month' => $filters['month_number'],
     'year_be' => $filters['year_be'],
     'per_page' => $perPage,
+    'status' => $filters['status'] ?? 'checked',
+    'search' => $filters['search'] !== '' ? $filters['search'] : '',
 ];
 
 ajax_html(ajax_capture(function () use ($departmentTotals, $filters, $staffRows, $view, $pagedRows, $totalRows, $totalPages, $page, $perPage, $queryBase, $headingContext) {

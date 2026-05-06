@@ -1,70 +1,112 @@
 (function (window, document) {
-    function initNotifications(options) {
-        const config = options || {};
-        const toggle = document.querySelector('[data-notification-toggle]');
-        const list = document.querySelector('[data-notification-list]');
-        const countBadge = document.querySelector('[data-notification-count]');
-        const markAllButton = document.querySelector('[data-notification-mark-all]');
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
-        if (!toggle || !list || !countBadge) {
+    function renderSection(label, items, unread) {
+        if (!Array.isArray(items) || !items.length) {
+            return '';
+        }
+
+        return ''
+            + '<div class="notification-section-label">' + escapeHtml(label) + '</div>'
+            + '<div class="notification-section">'
+            + items.map(function (item) {
+                const unreadClass = unread ? ' notification-item--unread' : '';
+                const unreadDot = unread ? '<span class="notification-item-dot" aria-hidden="true"></span>' : '<span class="notification-read-badge">อ่านแล้ว</span>';
+                const readAction = unread
+                    ? '<button type="button" class="notification-mark-one" data-notification-read data-notification-id="' + escapeHtml(item.id) + '">อ่านแล้ว</button>'
+                    : '';
+
+                const itemUrl = escapeHtml(item.target_url || '');
+                const itemType = escapeHtml(item.type || '');
+                return ''
+                    + '<div class="notification-item' + unreadClass + '" data-notification-item>'
+                    + '  <button type="button" class="notification-link" data-notification-open data-notification-id="' + escapeHtml(item.id) + '" data-notification-url="' + itemUrl + '" data-notification-type="' + itemType + '">'
+                    + '      <span class="notification-item-head">'
+                    + '          <span class="notification-item-title" title="' + escapeHtml(item.title || '') + '">' + escapeHtml(item.title || '') + '</span>'
+                    +            unreadDot
+                    + '      </span>'
+                    + '      <span class="notification-item-message" title="' + escapeHtml(item.message || '') + '">' + escapeHtml(item.message || '') + '</span>'
+                    + '      <span class="notification-item-time">' + escapeHtml(item.created_at_label || '') + '</span>'
+                    + '  </button>'
+                    + readAction
+                    + '</div>';
+            }).join('')
+            + '</div>';
+    }
+
+    function initNotificationRoot(root, options) {
+        if (!root || root.dataset.notificationReady === '1') {
             return;
         }
 
-        const listUrl = config.listUrl || '';
-        const countUrl = config.countUrl || '';
-        const markReadUrl = config.markReadUrl || '';
-        const markAllUrl = config.markAllUrl || '';
-        const csrfToken = config.csrfToken || '';
-        const pollMs = Math.max(15000, Number(config.pollMs || 20000));
-        let pollTimer = null;
+        const toggle = root.querySelector('[data-notification-toggle]');
+        const menu = root.querySelector('[data-notification-menu]');
+        const list = root.querySelector('[data-notification-list]');
+        const countBadge = root.querySelector('[data-notification-count]');
+        const markAllButton = root.querySelector('[data-notification-mark-all]');
+
+        if (!toggle || !menu || !list || !countBadge) {
+            return;
+        }
+
+        root.dataset.notificationReady = '1';
+
+        const config = options || {};
+        const listUrl = config.listUrl || root.dataset.listUrl || '';
+        const countUrl = config.countUrl || root.dataset.countUrl || '';
+        const markReadUrl = config.markReadUrl || root.dataset.markReadUrl || '';
+        const markAllUrl = config.markAllUrl || root.dataset.markAllUrl || '';
+        const csrfToken = config.csrfToken || root.dataset.csrfToken || '';
+        const pollMs = Math.max(15000, Number(config.pollMs || root.dataset.pollMs || 20000));
         let isBusy = false;
+
+        // Type-to-URL fallback map (mirrors app_notification_event_matrix in PHP).
+        // Used when target_url is empty or not stored yet.
+        const TYPE_URL_MAP = {
+            time_log_approved:            'time.php',
+            time_log_rejected:            'time.php',
+            approval_queue_pending:       'approval_queue.php?status=pending',
+            approval_queue_ready:         'approval_queue.php?status=pending',
+            permission_changed:           'profile.php',
+            profile_updated_by_admin:     'profile.php',
+            system_notice:                'notifications.php',
+            report_ready:                 'my_reports.php',
+        };
+        const FALLBACK_URL = 'notifications.php';
+
+        function resolveNotificationUrl(url, type) {
+            if (url && url.trim() !== '') {
+                return url.trim();
+            }
+            if (type && TYPE_URL_MAP[type]) {
+                return TYPE_URL_MAP[type];
+            }
+            return FALLBACK_URL;
+        }
 
         function setCount(count) {
             const safeCount = Math.max(0, Number(count || 0));
             countBadge.textContent = safeCount > 99 ? '99+' : String(safeCount);
             countBadge.classList.toggle('d-none', safeCount <= 0);
+            countBadge.hidden = safeCount <= 0;
             toggle.classList.toggle('has-unread', safeCount > 0);
             toggle.classList.toggle('notification-bell--active', safeCount > 0);
         }
 
-        function escapeHtml(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function renderSection(label, items, unread) {
-            if (!Array.isArray(items) || !items.length) {
-                return '';
+        function setOpen(open) {
+            root.classList.toggle('is-open', open);
+            menu.hidden = !open;
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) {
+                fetchRecent();
             }
-
-            return ''
-                + '<div class="notification-section-label">' + escapeHtml(label) + '</div>'
-                + '<div class="notification-section">'
-                + items.map(function (item) {
-                    const unreadClass = unread ? ' notification-item--unread' : '';
-                    const unreadDot = unread ? '<span class="notification-item-dot" aria-hidden="true"></span>' : '';
-                    const readAction = unread
-                        ? '<button type="button" class="btn btn-sm btn-link text-decoration-none notification-mark-one" data-notification-read data-notification-id="' + item.id + '">อ่านแล้ว</button>'
-                        : '';
-
-                    return ''
-                        + '<div class="notification-item' + unreadClass + '" data-notification-item>'
-                        + '  <a href="' + (item.target_url || 'notifications.php') + '" class="notification-link" data-notification-open data-notification-id="' + item.id + '">'
-                        + '      <div class="notification-item-head">'
-                        + '          <div class="notification-item-title" title="' + escapeHtml(item.title || '') + '">' + escapeHtml(item.title || '') + '</div>'
-                        +              unreadDot
-                        + '      </div>'
-                        + '      <div class="notification-item-message" title="' + escapeHtml(item.message || '') + '">' + escapeHtml(item.message || '') + '</div>'
-                        + '      <div class="notification-item-time">' + escapeHtml(item.created_at_label || '') + '</div>'
-                        + '  </a>'
-                        + readAction
-                        + '</div>';
-                }).join('')
-                + '</div>';
         }
 
         function renderItems(items) {
@@ -101,7 +143,7 @@
                     setCount(payload.unread_count || 0);
                 }
             } catch (error) {
-                // keep silent to avoid noisy navbar UX
+                list.innerHTML = '<div class="notification-empty notification-empty--error">ไม่สามารถโหลดการแจ้งเตือนได้</div>';
             } finally {
                 isBusy = false;
             }
@@ -121,7 +163,7 @@
                     setCount(payload.count || 0);
                 }
             } catch (error) {
-                // keep silent to avoid noisy navbar UX
+                // Keep the topbar quiet when polling fails.
             }
         }
 
@@ -163,6 +205,12 @@
                 return;
             }
 
+            const previousLabel = markAllButton ? markAllButton.textContent : '';
+            if (markAllButton) {
+                markAllButton.disabled = true;
+                markAllButton.textContent = 'กำลังอ่าน...';
+            }
+
             try {
                 const response = await fetch(markAllUrl, {
                     method: 'POST',
@@ -178,12 +226,19 @@
                     await fetchRecent();
                 }
             } catch (error) {
-                // keep silent
+                // Keep silent; the next poll will restore current state.
+            } finally {
+                if (markAllButton) {
+                    markAllButton.disabled = false;
+                    markAllButton.textContent = previousLabel || 'อ่านทั้งหมด';
+                }
             }
         }
 
-        toggle.addEventListener('shown.bs.dropdown', function () {
-            fetchRecent();
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(!root.classList.contains('is-open'));
         });
 
         list.addEventListener('click', async function (event) {
@@ -197,15 +252,25 @@
                 return;
             }
 
-            const link = event.target.closest('[data-notification-open]');
-            if (link) {
+            const itemButton = event.target.closest('[data-notification-open]');
+            if (itemButton) {
                 event.preventDefault();
-                const href = link.getAttribute('href') || 'notifications.php';
-                await markRead(link.getAttribute('data-notification-id'));
-                if (window.GlobalLoading && typeof window.GlobalLoading.showPageNavigationLoading === 'function') {
-                    window.GlobalLoading.showPageNavigationLoading('กำลังเปิดการแจ้งเตือน...', { trigger: link });
-                }
-                window.location.href = href;
+                const notifId  = itemButton.getAttribute('data-notification-id');
+                const notifUrl = itemButton.getAttribute('data-notification-url') || '';
+                const notifType = itemButton.getAttribute('data-notification-type') || '';
+                const destination = resolveNotificationUrl(notifUrl, notifType);
+
+                // Mark as read (fire-and-forget) — navigate regardless of outcome.
+                markRead(notifId).then(function (ok) {
+                    if (ok) {
+                        // Update badge without re-rendering the dropdown (we're navigating away).
+                        // fetchRecent() is skipped to avoid a flash before navigation.
+                    }
+                }).catch(function () {
+                    // Silently ignore; user still navigates.
+                }).finally(function () {
+                    window.location.href = destination;
+                });
             }
         });
 
@@ -216,18 +281,47 @@
             });
         }
 
+        document.addEventListener('click', function (event) {
+            if (!root.classList.contains('is-open')) {
+                return;
+            }
+
+            if (!root.contains(event.target)) {
+                setOpen(false);
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && root.classList.contains('is-open')) {
+                setOpen(false);
+                toggle.focus();
+            }
+        });
+
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
                 fetchCount();
             }
         });
 
-        pollTimer = window.setInterval(function () {
-            fetchCount();
-        }, pollMs);
-
+        window.setInterval(fetchCount, pollMs);
         fetchCount();
     }
 
+    function initNotifications(options) {
+        const roots = Array.from(document.querySelectorAll('[data-notification-root]'));
+        roots.forEach(function (root) {
+            initNotificationRoot(root, options);
+        });
+    }
+
     window.AppNotifications = { init: initNotifications };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initNotifications();
+        });
+    } else {
+        initNotifications();
+    }
 })(window, document);

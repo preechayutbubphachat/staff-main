@@ -10,6 +10,13 @@ $perPage = (int) ($perPage ?? 20);
 $totalRows = (int) ($totalRows ?? count($staffRows ?: $pagedRows));
 $totalPages = (int) ($totalPages ?? 1);
 $queryBase = $queryBase ?? [];
+// Ensure status and search are always included in export/pagination query base
+if (!isset($queryBase['status']) && isset($filters['status'])) {
+    $queryBase['status'] = $filters['status'];
+}
+if (!isset($queryBase['search']) && !empty($filters['search'])) {
+    $queryBase['search'] = $filters['search'];
+}
 $staffCount = (int) ($departmentTotals['staff_count'] ?? 0);
 $totalLogs = (int) ($departmentTotals['total_logs'] ?? 0);
 $totalHours = (float) ($departmentTotals['total_hours'] ?? 0);
@@ -40,9 +47,9 @@ $toRow = min($totalRows, $page * $perPage);
     <article class="dash-kpi-card department-report-summary-card">
         <span class="department-report-summary-icon is-blue"><i class="bi bi-grid-3x3-gap"></i></span>
         <div>
-            <p>ขอบเขตรายงาน</p>
+            <p>แผนก</p>
             <strong><?= htmlspecialchars($scopeLabel) ?></strong>
-            <span>ครอบคลุมทั้งหมด</span>
+            <span>ขอบเขตรายงาน</span>
         </div>
     </article>
     <article class="dash-kpi-card department-report-summary-card">
@@ -71,15 +78,36 @@ $toRow = min($totalRows, $page * $perPage);
     </article>
 </section>
 
+<?php
+/* Compute export URLs from $queryBase (available on both full-page load and AJAX refresh) */
+$_deptExportBase = $queryBase ?? [];
+$_deptPrintQuery = app_build_table_query($_deptExportBase, ['type' => 'department']);
+$_deptPdfQuery   = app_build_table_query($_deptExportBase, ['type' => 'department', 'download' => 'pdf']);
+$_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'department']);
+?>
 <section class="dash-card department-report-results-panel" id="department-report-results-panel">
     <div class="department-report-results-header">
         <div>
             <h2 class="department-report-card-title">รายการสรุปรายแผนก</h2>
             <p class="department-report-card-copy">สรุปจำนวนเวร ชั่วโมงรวม และสถานะการตรวจของเจ้าหน้าที่ในขอบเขตรายงานที่เลือก</p>
         </div>
-        <div class="department-report-view-switch">
-            <a class="<?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
-            <a class="<?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
+        <div class="report-action-group">
+            <div class="department-report-view-switch">
+                <a class="<?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>
+                <a class="<?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
+            </div>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="department"
+               href="report_print.php?<?= htmlspecialchars($_deptPrintQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-printer"></i>พิมพ์
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="department" data-export-download="pdf"
+               href="report_print.php?<?= htmlspecialchars($_deptPdfQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-filetype-pdf"></i>PDF
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="export_report.php" data-export-type="department"
+               href="export_report.php?<?= htmlspecialchars($_deptCsvQuery) ?>">
+                <i class="bi bi-filetype-csv"></i>CSV
+            </a>
         </div>
     </div>
 
@@ -87,7 +115,7 @@ $toRow = min($totalRows, $page * $perPage);
         <div class="department-report-empty-state">
             <i class="bi bi-folder-x"></i>
             <strong>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</strong>
-            <span>ลองเปลี่ยนเดือน ปี หรือขอบเขตรายงานอีกครั้ง</span>
+            <span>ลองเปลี่ยนแผนก เดือน ปี สถานะ หรือคำค้นหาอีกครั้ง</span>
         </div>
     <?php elseif ($view === 'cards'): ?>
         <div class="department-report-card-list">
@@ -148,7 +176,11 @@ $toRow = min($totalRows, $page * $perPage);
                             <td><span class="department-report-count-badge is-warning"><?= $rowPending ?></span></td>
                             <td>
                                 <div class="department-report-row-actions">
-                                    <button type="button" class="department-report-row-btn" data-profile-modal-trigger data-user-id="<?= (int) ($row['id'] ?? 0) ?>">ดูรายละเอียด</button>
+                                    <button type="button" class="department-report-row-btn"
+                                            data-dept-report-detail-trigger
+                                            data-user-id="<?= (int) ($row['id'] ?? 0) ?>"
+                                            data-year="<?= (int) ($filters['year_ce'] ?? date('Y')) ?>"
+                                            data-month="<?= (int) ($filters['month_number'] ?? date('n')) ?>">ดูรายละเอียด</button>
                                     <button type="button" class="department-report-row-menu" aria-label="ตัวเลือกเพิ่มเติม"><i class="bi bi-chevron-down"></i></button>
                                 </div>
                             </td>
@@ -170,7 +202,7 @@ $toRow = min($totalRows, $page * $perPage);
             <span>รายการ</span>
         </label>
 
-        <div class="department-report-page-meta"><?= number_format($fromRow) ?>-<?= number_format($toRow) ?> จาก <?= number_format($totalRows) ?> รายการ</div>
+        <div class="department-report-page-meta"><?= $totalRows > 0 ? number_format($fromRow) . '-' . number_format($toRow) . ' จาก ' . number_format($totalRows) . ' รายการ' : 'ไม่มีรายการ' ?></div>
 
         <?php if ($totalPages > 1): ?>
             <nav class="department-report-pagination" aria-label="เปลี่ยนหน้ารายงานแผนก">

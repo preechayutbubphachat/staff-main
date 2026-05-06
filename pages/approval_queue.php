@@ -215,6 +215,7 @@ $reviewStatCards = [
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($dashboardCssHref) ?>">
+    <link rel="stylesheet" href="../assets/css/approval-toolbar.css?v=<?= @filemtime(__DIR__ . '/../assets/css/approval-toolbar.css') ?>">
 </head>
 <body class="dash-shell approval-page-shell">
 <?php render_dashboard_sidebar('approval_queue.php', $displayName, $roleLabel, $profileImageSrc); ?>
@@ -234,13 +235,7 @@ $reviewStatCards = [
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button" aria-label="การแจ้งเตือน">
-            <i class="bi bi-bell"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[0.68rem] font-bold text-white"><?= (int) min($notificationCount, 99) ?></span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <a href="profile.php" class="hidden cursor-pointer items-center gap-3 rounded-2xl bg-white px-3 py-2 text-hospital-ink no-underline shadow-soft transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2 active:translate-y-0 sm:flex">
             <span class="grid h-9 w-9 overflow-hidden rounded-xl bg-hospital-mist text-hospital-teal">
@@ -346,6 +341,7 @@ $reviewStatCards = [
         </div>
 
         <section class="approval-workspace-grid">
+            <!-- ═══ LEFT: Filters ═══ -->
             <article class="dash-card approval-filter-card">
                 <div class="approval-card-head">
                     <div>
@@ -415,46 +411,95 @@ $reviewStatCards = [
                             <i class="bi bi-search"></i>ค้นหา
                         </button>
                     </div>
-
-                    <div class="approval-bulk-tools" id="bulkBar">
-                        <div class="approval-bulk-head">
-                            <div>
-                                <p class="approval-field-label !mb-1">จัดการหลายรายการ</p>
-                                <p class="approval-bulk-copy" id="selectedSummaryText">เลือกรายการ 0 รายการ</p>
-                            </div>
-                            <?php if ($checkerSignature === ''): ?>
-                                <span class="status-chip warning">ยังไม่ได้ตั้งค่าลายเซ็นผู้ตรวจสอบ</span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="approval-bulk-action-grid">
-                            <button type="button" class="dash-btn dash-btn-primary approval-tool-btn" id="openApproveModalBtn" <?= $checkerSignature === '' ? 'disabled data-signature-required="1"' : '' ?>>
-                                <i class="bi bi-patch-check"></i>อนุมัติทั้งหมด
-                            </button>
-                            <button type="button" class="dash-btn dash-btn-ghost approval-tool-btn is-disabled" disabled title="ยังไม่เปิดใช้ workflow ตีกลับแบบกลุ่ม">
-                                <i class="bi bi-arrow-counterclockwise"></i>ตีกลับทั้งหมด
-                            </button>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="report_print.php" data-export-type="approval" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                                <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                            </a>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="export_report.php" data-export-type="approval" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                                <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                            </a>
-                            <a class="dash-btn dash-btn-ghost approval-tool-btn" data-export-base="report_print.php" data-export-type="approval" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                                <i class="bi bi-printer"></i>พิมพ์รายงาน
-                            </a>
-                            <button type="button" class="dash-btn dash-btn-ghost approval-tool-btn" id="clearSelectionBtn">
-                                <i class="bi bi-x-circle"></i>ล้างการเลือก
-                            </button>
-                        </div>
-                    </div>
                 </form>
             </article>
 
+            <!-- ═══ RIGHT: Review queue — static toolbar + AJAX list ═══ -->
             <form method="post" id="bulkApproveForm" class="approval-review-stage">
                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                 <input type="hidden" name="action" value="bulk_approve">
-                <div id="approvalResultsContainer"><?php require __DIR__ . '/../partials/approval/results_block.php'; ?></div>
+
+                <!-- One unified card: static header + AJAX body -->
+                <div class="approval-review-wrap" id="approval-review-panel">
+
+                    <!-- ── Static: toolbar header (never replaced by AJAX) ── -->
+                    <div class="approval-review-wrap-header">
+                        <div class="approval-review-header-copy">
+                            <p class="approval-section-eyebrow">Review queue</p>
+                            <h2 class="approval-card-title">รายการรอตรวจสอบ</h2>
+                            <p class="approval-card-copy">เลือกหลายรายการหรืออนุมัติทีละรายการได้ทันที พร้อมคงตัวกรองและการแบ่งหน้าตามบริบทที่ใช้งานอยู่</p>
+                        </div>
+
+                        <!-- ── Bulk-action toolbar ── -->
+                        <div class="approval-queue-toolbar" id="approvalQueueToolbar">
+
+                            <?php if ($checkerSignature === ''): ?>
+                                <span class="approval-sig-warning">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>ยังไม่ได้ตั้งค่าลายเซ็น
+                                </span>
+                            <?php endif; ?>
+
+                            <!-- Selection badge -->
+                            <span class="approval-toolbar-badge is-empty" id="selectedSummaryBadge">
+                                <i class="bi bi-square"></i>
+                                <span id="selectedSummaryText">ยังไม่ได้เลือกรายการ</span>
+                            </span>
+
+                            <!-- Primary: Approve + Reject -->
+                            <button type="button"
+                                    class="dash-btn dash-btn-primary approval-bulk-btn"
+                                    id="openApproveModalBtn"
+                                    disabled
+                                    <?= $checkerSignature === '' ? 'data-signature-required="1"' : '' ?>>
+                                <i class="bi bi-patch-check"></i>อนุมัติทั้งหมด
+                            </button>
+                            <button type="button"
+                                    class="dash-btn approval-btn-reject approval-bulk-btn"
+                                    id="bulkRejectBtn"
+                                    disabled
+                                    title="ยังไม่เปิดใช้ workflow ตีกลับแบบกลุ่ม">
+                                <i class="bi bi-arrow-counterclockwise"></i>ตีกลับทั้งหมด
+                            </button>
+
+                            <div class="approval-toolbar-divider" aria-hidden="true"></div>
+
+                            <!-- Utility: พิมพ์, PDF, CSV -->
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="printReportBtn"
+                               data-export-base="report_print.php"
+                               data-export-type="approval"
+                               href="report_print.php?<?= htmlspecialchars($printQuery) ?>"
+                               target="_blank" rel="noopener"
+                               >
+                                <i class="bi bi-printer"></i>พิมพ์
+                            </a>
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="exportPdfBtn"
+                               data-export-base="report_print.php"
+                               data-export-type="approval"
+                               data-export-download="pdf"
+                               href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>"
+                               target="_blank" rel="noopener"
+                               >
+                                <i class="bi bi-filetype-pdf"></i>PDF
+                            </a>
+                            <a class="dash-btn dash-btn-ghost approval-bulk-btn"
+                               id="exportCsvBtn"
+                               data-export-base="export_report.php"
+                               data-export-type="approval"
+                               href="export_report.php?<?= htmlspecialchars($csvQuery) ?>"
+                               >
+                                <i class="bi bi-filetype-csv"></i>CSV
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- ── AJAX: list body (replaced on filter/page change) ── -->
+                    <div id="approvalResultsContainer">
+                        <?php require __DIR__ . '/../partials/approval/results_block.php'; ?>
+                    </div>
+
+                </div><!-- /.approval-review-wrap -->
             </form>
         </section>
 
@@ -495,7 +540,7 @@ $reviewStatCards = [
 </main>
 
 <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content time-modal-surface">
             <div class="modal-header border-0 px-4 pt-4">
                 <div>
@@ -549,6 +594,91 @@ $reviewStatCards = [
     </div>
 </div>
 
+<div class="modal fade" id="shiftReviewDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content time-modal-surface shift-review-modal">
+            <div class="modal-header border-0 px-4 pt-4">
+                <div>
+                    <p class="approval-section-eyebrow mb-1">Review detail</p>
+                    <h5 class="modal-title font-prompt text-xl font-bold text-hospital-ink">รายละเอียดรายการลงเวลาเวร</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 pb-4 pt-2">
+                <div id="shiftReviewDetailError" class="alert alert-danger rounded-4 mb-3 d-none"></div>
+                <div id="shiftReviewDetailLoading" class="text-center py-5 text-muted">กำลังโหลดข้อมูลรายการลงเวลาเวร...</div>
+                <div id="shiftReviewDetailContent" class="shift-review-detail d-none">
+                    <section class="shift-review-staff-card" id="shiftReviewDetailRoot" data-time-log-id="" data-current-status="">
+                        <span class="shift-review-avatar" id="shiftDetailAvatar">
+                            <img id="shiftDetailAvatarImg" alt="รูปประจำตัวเจ้าหน้าที่" class="d-none">
+                            <i class="bi bi-person-badge" id="shiftDetailAvatarIcon"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <div class="shift-review-staff-head">
+                                <div class="min-w-0">
+                                    <p class="shift-review-label">ข้อมูลเจ้าหน้าที่</p>
+                                    <h3 id="shiftDetailFullname">-</h3>
+                                </div>
+                                <span id="shiftDetailStatus" class="status-chip warning">-</span>
+                            </div>
+                            <div class="shift-review-staff-meta">
+                                <span><i class="bi bi-briefcase"></i><span id="shiftDetailPosition">-</span></span>
+                                <span><i class="bi bi-building"></i><span id="shiftDetailDepartment">-</span></span>
+                                <span><i class="bi bi-hash"></i>รายการ <span id="shiftDetailRecordId">-</span></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="shift-review-grid" aria-label="ข้อมูลการลงเวลาเวร">
+                        <div class="shift-review-field"><span>วันที่เวร</span><strong id="shiftDetailWorkDate">-</strong></div>
+                        <div class="shift-review-field"><span>เวลาเข้า</span><strong id="shiftDetailTimeIn">-</strong></div>
+                        <div class="shift-review-field"><span>เวลาออก</span><strong id="shiftDetailTimeOut">-</strong></div>
+                        <div class="shift-review-field"><span>ชั่วโมงรวม</span><strong id="shiftDetailHours">-</strong></div>
+                        <div class="shift-review-field"><span>ประเภทเวร/กะ</span><strong id="shiftDetailType">-</strong></div>
+                        <div class="shift-review-field"><span>แผนกที่ลงเวร</span><strong id="shiftDetailWorkDepartment">-</strong></div>
+                        <div class="shift-review-field"><span>สถานะปัจจุบัน</span><strong id="shiftDetailStatusText">-</strong></div>
+                        <div class="shift-review-field"><span>ผู้ตรวจสอบ</span><strong id="shiftDetailChecker">-</strong></div>
+                        <div class="shift-review-field"><span>ส่งเมื่อ</span><strong id="shiftDetailCreatedAt">-</strong></div>
+                        <div class="shift-review-field"><span>แก้ไขล่าสุด</span><strong id="shiftDetailUpdatedAt">-</strong></div>
+                        <div class="shift-review-field span-2"><span>หมายเหตุ</span><strong id="shiftDetailNote">-</strong></div>
+                        <div class="shift-review-field span-2"><span>เหตุผลการตีกลับเดิม</span><strong id="shiftDetailApprovalNote">-</strong></div>
+                    </section>
+
+                    <section class="shift-review-audit">
+                        <div class="shift-review-audit-head">
+                            <p class="shift-review-label">ข้อมูลประกอบการตรวจสอบ</p>
+                            <span>อ้างอิงจาก time_logs.id: <strong id="shiftDetailRawId">-</strong></span>
+                        </div>
+                        <div id="shiftDetailAuditList" class="shift-review-audit-list">
+                            <div class="shift-review-audit-empty">-</div>
+                        </div>
+                    </section>
+
+                    <section class="shift-review-reject-panel d-none" id="shiftRejectPanel">
+                        <label for="shiftRejectReason" class="shift-review-label">เหตุผลการตีกลับ/ไม่อนุมัติ</label>
+                        <textarea id="shiftRejectReason" class="form-control" rows="3" maxlength="1000" placeholder="ระบุเหตุผลที่ต้องให้เจ้าหน้าที่แก้ไขรายการนี้"></textarea>
+                        <div class="shift-review-reject-actions">
+                            <button type="button" class="dash-btn dash-btn-ghost" id="shiftRejectCancelBtn">ยกเลิก</button>
+                            <button type="button" class="dash-btn approval-btn-reject" id="shiftRejectConfirmBtn">
+                                <i class="bi bi-send"></i>ยืนยันตีกลับ
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0 shift-review-footer">
+                <button type="button" class="dash-btn dash-btn-ghost" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="dash-btn approval-btn-reject" id="shiftDetailRejectBtn">
+                    <i class="bi bi-arrow-counterclockwise"></i>ตีกลับ/ไม่อนุมัติ
+                </button>
+                <button type="button" class="dash-btn dash-btn-primary" id="shiftDetailApproveBtn">
+                    <i class="bi bi-patch-check"></i>อนุมัติ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/table-filters.js"></script>
@@ -585,5 +715,6 @@ ApprovalQueuePage.init({
     backdrop.addEventListener('click', function () { setOpen(false); });
 })();
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

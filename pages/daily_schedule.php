@@ -108,15 +108,7 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -270,20 +262,6 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                     </div>
                 </form>
 
-                <div class="daily-tools-card">
-                    <p class="daily-field-label !mb-1">เครื่องมือเพิ่มเติม</p>
-                    <div class="daily-tool-grid">
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="export_report.php" data-export-type="daily" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="dailyScheduleResults" class="min-w-0">
@@ -296,9 +274,11 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
 </main>
 
 <?php render_staff_profile_modal(); ?>
+<?php require __DIR__ . '/../partials/modals/time_log_detail_modal.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
+<script src="../assets/js/time-log-detail.js"></script>
 <script>
 function buildDailyScheduleHeroContext(form) {
     if (!form) {
@@ -392,5 +372,6 @@ syncDailyScheduleLayout({
     container: document.getElementById('dailyScheduleResults')
 });
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>
