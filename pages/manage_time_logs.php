@@ -18,7 +18,105 @@ $message = $_SESSION['flash_manage_logs_error'] ?? '';
 $messageType = $message !== '' ? 'danger' : 'success';
 unset($_SESSION['flash_manage_logs_error']);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_approval') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'correct_returned_status') {
+    $targetStatus = (string) ($_POST['target_status'] ?? '');
+    $allowedTargets = ['pending', 'checked'];
+
+    if (!app_verify_csrf_token($_POST['_csrf'] ?? null, 'manage_time_logs')) {
+        $message = 'โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+        $messageType = 'danger';
+    } elseif (!in_array($targetStatus, $allowedTargets, true)) {
+        $message = 'สถานะปลายทางไม่ถูกต้อง';
+        $messageType = 'danger';
+    } elseif ($targetStatus === 'checked' && !app_can('can_approve_logs')) {
+        $message = 'คุณไม่มีสิทธิ์เปลี่ยนรายการเป็นสถานะตรวจแล้ว';
+        $messageType = 'danger';
+    } else {
+        $timeLogId = (int) ($_POST['time_log_id'] ?? 0);
+        $beforeRow = app_get_time_log_by_id($conn, $timeLogId);
+        $isReturnedStatus = $beforeRow && !empty($beforeRow['checked_by']) && empty($beforeRow['checked_at']);
+
+        if (!$beforeRow) {
+            $message = 'ไม่พบรายการลงเวลาที่ต้องการแก้สถานะ';
+            $messageType = 'danger';
+        } elseif (!app_time_log_within_scope($conn, $beforeRow)) {
+            $message = 'รายการนี้อยู่นอกขอบเขตสิทธิ์ที่จัดการได้';
+            $messageType = 'danger';
+        } elseif (!$isReturnedStatus) {
+            $message = 'สถานะรายการนี้เปลี่ยนไปแล้ว กรุณารีเฟรชหน้า';
+            $messageType = 'warning';
+        } else {
+            $now = date('Y-m-d H:i:s');
+            $targetLabel = $targetStatus === 'checked' ? 'ตรวจแล้ว' : 'รอตรวจ';
+            $signaturePath = null;
+            $canProceedCorrection = true;
+
+            if ($targetStatus === 'checked') {
+                $signatureStmt = $conn->prepare('SELECT signature_path FROM users WHERE id = ? LIMIT 1');
+                $signatureStmt->execute([$actorId]);
+                $checkerSignature = (string) ($signatureStmt->fetchColumn() ?: '');
+                if ($checkerSignature === '') {
+                    $message = 'ยังไม่สามารถเปลี่ยนเป็นสถานะตรวจแล้วได้ เนื่องจากยังไม่ได้ตั้งค่าลายเซ็นผู้ตรวจสอบ';
+                    $messageType = 'danger';
+                    $canProceedCorrection = false;
+                } else {
+                    $signaturePath = 'uploads/signatures/' . $checkerSignature;
+                }
+            }
+
+            try {
+                if (!$canProceedCorrection) {
+                    throw new RuntimeException('manual status correction precondition failed');
+                }
+
+                $conn->beginTransaction();
+
+                if ($targetStatus === 'checked') {
+                    $updateStmt = $conn->prepare('
+                        UPDATE time_logs
+                        SET checked_by = ?, checked_at = ?, signature = ?, approval_note = NULL, updated_at = ?
+                        WHERE id = ? AND checked_by IS NOT NULL AND checked_at IS NULL
+                    ');
+                    $updateStmt->execute([$actorId, $now, $signaturePath, $now, $timeLogId]);
+                } else {
+                    $updateStmt = $conn->prepare('
+                        UPDATE time_logs
+                        SET checked_by = NULL, checked_at = NULL, signature = NULL, approval_note = NULL, updated_at = ?
+                        WHERE id = ? AND checked_by IS NOT NULL AND checked_at IS NULL
+                    ');
+                    $updateStmt->execute([$now, $timeLogId]);
+                }
+
+                if ($updateStmt->rowCount() !== 1) {
+                    $conn->rollBack();
+                    $message = 'สถานะรายการนี้เปลี่ยนไปแล้ว กรุณารีเฟรชหน้า';
+                    $messageType = 'warning';
+                } else {
+                    $afterRow = app_get_time_log_by_id($conn, $timeLogId);
+                    $auditNote = 'manual_status_correction: returned -> ' . $targetStatus . ' from manage time logs page';
+                    app_insert_time_log_audit($conn, $timeLogId, 'manual_status_correction', $beforeRow, $afterRow, $actorId, $actorName, $auditNote);
+
+                    if ($targetStatus === 'checked' && $afterRow) {
+                        app_create_approval_completed_notification($conn, $afterRow, $actorName);
+                    }
+                    app_sync_reviewer_queue_notifications($conn);
+
+                    $conn->commit();
+                    $message = 'เปลี่ยนสถานะรายการเป็น' . $targetLabel . 'เรียบร้อยแล้ว';
+                    $messageType = 'success';
+                }
+            } catch (Throwable $exception) {
+                if ($conn->inTransaction()) {
+                    $conn->rollBack();
+                }
+                if ($canProceedCorrection) {
+                    $message = 'เกิดข้อผิดพลาดระหว่างแก้สถานะรายการ กรุณาลองใหม่อีกครั้ง';
+                    $messageType = 'danger';
+                }
+            }
+        }
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_approval') {
     if (!app_verify_csrf_token($_POST['_csrf'] ?? null, 'manage_time_logs')) {
         $message = 'โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
         $messageType = 'danger';

@@ -10,12 +10,51 @@ function app_manage_logs_status_label(array $row): array
     }
 
     $locked = !empty($row['checked_at']);
+    $returned = !$locked && !empty($row['checked_by']);
+
+    if ($returned) {
+        return [
+            'label' => 'ตีกลับแก้ไข',
+            'badge' => 'danger',
+            'lock' => 'รอแก้ไข',
+        ];
+    }
 
     return [
         'label' => $locked ? 'อนุมัติแล้ว' : 'รอตรวจ',
         'badge' => $locked ? 'success' : 'warning',
         'lock' => $locked ? 'ล็อกแล้ว' : '',
     ];
+}
+
+function app_manage_logs_render_returned_status_actions(array $row, string $csrfToken, bool $canApprove): void
+{
+    $timeLogId = (int) ($row['id'] ?? 0);
+    if ($timeLogId <= 0) {
+        return;
+    }
+    ?>
+    <form method="post" class="m-0" data-manage-status-correction-form>
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+        <input type="hidden" name="action" value="correct_returned_status">
+        <input type="hidden" name="time_log_id" value="<?= $timeLogId ?>">
+        <input type="hidden" name="target_status" value="pending">
+        <button type="submit" class="manage-time-row-btn" onclick="return confirm('ยืนยันเปลี่ยนรายการนี้กลับเป็นสถานะรอตรวจหรือไม่?')">
+            รอตรวจ
+        </button>
+    </form>
+    <?php if ($canApprove): ?>
+        <form method="post" class="m-0" data-manage-status-correction-form>
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="action" value="correct_returned_status">
+            <input type="hidden" name="time_log_id" value="<?= $timeLogId ?>">
+            <input type="hidden" name="target_status" value="checked">
+            <button type="submit" class="manage-time-edit-btn" onclick="return confirm('ยืนยันเปลี่ยนรายการนี้เป็นสถานะตรวจแล้วหรือไม่?')">
+                ตรวจแล้ว
+            </button>
+        </form>
+    <?php endif; ?>
+    <?php
 }
 
 $summary = $summary ?? [];
@@ -26,6 +65,7 @@ $perPage = (int) ($perPage ?? 20);
 $totalRows = (int) ($totalRows ?? count($rows));
 $totalPages = (int) ($totalPages ?? 1);
 $csrfToken = $csrfToken ?? app_csrf_token('manage_time_logs');
+$canApproveReturnedLogs = app_can('can_approve_logs');
 
 $totalLogs = (int) ($summary['total_rows'] ?? $totalRows);
 $uniqueStaff = (int) ($summary['unique_staff_count'] ?? 0);
@@ -99,9 +139,9 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
             <p class="manage-time-card-copy">เปิดดูรายละเอียด แก้ไข และจัดการรายการลงเวลาตามสิทธิ์ของผู้ดูแลระบบ</p>
         </div>
         <div class="report-action-group">
-            <div class="manage-time-view-switch" aria-label="ตัวเลือกมุมมอง">
-                <button type="button"><i class="bi bi-grid-3x3-gap"></i>ตัวเลือกคอลัมน์</button>
-                <button type="button" class="active"><i class="bi bi-table"></i>มุมมองตาราง</button>
+            <div class="manage-time-view-switch" aria-label="ตัวเลือกมุมมอง" data-manage-view-switch>
+                <button type="button" data-manage-view-mode="card" aria-pressed="false"><i class="bi bi-grid-3x3-gap"></i>มุมมองการ์ด</button>
+                <button type="button" class="active" data-manage-view-mode="table" aria-pressed="true"><i class="bi bi-table"></i>มุมมองตาราง</button>
             </div>
             <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="manage"
                href="report_print.php?<?= htmlspecialchars($_mtPrintQuery) ?>" target="_blank" rel="noopener">
@@ -118,7 +158,7 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
         </div>
     </div>
 
-    <div class="manage-time-table-shell">
+    <div class="manage-time-table-shell" data-manage-view-panel="table">
         <table class="manage-time-table">
             <?php app_render_table_colgroup('manage_time_logs'); ?>
             <thead>
@@ -155,6 +195,7 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
                     $status = app_manage_logs_status_label($row);
                     $canEditRow = app_can_edit_time_log_record($row);
                     $canResetApproval = !empty($row['checked_at']) && app_can('can_edit_locked_time_logs');
+                    $isReturnedRow = !empty($row['checked_by']) && empty($row['checked_at']);
                     $rowNumber = app_table_row_number($page, $perPage, $index);
                     $workDate = (string) ($row['work_date'] ?? '');
                     $dayNumber = $workDate !== '' ? date('j', strtotime($workDate)) : '-';
@@ -200,7 +241,9 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
                                     <button type="button" class="manage-time-edit-btn is-disabled" disabled>ล็อก</button>
                                 <?php endif; ?>
 
-                                <?php if ($canResetApproval): ?>
+                                <?php if ($isReturnedRow): ?>
+                                    <?php app_manage_logs_render_returned_status_actions($row, $csrfToken, $canApproveReturnedLogs); ?>
+                                <?php elseif ($canResetApproval): ?>
                                     <form method="post" class="m-0">
                                         <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                                         <input type="hidden" name="action" value="reset_approval">
@@ -220,6 +263,86 @@ $_mtCsvQuery   = app_build_table_query($_mtExportBase, ['type' => 'manage']);
                 <?php endforeach; ?>
             </tbody>
         </table>
+    </div>
+
+    <div class="manage-time-card-view" data-manage-view-panel="card" hidden>
+        <?php if (!$rows): ?>
+            <div class="manage-time-empty-state">
+                <i class="bi bi-folder-x"></i>
+                <strong>ไม่พบรายการตามเงื่อนไขที่เลือก</strong>
+                <span>ลองเปลี่ยนคำค้นหา แผนก สถานะ หรือช่วงวันที่อีกครั้ง</span>
+            </div>
+        <?php endif; ?>
+
+        <?php foreach ($rows as $index => $row): ?>
+            <?php
+            $status = app_manage_logs_status_label($row);
+            $canEditRow = app_can_edit_time_log_record($row);
+            $canResetApproval = !empty($row['checked_at']) && app_can('can_edit_locked_time_logs');
+            $isReturnedRow = !empty($row['checked_by']) && empty($row['checked_at']);
+            $rowNumber = app_table_row_number($page, $perPage, $index);
+            $workDate = (string) ($row['work_date'] ?? '');
+            $dayNumber = $workDate !== '' ? date('j', strtotime($workDate)) : '-';
+            $monthYear = $workDate !== '' ? app_format_thai_date($workDate) : '-';
+            ?>
+            <article class="manage-time-log-card">
+                <div class="manage-time-log-card-head">
+                    <label class="manage-time-card-check">
+                        <input type="checkbox" class="form-check-input" aria-label="เลือกรายการลำดับ <?= (int) $rowNumber ?>">
+                    </label>
+                    <span class="manage-time-date-tile">
+                        <strong><?= htmlspecialchars((string) $dayNumber) ?></strong>
+                        <span><?= htmlspecialchars($monthYear) ?></span>
+                    </span>
+                    <div class="manage-time-card-person">
+                        <button type="button" class="manage-time-staff-link" data-profile-modal-trigger data-user-id="<?= (int) ($row['user_id'] ?? 0) ?>" title="<?= htmlspecialchars($row['fullname'] ?? '-') ?>">
+                            <?= htmlspecialchars($row['fullname'] ?? '-') ?>
+                        </button>
+                        <span><?= htmlspecialchars($row['position_name'] ?: '-') ?></span>
+                    </div>
+                    <span class="manage-time-status is-<?= htmlspecialchars($status['badge']) ?>"><?= htmlspecialchars($status['label']) ?></span>
+                </div>
+
+                <div class="manage-time-log-card-grid">
+                    <div><span>แผนก</span><strong><?= htmlspecialchars($row['department_name'] ?? '-') ?></strong></div>
+                    <div><span>เวลาเข้า</span><strong><?= !empty($row['time_in']) ? date('H:i', strtotime((string) $row['time_in'])) : '-' ?></strong></div>
+                    <div><span>เวลาออก</span><strong><?= !empty($row['time_out']) ? date('H:i', strtotime((string) $row['time_out'])) : '-' ?></strong></div>
+                    <div><span>ชั่วโมงรวม</span><strong><?= number_format((float) ($row['work_hours'] ?? 0), 2) ?> ชม.</strong></div>
+                    <div class="is-wide"><span>หมายเหตุ</span><strong><?= htmlspecialchars($row['note'] ?: '-') ?></strong></div>
+                    <div><span>ผู้ตรวจสอบ</span><strong><?= htmlspecialchars($row['checker_name'] ?: '-') ?></strong></div>
+                </div>
+
+                <div class="manage-time-log-card-actions">
+                    <button type="button" class="manage-time-row-btn" data-bs-toggle="modal" data-bs-target="#detailModal<?= (int) $row['id'] ?>">
+                        ดูรายละเอียด
+                    </button>
+                    <?php if ($canEditRow): ?>
+                        <a href="edit_time_log.php?id=<?= (int) $row['id'] ?>" class="manage-time-edit-btn" data-manage-edit-link data-id="<?= (int) $row['id'] ?>">
+                            แก้ไข
+                        </a>
+                    <?php else: ?>
+                        <button type="button" class="manage-time-edit-btn is-disabled" disabled>ล็อก</button>
+                    <?php endif; ?>
+
+                    <?php if ($isReturnedRow): ?>
+                        <?php app_manage_logs_render_returned_status_actions($row, $csrfToken, $canApproveReturnedLogs); ?>
+                    <?php elseif ($canResetApproval): ?>
+                        <form method="post" class="m-0">
+                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                            <input type="hidden" name="action" value="reset_approval">
+                            <input type="hidden" name="time_log_id" value="<?= (int) $row['id'] ?>">
+                            <button type="submit" class="manage-time-row-menu is-danger" aria-label="รีเซ็ตสถานะ" onclick="return confirm('ยืนยันการรีเซ็ตสถานะการอนุมัติรายการนี้?')">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <button type="button" class="manage-time-row-menu" aria-label="ตัวเลือกเพิ่มเติม">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
     </div>
 
     <div class="manage-time-table-footer">

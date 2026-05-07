@@ -36,8 +36,80 @@
         const pageStateKey = config.pageStateKey || filterForm.getAttribute('data-page-state-key') || '';
         const canUsePageState = !!(window.PageState && pageStateKey);
         const loadingApi = window.GlobalLoading || null;
+        const viewModeStorageKey = 'overTime.shiftManagement.viewMode';
         let restoredStateOnLoad = false;
         let searchTimer = null;
+
+        function getStoredViewMode() {
+            let value = 'table';
+
+            try {
+                value = window.localStorage ? window.localStorage.getItem(viewModeStorageKey) || 'table' : 'table';
+            } catch (error) {
+                value = 'table';
+            }
+
+            return value === 'card' ? 'card' : 'table';
+        }
+
+        function storeViewMode(mode) {
+            try {
+                if (window.localStorage) {
+                    window.localStorage.setItem(viewModeStorageKey, mode === 'card' ? 'card' : 'table');
+                }
+            } catch (error) {
+                // localStorage can be unavailable in private or restricted contexts.
+            }
+        }
+
+        function applyViewMode(mode, persist) {
+            const normalizedMode = mode === 'card' ? 'card' : 'table';
+            const panel = resultsContainer.querySelector('.manage-time-results-panel');
+            const panels = resultsContainer.querySelectorAll('[data-manage-view-panel]');
+            const buttons = resultsContainer.querySelectorAll('[data-manage-view-mode]');
+
+            panels.forEach(function (viewPanel) {
+                const isActive = viewPanel.getAttribute('data-manage-view-panel') === normalizedMode;
+                viewPanel.hidden = !isActive;
+                viewPanel.classList.toggle('is-active', isActive);
+
+                if (!isActive) {
+                    viewPanel.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                        checkbox.checked = false;
+                    });
+                }
+            });
+
+            buttons.forEach(function (button) {
+                const isActive = button.getAttribute('data-manage-view-mode') === normalizedMode;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+
+            if (panel) {
+                panel.setAttribute('data-active-view', normalizedMode);
+            }
+
+            if (persist) {
+                storeViewMode(normalizedMode);
+            }
+        }
+
+        function bindViewMode() {
+            const switcher = resultsContainer.querySelector('[data-manage-view-switch]');
+
+            if (!switcher) {
+                return;
+            }
+
+            switcher.querySelectorAll('[data-manage-view-mode]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    applyViewMode(button.getAttribute('data-manage-view-mode'), true);
+                });
+            });
+
+            applyViewMode(getStoredViewMode(), false);
+        }
 
         function setMessage(message, type) {
             if (!messageContainer) {
@@ -83,6 +155,7 @@
             resultsContainer.innerHTML = await response.text();
             syncSummary();
             bindAsync();
+            bindViewMode();
 
             if (window.TableFilters && typeof window.TableFilters.syncExportLinks === 'function') {
                 window.TableFilters.syncExportLinks(filterForm, filterForm.closest('.panel') || document);
@@ -207,6 +280,15 @@
                     openEdit(link.getAttribute('data-id'));
                 });
             });
+
+            resultsContainer.querySelectorAll('[data-manage-status-correction-form]').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    const submitter = event.submitter || form.querySelector('button[type="submit"]');
+                    if (submitter) {
+                        submitter.disabled = true;
+                    }
+                });
+            });
         }
 
         filterForm.addEventListener('submit', function (event) {
@@ -232,6 +314,7 @@
         }
         syncSummary();
         bindAsync();
+        bindViewMode();
 
         if (restoredStateOnLoad) {
             refreshResults(collectQuery(true), true);

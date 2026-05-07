@@ -22,6 +22,50 @@ function app_build_table_query(array $base, array $overrides = []): string
     return http_build_query(array_filter($query, static fn($value) => $value !== '' && $value !== null));
 }
 
+function app_fetch_db_change_log_rows_for_report(PDO $conn, array $input): array
+{
+    if (!app_table_exists($conn, 'db_admin_audit_logs')) {
+        return [];
+    }
+
+    $search = trim((string) ($input['q'] ?? ''));
+    $tableFilter = trim((string) ($input['table_name'] ?? ''));
+    $actionFilter = trim((string) ($input['action_type'] ?? ''));
+    $actorFilter = trim((string) ($input['actor'] ?? ''));
+    $dateFilter = trim((string) ($input['log_date'] ?? ''));
+
+    $where = [];
+    $params = [];
+
+    if ($search !== '') {
+        $where[] = "(table_name LIKE ? OR action_type LIKE ? OR actor_name_snapshot LIKE ? OR COALESCE(note, '') LIKE ?)";
+        $like = '%' . $search . '%';
+        array_push($params, $like, $like, $like, $like);
+    }
+    if ($tableFilter !== '') {
+        $where[] = 'table_name = ?';
+        $params[] = $tableFilter;
+    }
+    if ($actionFilter !== '') {
+        $where[] = 'action_type = ?';
+        $params[] = $actionFilter;
+    }
+    if ($actorFilter !== '') {
+        $where[] = 'actor_name_snapshot = ?';
+        $params[] = $actorFilter;
+    }
+    if ($dateFilter !== '') {
+        $where[] = 'DATE(created_at) = ?';
+        $params[] = $dateFilter;
+    }
+
+    $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+    $stmt = $conn->prepare('SELECT * FROM db_admin_audit_logs' . $whereSql . ' ORDER BY id DESC');
+    $stmt->execute($params);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
 function app_get_table_layout_widths(string $layout, int $dynamicColumnCount = 0): array
 {
     $layouts = [

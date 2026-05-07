@@ -261,9 +261,7 @@ if ($type === 'my') {
     }
 } elseif ($type === 'db_change_logs') {
     app_require_permission('can_manage_database');
-    $rows = app_table_exists($conn, 'db_admin_audit_logs')
-        ? $conn->query('SELECT * FROM db_admin_audit_logs ORDER BY id DESC')->fetchAll(PDO::FETCH_ASSOC)
-        : [];
+    $rows = app_fetch_db_change_log_rows_for_report($conn, $_GET);
     $tableConfigs = app_db_admin_tables();
 
     $title = 'รายงานบันทึกการเปลี่ยนแปลงข้อมูล';

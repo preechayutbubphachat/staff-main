@@ -336,14 +336,6 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                     </div>
                 </form>
 
-                <div class="audit-log-tools-card">
-                    <h3>เครื่องมือรายงาน</h3>
-                    <div class="audit-log-tool-grid">
-                        <a href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-printer"></i>พิมพ์รายงาน</a>
-                        <a href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-filetype-pdf"></i>ส่งออก PDF</a>
-                        <a href="export_report.php?<?= htmlspecialchars($csvQuery) ?>" class="audit-log-tool-button"><i class="bi bi-filetype-csv"></i>ส่งออก CSV</a>
-                    </div>
-                </div>
             </aside>
 
             <section class="audit-log-table-card">
@@ -389,12 +381,18 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
+<script src="../assets/js/audit-log-view-toggle.js"></script>
 <script>
 TableFilters.init({
     formId: 'dbAuditFilterForm',
     containerId: 'dbAuditResults',
     endpoint: '../ajax/admin/audit_rows.php',
-    pushBase: 'db_change_logs.php'
+    pushBase: 'db_change_logs.php',
+    onRefresh: function (context) {
+        if (window.AuditLogViewToggle) {
+            window.AuditLogViewToggle.init(context.container);
+        }
+    }
 });
 </script>
 <script src="../assets/js/notifications.js"></script>

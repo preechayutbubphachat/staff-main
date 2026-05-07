@@ -5,13 +5,20 @@
             <h2>รายการล่าสุด</h2>
             <p>บันทึกการสร้าง แก้ไข และลบจากโมดูลต่างๆ พร้อมรายละเอียดการเปลี่ยนแปลง</p>
         </div>
-        <div class="audit-log-view-switch" aria-label="ตัวเลือกมุมมอง">
-            <button type="button" class="active"><i class="bi bi-table"></i>ตาราง</button>
-            <button type="button"><i class="bi bi-sliders"></i>ไทม์ไลน์</button>
+        <div class="audit-log-header-actions">
+            <div class="audit-log-report-actions" aria-label="เครื่องมือรายงาน">
+                <a href="report_print.php?<?= htmlspecialchars($printQuery ?? app_build_table_query(['type' => 'db_change_logs'])) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-printer"></i>พิมพ์รายงาน</a>
+                <a href="report_print.php?<?= htmlspecialchars($pdfQuery ?? app_build_table_query(['type' => 'db_change_logs', 'download' => 'pdf'])) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-filetype-pdf"></i>ส่งออก PDF</a>
+                <a href="export_report.php?<?= htmlspecialchars($csvQuery ?? app_build_table_query(['type' => 'db_change_logs'])) ?>" class="audit-log-tool-button"><i class="bi bi-filetype-csv"></i>ส่งออก CSV</a>
+            </div>
+            <div class="audit-log-view-switch" aria-label="ตัวเลือกมุมมอง">
+                <button type="button" class="active" data-audit-view-button="table" aria-pressed="true"><i class="bi bi-table"></i>ตาราง</button>
+                <button type="button" data-audit-view-button="timeline" aria-pressed="false"><i class="bi bi-sliders"></i>ไทม์ไลน์</button>
+            </div>
         </div>
     </div>
 
-    <div class="audit-log-table-shell">
+    <div class="audit-log-table-shell" data-audit-view-panel="table">
         <table class="audit-log-table">
             <?php app_render_table_colgroup('db_change_logs'); ?>
             <thead>
@@ -63,6 +70,54 @@
         </table>
     </div>
 
+    <div class="audit-log-timeline-shell" data-audit-view-panel="timeline" hidden>
+        <?php if (!$rows): ?>
+            <div class="audit-log-empty-state audit-log-timeline-empty">
+                <i class="bi bi-search"></i>
+                <strong>ไม่พบบันทึกตามเงื่อนไข</strong>
+                <span>ลองล้างตัวกรองหรือค้นหาด้วยคำอื่น</span>
+            </div>
+        <?php else: ?>
+            <div class="audit-log-timeline-list">
+                <?php foreach ($rows as $index => $row): ?>
+                    <?php
+                    $tableName = (string) ($row['table_name'] ?? '');
+                    $actionType = strtolower(trim((string) ($row['action_type'] ?? '')));
+                    $actionClass = in_array($actionType, ['create', 'insert'], true)
+                        ? 'is-create'
+                        : (in_array($actionType, ['delete', 'remove'], true) ? 'is-delete' : ($actionType === 'update' ? 'is-update' : 'is-default'));
+                    $noteText = trim((string) ($row['note'] ?? '')) !== '' ? (string) $row['note'] : '-';
+                    ?>
+                    <article class="audit-log-timeline-item <?= htmlspecialchars($actionClass) ?>">
+                        <div class="audit-log-timeline-marker" aria-hidden="true">
+                            <span><i class="bi bi-clock-history"></i></span>
+                        </div>
+                        <div class="audit-log-timeline-card">
+                            <div class="audit-log-timeline-main">
+                                <div class="audit-log-timeline-meta">
+                                    <span class="audit-log-timeline-index">#<?= app_table_row_number($page, $perPage, $index) ?></span>
+                                    <span><i class="bi bi-calendar3"></i><?= htmlspecialchars(app_format_thai_datetime((string) ($row['created_at'] ?? ''))) ?></span>
+                                </div>
+                                <h3>
+                                    <?= htmlspecialchars($tableConfigs[$tableName]['label'] ?? $tableName ?: '-') ?>
+                                    <?php if ($tableName !== ''): ?>
+                                        <em><?= htmlspecialchars($tableName) ?></em>
+                                    <?php endif; ?>
+                                </h3>
+                                <p><?= htmlspecialchars($noteText) ?></p>
+                            </div>
+                            <div class="audit-log-timeline-side">
+                                <span class="audit-log-action-pill <?= htmlspecialchars($actionClass) ?>"><?= htmlspecialchars((string) ($row['action_type'] ?? '-')) ?></span>
+                                <span class="audit-log-timeline-actor"><i class="bi bi-person"></i><?= htmlspecialchars((string) ($row['actor_name_snapshot'] ?: '-')) ?></span>
+                                <span class="audit-log-status is-saved">บันทึกแล้ว</span>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
     <div class="audit-log-table-footer">
         <div class="audit-log-pagination-meta">
             แสดง <?= number_format(count($rows)) ?> จาก <?= number_format($totalRows) ?> รายการ
@@ -87,10 +142,4 @@
         <?php endif; ?>
     </div>
 
-    <div class="audit-log-table-tools">
-        <a href="report_print.php?<?= htmlspecialchars($printQuery ?? app_build_table_query(['type' => 'db_change_logs'])) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-printer"></i>พิมพ์รายงาน</a>
-        <a href="report_print.php?<?= htmlspecialchars($pdfQuery ?? app_build_table_query(['type' => 'db_change_logs', 'download' => 'pdf'])) ?>" target="_blank" rel="noopener" class="audit-log-tool-button"><i class="bi bi-filetype-pdf"></i>ส่งออก PDF</a>
-        <a href="export_report.php?<?= htmlspecialchars($csvQuery ?? app_build_table_query(['type' => 'db_change_logs'])) ?>" class="audit-log-tool-button"><i class="bi bi-filetype-csv"></i>ส่งออก CSV</a>
-        <a href="db_change_logs.php" class="audit-log-tool-button"><i class="bi bi-eye"></i>ดูทั้งหมด</a>
-    </div>
 </div>

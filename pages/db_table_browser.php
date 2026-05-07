@@ -401,13 +401,13 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                         <h2>รายการตารางที่จัดการได้</h2>
                         <p>เปิดดูรายละเอียด เข้าใช้งานตาราง และติดตามสถานะจากข้อมูลจริงในระบบ</p>
                     </div>
-                    <div class="db-table-view-switch" aria-label="ตัวเลือกมุมมอง">
-                        <button type="button" class="active"><i class="bi bi-table"></i>ตาราง</button>
-                        <button type="button"><i class="bi bi-grid"></i>การ์ด</button>
+                    <div class="db-table-view-switch" aria-label="ตัวเลือกมุมมอง" data-db-table-view-switch>
+                        <button type="button" class="active" data-db-table-view-mode="table" aria-pressed="true"><i class="bi bi-table"></i>ตาราง</button>
+                        <button type="button" data-db-table-view-mode="card" aria-pressed="false"><i class="bi bi-grid"></i>การ์ด</button>
                     </div>
                 </div>
 
-                <div class="db-table-table-shell">
+                <div class="db-table-table-shell" data-db-table-view-panel="table">
                     <table class="db-table-management-table">
                         <thead>
                             <tr>
@@ -480,6 +480,61 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="db-table-card-grid" data-db-table-view-panel="card" hidden>
+                    <?php if (!$visibleTables): ?>
+                        <div class="db-table-card-empty">
+                            <i class="bi bi-search"></i>
+                            <strong>ไม่พบตารางตามตัวกรอง</strong>
+                            <span>ลองล้างตัวกรองหรือค้นหาด้วยคำอื่น</span>
+                        </div>
+                    <?php endif; ?>
+                    <?php foreach ($visibleTables as $tableName => $tableConfig): ?>
+                        <?php
+                        $columnCount = count($tableConfig['browse_columns'] ?? []);
+                        $rowCount = (int) ($tableCounts[$tableName] ?? 0);
+                        $statusClass = 'is-ready';
+                        $statusLabel = 'พร้อมใช้งาน';
+                        $tableLabel = (string) ($tableConfig['label'] ?? $tableName);
+                        $tableDescription = (string) ($tableConfig['description'] ?? '-');
+                        $tableUrl = 'db_table_browser.php?table=' . urlencode($tableName) . '#dbSelectedPanel';
+                        $canEditTable = !empty($tableConfig['edit_allowed']);
+                        ?>
+                        <article class="db-table-management-card">
+                            <div class="db-table-management-card-header">
+                                <span class="db-table-card-icon"><i class="bi <?= htmlspecialchars($tableIconMap[$tableName] ?? 'bi-table') ?>"></i></span>
+                                <div>
+                                    <h3><?= htmlspecialchars($tableLabel) ?></h3>
+                                    <p><?= htmlspecialchars($tableName) ?></p>
+                                </div>
+                            </div>
+                            <p class="db-table-card-description"><?= htmlspecialchars($tableDescription) ?></p>
+                            <div class="db-table-card-metrics" aria-label="สรุปตาราง <?= htmlspecialchars($tableLabel) ?>">
+                                <div>
+                                    <span>จำนวนคอลัมน์</span>
+                                    <strong><?= number_format($columnCount) ?></strong>
+                                </div>
+                                <div>
+                                    <span>จำนวนข้อมูล</span>
+                                    <strong><?= number_format($rowCount) ?></strong>
+                                </div>
+                            </div>
+                            <div class="db-table-card-footer">
+                                <div class="db-table-card-meta">
+                                    <span>ผู้รับผิดชอบ</span>
+                                    <strong>ผู้ดูแลระบบ</strong>
+                                </div>
+                                <span class="db-table-status <?= $statusClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
+                                <a href="<?= htmlspecialchars($tableUrl) ?>"
+                                   class="db-table-row-btn <?= $canEditTable ? 'is-edit' : 'is-readonly' ?>"
+                                   title="<?= $canEditTable ? 'เลือกตารางและดูข้อมูล' : 'ตารางนี้เป็นอ่านอย่างเดียว' ?>">
+                                    <i class="bi <?= $canEditTable ? 'bi-pencil-square' : 'bi-eye' ?>"></i>
+                                    <?= $canEditTable ? 'แก้ไข' : 'ดูข้อมูล' ?>
+                                </a>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
             </section>
         </section>
@@ -618,6 +673,63 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
+<script>
+(function () {
+    const storageKey = 'overTime.tableManagement.viewMode';
+    const allowedModes = ['table', 'card'];
+    const buttons = Array.from(document.querySelectorAll('[data-db-table-view-mode]'));
+    const panels = Array.from(document.querySelectorAll('[data-db-table-view-panel]'));
+
+    if (!buttons.length || !panels.length) {
+        return;
+    }
+
+    function normalizeMode(mode) {
+        return allowedModes.includes(mode) ? mode : 'table';
+    }
+
+    function readStoredMode() {
+        try {
+            return normalizeMode(window.localStorage ? window.localStorage.getItem(storageKey) : 'table');
+        } catch (error) {
+            return 'table';
+        }
+    }
+
+    function persistMode(mode) {
+        try {
+            if (window.localStorage) {
+                window.localStorage.setItem(storageKey, normalizeMode(mode));
+            }
+        } catch (error) {
+            // Storage can be unavailable in restricted browser contexts.
+        }
+    }
+
+    function setMode(mode, shouldPersist) {
+        const nextMode = normalizeMode(mode);
+        buttons.forEach(function (button) {
+            const isActive = button.getAttribute('data-db-table-view-mode') === nextMode;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+        panels.forEach(function (panel) {
+            panel.hidden = panel.getAttribute('data-db-table-view-panel') !== nextMode;
+        });
+        if (shouldPersist) {
+            persistMode(nextMode);
+        }
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            setMode(button.getAttribute('data-db-table-view-mode'), true);
+        });
+    });
+
+    setMode(readStoredMode(), false);
+})();
+</script>
 <?php if ($config): ?>
 <script src="../assets/js/table-filters.js"></script>
 <script>
