@@ -321,7 +321,7 @@ if ($type === 'my') {
     <style>
         :root{--ink:#12263f;--muted:#52657c;--line:#cdd9e5;--soft:#f5f8fb;--accent:#1f5f8b}
         *{box-sizing:border-box}
-        @page{size:A4 landscape;margin:8mm}
+        @page{size:A4 landscape;margin:6mm}
         body{margin:0;background:#eef3f7;color:var(--ink);font-family:'Sarabun',sans-serif}
         .print-actions{width:min(1560px,calc(100% - 32px));margin:18px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         .print-actions button,.print-actions a{border:0;border-radius:999px;padding:11px 18px;text-decoration:none;font:inherit;cursor:pointer}
@@ -371,9 +371,10 @@ if ($type === 'my') {
         .signature-box{min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center}
         .signature-line{width:82%;border-bottom:1px solid var(--ink);height:42px;margin-bottom:8px}
         .signature-role{color:var(--muted);font-size:.92rem}
-        .report-paper,.official-report-page{width:297mm;min-height:210mm;padding:8mm 9mm 8mm;margin:16px auto 28px;page-break-after:always}
-        .official-report-page:last-child{page-break-after:auto}
-        .official-header{text-align:center;margin:0 auto 3px;font-size:.67rem;line-height:1.26;color:#111827}
+        .report-paper,.official-report-page{width:297mm;min-height:200mm;padding:6mm 8mm 6mm;margin:16px auto 24px;break-after:auto;page-break-after:auto}
+        .official-report-page:not(:last-child){break-after:page;page-break-after:always}
+        .official-report-page:last-child{break-after:auto;page-break-after:auto}
+        .official-header{text-align:center;margin:0 auto 2px;font-size:.67rem;line-height:1.22;color:#111827}
         .official-header-line{margin:0}
         .official-header-line.is-ref{margin-bottom:1px;font-size:.72rem}
         .official-header-line.is-subject{font-weight:600;font-size:.74rem;line-height:1.22}
@@ -388,21 +389,21 @@ if ($type === 'my') {
         .official-table th.monthly-col-name,.official-table th.monthly-col-position,.official-table th.monthly-col-remark{text-align:center}
         .official-table .monthly-col-day{font-size:6.8px;padding-left:0;padding-right:0;white-space:nowrap}
         .official-table .official-day-heading{text-align:center;font-size:7.6px;letter-spacing:0}
-        .official-period{width:96.5%;margin:8px auto 5px;color:#111827;font-size:.76rem;line-height:1.52}
+        .official-period{width:96.5%;margin:6px auto 4px;color:#111827;font-size:.76rem;line-height:1.42}
         .official-period p{margin:0}
-        .official-footer{width:96.5%;display:grid;grid-template-columns:1fr 60mm;gap:12mm;margin:7px auto 0;align-items:start;color:#111827}
+        .official-footer{width:96.5%;display:grid;grid-template-columns:1fr 58mm;gap:10mm;margin:5px auto 0;align-items:start;color:#111827}
         .official-footer.legend-only{grid-template-columns:1fr}
         .official-legend-title{margin:0 0 3px;font-weight:700;font-size:.78rem}
-        .official-legend-list{margin:0;padding-left:14px;font-size:.72rem;line-height:1.58}
-        .official-signature{--signature-label-width:10mm;--signature-line-width:46mm;display:grid;grid-template-columns:var(--signature-label-width) var(--signature-line-width);column-gap:1.5mm;justify-content:end;padding-top:10px;text-align:left;font-size:.78rem;line-height:1.45;justify-self:end;width:60mm}
+        .official-legend-list{margin:0;padding-left:14px;font-size:.72rem;line-height:1.45}
+        .official-signature{--signature-label-width:10mm;--signature-line-width:44mm;display:grid;grid-template-columns:var(--signature-label-width) var(--signature-line-width);column-gap:1.5mm;justify-content:end;padding-top:7px;text-align:left;font-size:.78rem;line-height:1.34;justify-self:end;width:58mm}
         .official-sign-row{display:contents}
         .official-sign-label{grid-column:1;text-align:right;white-space:nowrap}
         .official-sign-dots{grid-column:2;display:block;width:100%;border-bottom:1px dotted #111827;height:1em}
         .official-sign-name{grid-column:2;display:flex;align-items:flex-end;margin-top:3px;width:100%;line-height:1.4;text-align:center}
         .official-sign-name-paren{flex:0 0 auto}
         .official-sign-name-dots{display:block;flex:1 1 auto;border-bottom:1px dotted #111827;min-height:1em;text-align:center}
-        .official-signature-role{grid-column:2;width:100%;font-weight:700;margin-top:5px;text-align:center}
-        @media print{html,body{width:297mm;min-height:210mm;background:#fff}.print-actions,.print-hint{display:none!important}.page{width:100%;margin:0;box-shadow:none}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}.report-paper,.official-report-page{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none;break-after:page}.official-report-page:last-child{break-after:auto}}
+        .official-signature-role{grid-column:2;width:100%;font-weight:700;margin-top:4px;text-align:center}
+        @media print{html,body{width:297mm;min-height:0;margin:0;padding:0;background:#fff;transform:none!important;zoom:1!important}.print-actions,.print-hint{display:none!important}#reportSurface{margin:0!important;padding:0!important;background:#fff!important;transform:none!important;zoom:1!important}.page{width:100%;margin:0;box-shadow:none;transform:none!important;zoom:1!important}tr,td,th,.summary-card{break-inside:avoid}thead{display:table-header-group}.report-paper,.official-report-page{width:100%;min-height:auto;margin:0!important;padding:0!important;box-shadow:none!important;break-after:auto;page-break-after:auto}.official-report-page:not(:last-child){break-after:page;page-break-after:always}.official-report-page:last-child{break-after:auto;page-break-after:auto}}
     </style>
 </head>
 <body>
@@ -679,29 +680,46 @@ if ($type === 'my') {
     <script>
         async function downloadPdf() {
             const surface = document.getElementById('reportSurface');
-            const canvas = await html2canvas(surface, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            });
-
-            const imageData = canvas.toDataURL('image/png');
             const pdf = new window.jspdf.jsPDF('l', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
-            const imageWidth = pageWidth;
-            const imageHeight = (canvas.height * imageWidth) / canvas.width;
+            const pdfPages = surface.querySelectorAll('.official-report-page');
 
-            let heightLeft = imageHeight;
-            let position = 0;
-            pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
-            heightLeft -= pageHeight;
+            if (pdfPages.length > 0) {
+                for (const [index, page] of Array.from(pdfPages).entries()) {
+                    const canvas = await html2canvas(page, {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff'
+                    });
+                    const imageData = canvas.toDataURL('image/png');
+                    if (index > 0) {
+                        pdf.addPage();
+                    }
+                    pdf.addImage(imageData, 'PNG', 0, 0, pageWidth, pageHeight);
+                }
+            } else {
+                const canvas = await html2canvas(surface, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
 
-            while (heightLeft > 0) {
-                position = heightLeft - imageHeight;
-                pdf.addPage();
+                const imageData = canvas.toDataURL('image/png');
+                const imageWidth = pageWidth;
+                const imageHeight = (canvas.height * imageWidth) / canvas.width;
+
+                let heightLeft = imageHeight;
+                let position = 0;
                 pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
                 heightLeft -= pageHeight;
+
+                while (heightLeft > 0.5) {
+                    position = heightLeft - imageHeight;
+                    pdf.addPage();
+                    pdf.addImage(imageData, 'PNG', 0, position, imageWidth, imageHeight);
+                    heightLeft -= pageHeight;
+                }
             }
 
             pdf.save('report_<?= htmlspecialchars($type) ?>_<?= date('Ymd_His') ?>.pdf');

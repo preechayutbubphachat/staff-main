@@ -115,6 +115,15 @@ $_dailyCsvQuery   = app_build_table_query($_dailyExportBase, ['type' => 'daily']
             <p class="daily-card-copy"><?= htmlspecialchars($tableContextLabel) ?> · <?= htmlspecialchars($scopeLabel) ?></p>
         </div>
         <div class="daily-results-toolbar">
+            <label class="daily-page-size-control" for="dailyPerPage">
+                <span>แสดง</span>
+                <select id="dailyPerPage" name="per_page" form="dailyScheduleFilterForm">
+                    <?php foreach ([10, 20, 50, 100] as $size): ?>
+                        <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span>รายการ</span>
+            </label>
             <?php if ($mode === 'daily'): ?>
                 <a class="daily-view-pill <?= $view === 'cards' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'cards', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-grid"></i>การ์ด</a>
                 <a class="daily-view-pill <?= $view === 'table' ? 'active' : '' ?>" href="?<?= htmlspecialchars(app_build_table_query($queryBase, ['view' => 'table', 'p' => 1])) ?>" data-table-view-link><i class="bi bi-table"></i>ตาราง</a>

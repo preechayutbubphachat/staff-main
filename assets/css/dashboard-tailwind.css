@@ -1273,6 +1273,7 @@
 
   .approval-filter-card {
     @apply flex flex-col gap-4 p-4 xl:sticky xl:top-[4.75rem];
+    container-type: inline-size;
   }
 
   .approval-card-head {
@@ -1292,11 +1293,11 @@
   }
 
   .approval-filter-form {
-    @apply grid gap-3.5;
+    @apply grid min-w-0 gap-4;
   }
 
   .approval-filter-group {
-    @apply grid gap-2;
+    @apply grid min-w-0 gap-2;
   }
 
   .approval-field-label {
@@ -1304,11 +1305,11 @@
   }
 
   .approval-search-field {
-    @apply flex min-h-[46px] items-center gap-3 rounded-[0.95rem] border border-hospital-teal/10 bg-hospital-mist/75 px-4 py-2.5 text-sm font-semibold text-hospital-muted transition-all duration-200 ease-out focus-within:border-hospital-teal/35 focus-within:bg-white focus-within:shadow-soft;
+    @apply flex min-h-[46px] min-w-0 items-center gap-3 rounded-[0.95rem] border border-hospital-teal/10 bg-hospital-mist/75 px-4 py-2.5 text-sm font-semibold text-hospital-muted transition-all duration-200 ease-out focus-within:border-hospital-teal/35 focus-within:bg-white focus-within:shadow-soft;
   }
 
   .approval-search-field .form-control {
-    @apply min-h-0 border-0 bg-transparent p-0 shadow-none;
+    @apply min-h-0 min-w-0 border-0 bg-transparent p-0 shadow-none;
   }
 
   .approval-search-field .form-control:focus {
@@ -1317,16 +1318,36 @@
   }
 
   .approval-filter-grid {
-    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-2;
+    @apply grid min-w-0 gap-3.5;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .approval-filter-field {
-    @apply grid gap-2;
+    @apply grid min-w-0 gap-2;
+  }
+
+  .approval-filter-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .approval-date-filter-field {
+    @apply min-w-0;
   }
 
   .approval-filter-card .form-control,
   .approval-filter-card .form-select {
-    @apply min-h-[46px] rounded-[0.95rem] border border-hospital-teal/10 bg-white px-4 py-2.5 text-sm font-semibold text-hospital-ink shadow-none transition-all duration-200 ease-out;
+    @apply min-h-[46px] w-full min-w-0 rounded-[0.95rem] border border-hospital-teal/10 bg-white px-4 py-2.5 text-sm font-semibold text-hospital-ink shadow-none transition-all duration-200 ease-out;
+    box-sizing: border-box;
+  }
+
+  .approval-filter-card .approval-date-input {
+    @apply min-w-0 px-4 pr-10;
+    min-inline-size: 100%;
+  }
+
+  .approval-filter-card .approval-date-input::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer;
+    margin-right: 0;
   }
 
   .approval-filter-card .form-control:focus,
@@ -1336,7 +1357,28 @@
   }
 
   .approval-filter-actions {
-    @apply grid gap-3 sm:grid-cols-2;
+    @apply grid w-full min-w-0 gap-3 pt-1;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .approval-filter-actions .dash-btn {
+    @apply w-full min-w-0 justify-center gap-2 whitespace-nowrap px-3;
+    min-height: 44px;
+    height: 44px;
+    writing-mode: horizontal-tb;
+    line-height: 1;
+  }
+
+  .approval-filter-actions .dash-btn .bi,
+  .approval-filter-actions .dash-btn .bi::before {
+    display: block;
+    line-height: 1;
+  }
+
+  @container (min-width: 320px) {
+    .approval-filter-actions {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
   }
 
   .approval-bulk-tools {
@@ -1476,11 +1518,30 @@
 
   /* Controls bar: select-all | caption | view-switch */
   .approval-review-controls-bar {
-    @apply flex flex-wrap items-center justify-between gap-3;
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-hospital-teal/10 pb-3;
+  }
+
+  .approval-list-tools {
+    @apply flex flex-wrap items-center justify-start gap-2 text-sm font-semibold text-hospital-muted lg:justify-end;
   }
 
   .approval-list-caption {
-    @apply flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-hospital-muted;
+    @apply inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-hospital-muted;
+    white-space: nowrap;
+  }
+
+  .approval-page-size-control {
+    @apply inline-flex min-h-[40px] items-center gap-2 rounded-full border border-hospital-teal/10 bg-white px-3 py-1.5 text-[0.78rem] font-bold text-hospital-muted shadow-soft;
+    white-space: nowrap;
+  }
+
+  .approval-page-size-control select {
+    @apply h-8 rounded-full border border-hospital-teal/10 bg-hospital-mist px-3 text-sm font-bold text-hospital-ink outline-none transition-all duration-200 ease-out;
+  }
+
+  .approval-page-size-control select:focus {
+    @apply border-hospital-teal/35 ring-4 ring-hospital-teal/10;
+    box-shadow: none;
   }
 
   .approval-list-shell {
@@ -1930,6 +1991,14 @@
 
   .daily-results-toolbar {
     @apply flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2;
+  }
+
+  .daily-page-size-control {
+    @apply inline-flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-hospital-teal/10 bg-hospital-mist px-3.5 py-2 text-xs font-bold text-hospital-muted;
+  }
+
+  .daily-page-size-control select {
+    @apply h-7 rounded-full border border-hospital-teal/10 bg-white px-3 text-xs font-bold text-hospital-navy shadow-none outline-none transition-all duration-200 focus:border-hospital-teal/35 focus:ring-4 focus:ring-hospital-teal/10;
   }
 
   .daily-view-pill {
@@ -4761,6 +4830,15 @@
       @apply grid-cols-1;
     }
 
+    .daily-results-toolbar,
+    .daily-page-size-control {
+      @apply w-full justify-start;
+    }
+
+    .daily-page-size-control select {
+      @apply flex-1;
+    }
+
     .daily-kpi-card {
       @apply min-h-0;
     }
@@ -5284,6 +5362,55 @@
     padding: 1rem 1.15rem 0.75rem;
   }
 
+  .audit-log-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0.9rem 0.8rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #e4eef4;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(240, 249, 251, 0.88), rgba(255, 255, 255, 0.96));
+  }
+
+  .audit-log-table-count {
+    color: #24445f;
+    font-size: 0.84rem;
+    font-weight: 900;
+  }
+
+  .audit-log-page-size-control {
+    display: inline-flex;
+    min-height: 2.45rem;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid #cfe3ec;
+    border-radius: 999px;
+    background: #fff;
+    padding: 0.25rem 0.35rem 0.25rem 0.8rem;
+    color: #24445f;
+    font-size: 0.8rem;
+    font-weight: 900;
+    box-shadow: 0 10px 22px rgba(6, 59, 79, 0.06);
+  }
+
+  .audit-log-page-size-control select {
+    min-height: 1.85rem;
+    border: 1px solid #d7e6ef;
+    border-radius: 999px;
+    background: #f7fbfd;
+    color: #073B5A;
+    padding: 0 1.8rem 0 0.7rem;
+    font-weight: 900;
+    outline: 0;
+  }
+
+  .audit-log-page-size-control select:focus {
+    border-color: rgba(20, 184, 166, 0.72);
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.13);
+  }
+
   .audit-log-header-actions {
     display: flex;
     flex: 0 1 auto;
@@ -5743,6 +5870,7 @@
     }
 
     .audit-log-results-header,
+    .audit-log-table-toolbar,
     .audit-log-table-footer {
       flex-direction: column;
       align-items: stretch;
@@ -5802,6 +5930,12 @@
       width: 100%;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .audit-log-page-size-control {
+      width: 100%;
+      justify-content: space-between;
+      border-radius: 0.95rem;
     }
   }
 }

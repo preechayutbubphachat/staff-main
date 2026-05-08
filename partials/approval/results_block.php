@@ -61,8 +61,22 @@ $thaiWeekdayShort = [
             </button>
         </div>
 
-        <div class="approval-list-caption">
-            <span>ทั้งหมด <?= number_format($totalRows) ?> รายการ</span>
+        <div class="approval-list-tools">
+            <div class="approval-list-caption">
+                <span>ทั้งหมด <?= number_format($totalRows) ?> รายการ</span>
+            </div>
+            <label class="approval-page-size-control" for="approvalPerPage">
+                <span>แสดง:</span>
+                <select id="approvalPerPage"
+                        name="per_page"
+                        form="approvalFilterForm"
+                        data-approval-page-size
+                        aria-label="จำนวนรายการต่อหน้า">
+                    <?php foreach ([10, 20, 50, 100] as $size): ?>
+                        <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการ</option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <?php if ($checkerSignature === ''): ?>
                 <span class="status-chip warning">ยังไม่สามารถอนุมัติได้จนกว่าจะตั้งค่าลายเซ็น</span>
             <?php endif; ?>

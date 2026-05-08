@@ -246,14 +246,6 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                             <label class="daily-field-label" for="dailyYear">ปี (พ.ศ.)</label>
                             <input id="dailyYear" type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
                         </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyPerPage">แสดง</label>
-                            <select id="dailyPerPage" name="per_page" class="form-select">
-                                <?php foreach ([10, 20, 50, 100] as $size): ?>
-                                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการ</option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="daily-filter-actions">

@@ -355,7 +355,7 @@ $reviewStatCards = [
                     <input type="hidden" name="p" value="<?= (int) $page ?>">
                     <input type="hidden" name="view" value="table">
 
-                    <div class="approval-filter-group">
+                    <div class="approval-filter-group approval-filter-field-full">
                         <label class="approval-field-label" for="approvalSearchName">ค้นหา</label>
                         <label class="approval-search-field" for="approvalSearchName">
                             <i class="bi bi-search"></i>
@@ -379,7 +379,7 @@ $reviewStatCards = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="approval-filter-field">
+                        <div class="approval-filter-field approval-filter-field-full">
                             <label class="approval-field-label" for="approvalStatus">สถานะ</label>
                             <select id="approvalStatus" name="status" class="form-select">
                                 <option value="pending" <?= $filters['status'] === 'pending' ? 'selected' : '' ?>>รอตรวจสอบ</option>
@@ -387,21 +387,13 @@ $reviewStatCards = [
                                 <option value="all" <?= $filters['status'] === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
                             </select>
                         </div>
-                        <div class="approval-filter-field">
+                        <div class="approval-filter-field approval-filter-field-full approval-date-filter-field">
                             <label class="approval-field-label" for="approvalDateFrom">วันที่เริ่มต้น</label>
-                            <input id="approvalDateFrom" type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from']) ?>">
+                            <input id="approvalDateFrom" type="date" name="date_from" class="form-control approval-date-input" value="<?= htmlspecialchars($filters['date_from']) ?>">
                         </div>
-                        <div class="approval-filter-field">
+                        <div class="approval-filter-field approval-filter-field-full approval-date-filter-field">
                             <label class="approval-field-label" for="approvalDateTo">วันที่สิ้นสุด</label>
-                            <input id="approvalDateTo" type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to']) ?>">
-                        </div>
-                        <div class="approval-filter-field">
-                            <label class="approval-field-label" for="approvalPerPage">แสดง</label>
-                            <select id="approvalPerPage" name="per_page" class="form-select">
-                                <?php foreach ([10, 20, 50, 100] as $size): ?>
-                                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการ</option>
-                                <?php endforeach; ?>
-                            </select>
+                            <input id="approvalDateTo" type="date" name="date_to" class="form-control approval-date-input" value="<?= htmlspecialchars($filters['date_to']) ?>">
                         </div>
                     </div>
 

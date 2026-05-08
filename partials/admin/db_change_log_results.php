@@ -18,6 +18,21 @@
         </div>
     </div>
 
+    <div class="audit-log-table-toolbar">
+        <div class="audit-log-table-count">
+            ทั้งหมด <?= number_format($totalRows) ?> รายการ
+        </div>
+        <label class="audit-log-page-size-control">
+            <span>แสดง</span>
+            <select data-audit-page-size aria-label="จำนวนรายการต่อหน้า">
+                <?php foreach ([10, 20, 50, 100] as $size): ?>
+                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span>รายการต่อหน้า</span>
+        </label>
+    </div>
+
     <div class="audit-log-table-shell" data-audit-view-panel="table">
         <table class="audit-log-table">
             <?php app_render_table_colgroup('db_change_logs'); ?>

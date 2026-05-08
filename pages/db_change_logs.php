@@ -269,6 +269,7 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 
                 <form method="get" id="dbAuditFilterForm" class="audit-log-filter-form" data-page-state-key="db_change_logs">
                     <input type="hidden" name="page" value="<?= (int) $page ?>">
+                    <input type="hidden" name="per_page" value="<?= (int) $perPage ?>">
 
                     <label class="audit-log-field is-wide">
                         <span>ค้นหา</span>
@@ -313,15 +314,6 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                     <label class="audit-log-field">
                         <span>ช่วงวันที่</span>
                         <input type="date" name="log_date" value="<?= htmlspecialchars($dateFilter) ?>">
-                    </label>
-
-                    <label class="audit-log-field is-wide">
-                        <span>แสดง</span>
-                        <select name="per_page">
-                            <?php foreach ([10, 20, 50, 100] as $size): ?>
-                                <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการต่อหน้า</option>
-                            <?php endforeach; ?>
-                        </select>
                     </label>
 
                     <div class="audit-log-filter-actions is-wide">
@@ -393,6 +385,35 @@ TableFilters.init({
             window.AuditLogViewToggle.init(context.container);
         }
     }
+});
+
+document.addEventListener('change', function (event) {
+    const control = event.target.closest('[data-audit-page-size]');
+    if (!control) {
+        return;
+    }
+
+    const form = document.getElementById('dbAuditFilterForm');
+    if (!form) {
+        return;
+    }
+
+    const pageInput = form.querySelector('[name="page"]');
+    if (pageInput) {
+        pageInput.value = '1';
+    }
+
+    const perPageInput = form.querySelector('[name="per_page"]');
+    if (perPageInput) {
+        perPageInput.value = control.value;
+    }
+
+    if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+        return;
+    }
+
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 });
 </script>
 <script src="../assets/js/notifications.js"></script>

@@ -482,6 +482,11 @@
         resultsContainer.addEventListener('change', function (event) {
             const target = event.target;
 
+            if (target.matches('[data-approval-page-size]')) {
+                triggerFilterRefresh(true);
+                return;
+            }
+
             if (target.matches('.row-checkbox')) {
                 setCheckboxSelected(target, target.checked);
                 updateSelectionUI();

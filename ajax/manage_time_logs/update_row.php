@@ -21,6 +21,17 @@ $workDate = trim((string) ($_POST['work_date'] ?? ''));
 $timeIn = trim((string) ($_POST['time_in'] ?? ''));
 $timeOut = trim((string) ($_POST['time_out'] ?? ''));
 $note = trim((string) ($_POST['note'] ?? ''));
+$currentReviewStatus = !empty($row['checked_at'])
+    ? 'checked'
+    : (!empty($row['checked_by']) ? 'returned' : 'pending');
+$reviewStatus = trim((string) ($_POST['review_status'] ?? $currentReviewStatus));
+$allowedReviewStatuses = ['pending', 'checked', 'returned'];
+if (!in_array($reviewStatus, $allowedReviewStatuses, true)) {
+    ajax_json(['success' => false, 'message' => 'สถานะรายการไม่ถูกต้อง'], 422);
+}
+if ($reviewStatus !== $currentReviewStatus && !app_can('can_approve_logs')) {
+    ajax_json(['success' => false, 'message' => 'คุณไม่มีสิทธิ์เปลี่ยนสถานะรายการลงเวลาเวร'], 403);
+}
 if ($workDate === '' || $timeIn === '' || $timeOut === '') {
     ajax_json(['success' => false, 'message' => 'กรุณากรอกวันที่ เวลาเข้า และเวลาออกให้ครบถ้วน'], 422);
 }
@@ -44,16 +55,106 @@ if ($overlap) {
 }
 
 $beforeRow = $row;
-$stmt = $conn->prepare("UPDATE time_logs SET work_date = ?, time_in = ?, time_out = ?, work_hours = ?, note = ?, checked_by = NULL, checked_at = NULL, signature = NULL WHERE id = ?");
-$stmt->execute([$workDate, $range['time_in'], $range['time_out'], $range['hours'], $note, $timeLogId]);
-$afterRow = app_get_time_log_by_id($conn, $timeLogId);
-app_insert_time_log_audit($conn, $timeLogId, 'admin_edit', $beforeRow, $afterRow, (int) ($_SESSION['id'] ?? 0), (string) ($_SESSION['fullname'] ?? ''), 'แก้ไขข้อมูลจากหน้าจัดการลงเวลาเวรแบบไม่รีเฟรชหน้า');
-if ($afterRow && (!empty($beforeRow['checked_at']) || !empty($beforeRow['checked_by']))) {
-    app_notify_log_returned($conn, $afterRow, (int) ($_SESSION['id'] ?? 0));
+$actorId = (int) ($_SESSION['id'] ?? 0);
+$actorName = (string) ($_SESSION['fullname'] ?? '');
+$now = date('Y-m-d H:i:s');
+$statusChanged = $reviewStatus !== $currentReviewStatus;
+$nextCheckedBy = $beforeRow['checked_by'] ?? null;
+$nextCheckedAt = $beforeRow['checked_at'] ?? null;
+$nextSignature = $beforeRow['signature'] ?? null;
+$nextApprovalNote = $beforeRow['approval_note'] ?? null;
+
+if ($reviewStatus === 'pending') {
+    $nextCheckedBy = null;
+    $nextCheckedAt = null;
+    $nextSignature = null;
+    $nextApprovalNote = null;
+} elseif ($reviewStatus === 'checked') {
+    if (empty($beforeRow['checked_at'])) {
+        if (!app_can('can_approve_logs')) {
+            ajax_json(['success' => false, 'message' => 'คุณไม่มีสิทธิ์เปลี่ยนรายการเป็นสถานะตรวจแล้ว'], 403);
+        }
+
+        $signatureStmt = $conn->prepare('SELECT signature_path FROM users WHERE id = ? LIMIT 1');
+        $signatureStmt->execute([$actorId]);
+        $checkerSignature = (string) ($signatureStmt->fetchColumn() ?: '');
+        if ($checkerSignature === '') {
+            ajax_json(['success' => false, 'message' => 'ยังไม่สามารถเปลี่ยนเป็นสถานะตรวจแล้วได้ เนื่องจากยังไม่ได้ตั้งค่าลายเซ็นผู้ตรวจสอบ'], 422);
+        }
+
+        $nextCheckedBy = $actorId;
+        $nextCheckedAt = $now;
+        $nextSignature = 'uploads/signatures/' . $checkerSignature;
+    }
+    $nextApprovalNote = null;
+} elseif ($reviewStatus === 'returned') {
+    if ($statusChanged && !app_can('can_approve_logs')) {
+        ajax_json(['success' => false, 'message' => 'คุณไม่มีสิทธิ์เปลี่ยนรายการเป็นสถานะตีกลับ'], 403);
+    }
+
+    if ($statusChanged) {
+        $nextCheckedBy = $actorId;
+        $nextCheckedAt = null;
+        $nextSignature = null;
+        $nextApprovalNote = $note !== '' ? $note : 'เปลี่ยนสถานะเป็นตีกลับ/ไม่อนุมัติจาก modal แก้ไข';
+    }
 }
-app_sync_reviewer_queue_notifications($conn);
+
+try {
+    $conn->beginTransaction();
+
+    $stmt = $conn->prepare("
+        UPDATE time_logs
+        SET work_date = ?, time_in = ?, time_out = ?, work_hours = ?, note = ?,
+            checked_by = ?, checked_at = ?, signature = ?, approval_note = ?, updated_at = ?
+        WHERE id = ?
+    ");
+    $stmt->execute([
+        $workDate,
+        $range['time_in'],
+        $range['time_out'],
+        $range['hours'],
+        $note,
+        $nextCheckedBy,
+        $nextCheckedAt,
+        $nextSignature,
+        $nextApprovalNote,
+        $now,
+        $timeLogId,
+    ]);
+
+    $afterRow = app_get_time_log_by_id($conn, $timeLogId);
+    $auditNote = $statusChanged
+        ? 'edit_modal status_change: ' . $currentReviewStatus . ' -> ' . $reviewStatus
+        : 'แก้ไขข้อมูลจาก modal หน้าจัดการลงเวลาเวร';
+    app_insert_time_log_audit(
+        $conn,
+        $timeLogId,
+        $statusChanged ? 'edit_modal_status_change' : 'admin_edit',
+        $beforeRow,
+        $afterRow,
+        $actorId,
+        $actorName,
+        $auditNote
+    );
+
+    if ($afterRow && $reviewStatus === 'checked' && $statusChanged) {
+        app_create_approval_completed_notification($conn, $afterRow, $actorName);
+    } elseif ($afterRow && $reviewStatus === 'returned' && $statusChanged) {
+        app_notify_log_returned($conn, $afterRow, $actorId);
+    }
+    app_sync_reviewer_queue_notifications($conn);
+
+    $conn->commit();
+} catch (Throwable $exception) {
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+
+    ajax_json(['success' => false, 'message' => 'ไม่สามารถบันทึกการแก้ไขได้ กรุณาลองใหม่อีกครั้ง'], 500);
+}
 
 ajax_json([
     'success' => true,
-    'message' => 'บันทึกการแก้ไขเรียบร้อยแล้ว และรีเซ็ตสถานะอนุมัติเดิมให้ตรวจสอบใหม่',
+    'message' => 'บันทึกการแก้ไขเรียบร้อยแล้ว',
 ]);
