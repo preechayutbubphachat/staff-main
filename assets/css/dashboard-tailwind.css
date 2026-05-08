@@ -1967,6 +1967,15 @@
     @apply grid gap-1;
   }
 
+  .today-filter-month-year-group {
+    display: contents;
+  }
+
+  .today-filter-date-group[hidden],
+  .today-filter-month-year-group[hidden] {
+    display: none !important;
+  }
+
   .daily-filter-field .form-control,
   .daily-filter-field .form-select {
     @apply min-h-[48px] rounded-[1rem] border-hospital-teal/10 bg-white text-sm font-semibold text-hospital-ink shadow-none transition-all duration-200 focus:border-hospital-teal/35 focus:ring-4 focus:ring-hospital-teal/10;

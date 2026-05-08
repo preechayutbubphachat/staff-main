@@ -35,14 +35,17 @@ $matrixDays = $schedule['matrix_days'] ?? [];
 
 $queryBase = [
     'mode' => $mode,
-    'date' => $selectedDate,
-    'month' => $selectedMonth,
-    'year_be' => $selectedYearBe,
     'department' => $selectedDepartment,
     'name' => $name,
     'review_status' => $reviewStatus,
     'per_page' => $perPage,
 ];
+if ($mode === 'monthly') {
+    $queryBase['month'] = $selectedMonth;
+    $queryBase['year_be'] = $selectedYearBe;
+} else {
+    $queryBase['date'] = $selectedDate;
+}
 
 ajax_html(ajax_capture(function () use ($schedule, $view, $pagedLogs, $pagedGroups, $dateLabel, $dateHeading, $scopeLabel, $page, $perPage, $totalPages, $totalRows, $queryBase, $mode, $matrixRows, $pagedMatrixRows, $matrixDays): void {
     require __DIR__ . '/../../partials/reports/daily_schedule_results.php';

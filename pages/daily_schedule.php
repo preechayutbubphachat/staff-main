@@ -50,14 +50,17 @@ $matrixDays = $schedule['matrix_days'] ?? [];
 
 $queryBase = [
     'mode' => $mode,
-    'date' => $selectedDate,
-    'month' => $selectedMonth,
-    'year_be' => $selectedYearBe,
     'department' => $selectedDepartment,
     'name' => $name,
     'review_status' => $reviewStatus,
     'per_page' => $perPage,
 ];
+if ($mode === 'monthly') {
+    $queryBase['month'] = $selectedMonth;
+    $queryBase['year_be'] = $selectedYearBe;
+} else {
+    $queryBase['date'] = $selectedDate;
+}
 $printQuery = app_build_table_query($queryBase, ['type' => 'daily']);
 $pdfQuery = app_build_table_query($queryBase, ['type' => 'daily', 'download' => 'pdf']);
 $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
@@ -230,21 +233,23 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="daily-filter-field">
+                        <div class="daily-filter-field today-filter-date-group" data-period-group="daily">
                             <label class="daily-field-label" for="dailyDate">วันที่</label>
                             <input id="dailyDate" type="date" name="date" class="form-control thai-date-input" value="<?= htmlspecialchars($selectedDate) ?>" data-thai-date-display="full" data-thai-date-empty="วัน/เดือน/ปี">
                         </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyMonth">เดือน</label>
-                            <select id="dailyMonth" name="month" class="form-select">
-                                <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
-                                    <option value="<?= (int) $monthValue ?>" <?= $selectedMonth === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyYear">ปี (พ.ศ.)</label>
-                            <input id="dailyYear" type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
+                        <div class="today-filter-month-year-group" data-period-group="monthly">
+                            <div class="daily-filter-field">
+                                <label class="daily-field-label" for="dailyMonth">เดือน</label>
+                                <select id="dailyMonth" name="month" class="form-select">
+                                    <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
+                                        <option value="<?= (int) $monthValue ?>" <?= $selectedMonth === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="daily-filter-field">
+                                <label class="daily-field-label" for="dailyYear">ปี (พ.ศ.)</label>
+                                <input id="dailyYear" type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
+                            </div>
                         </div>
                     </div>
 
@@ -350,6 +355,75 @@ function syncDailyScheduleLayout(payload) {
     updateDailyHeroFromSummary(summaryBlock, form);
 }
 
+function applyDailySchedulePeriodFilters(form) {
+    if (!form) {
+        return;
+    }
+
+    const modeField = form.querySelector('[name="mode"]');
+    const mode = modeField ? String(modeField.value || 'daily').trim() : 'daily';
+    const dailyGroups = form.querySelectorAll('[data-period-group="daily"]');
+    const monthlyGroups = form.querySelectorAll('[data-period-group="monthly"]');
+    const setGroupState = function (groups, isActive) {
+        groups.forEach(function (group) {
+            group.hidden = !isActive;
+            group.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                field.disabled = !isActive;
+            });
+        });
+    };
+
+    if (mode === 'monthly') {
+        setGroupState(dailyGroups, false);
+        setGroupState(monthlyGroups, true);
+        return;
+    }
+
+    setGroupState(dailyGroups, true);
+    setGroupState(monthlyGroups, false);
+}
+
+function initDailySchedulePeriodFilters(form) {
+    if (!form) {
+        return;
+    }
+
+    const modeField = form.querySelector('[name="mode"]');
+    applyDailySchedulePeriodFilters(form);
+
+    if (modeField) {
+        modeField.addEventListener('change', function () {
+            applyDailySchedulePeriodFilters(form);
+        }, true);
+    }
+
+    form.addEventListener('formdata', function (event) {
+        const mode = modeField ? String(modeField.value || 'daily').trim() : 'daily';
+        const dateField = form.querySelector('[name="date"]');
+        const monthField = form.querySelector('[name="month"]');
+        const yearField = form.querySelector('[name="year_be"]');
+
+        if (mode === 'monthly') {
+            event.formData.delete('date');
+            if (monthField) {
+                event.formData.set('month', monthField.value);
+            }
+            if (yearField) {
+                event.formData.set('year_be', yearField.value);
+            }
+        } else {
+            event.formData.delete('month');
+            event.formData.delete('year_be');
+            if (dateField) {
+                event.formData.set('date', dateField.value);
+            }
+        }
+    });
+}
+
+initDailySchedulePeriodFilters(document.getElementById('dailyScheduleFilterForm'));
+
 TableFilters.init({
     formId: 'dailyScheduleFilterForm',
     containerId: 'dailyScheduleResults',
@@ -363,6 +437,7 @@ syncDailyScheduleLayout({
     form: document.getElementById('dailyScheduleFilterForm'),
     container: document.getElementById('dailyScheduleResults')
 });
+applyDailySchedulePeriodFilters(document.getElementById('dailyScheduleFilterForm'));
 </script>
 <script src="../assets/js/notifications.js"></script>
 </body>
