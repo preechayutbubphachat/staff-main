@@ -823,3 +823,28 @@ TableFilters.init({
             title:   trigger.getAttribute('data-modal-title')   || 'แก้ไขข้อมูล',
             desc:    trigger.getAttribute('data-modal-desc')    || 'ระบบจะบันทึก audit log ทุกครั้งที่มีการเปลี่ยนแปลง',
             eyebrow: trigger.getAttribute('data-modal-eyebrow') || 'Admin Only',
+        };
+        openUserEditModal(editUrl, trigger, meta);
+    });
+
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin || !event.data || typeof event.data !== 'object') {
+            return;
+        }
+
+        if (event.data.type === 'db-user-edit-close') {
+            closeUserEditModal();
+            return;
+        }
+
+        if (event.data.type === 'db-user-edit-saved') {
+            closeUserEditModal();
+            window.location.reload();
+        }
+    });
+})();
+</script>
+<?php endif; ?>
+<script src="../assets/js/notifications.js"></script>
+</body>
+</html>
