@@ -623,10 +623,16 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                                 <span>ส่งออก CSV</span>
                             </a>
                             <?php if (!empty($config['create_allowed'])): ?>
-                                <a href="db_row_create.php?table=<?= urlencode($table) ?>" class="db-table-export-btn is-create">
+                                <button type="button"
+                                    class="db-table-export-btn is-create"
+                                    data-open-user-edit
+                                    data-edit-url="db_row_create.php?table=<?= urlencode($table) ?>"
+                                    data-modal-title="เพิ่มข้อมูล: <?= htmlspecialchars($config['label']) ?>"
+                                    data-modal-desc="กรอกข้อมูลและกดบันทึก ระบบจะบันทึก audit log ทุกครั้งที่มีการเพิ่มข้อมูลใหม่"
+                                    data-modal-eyebrow="Admin Only · Create Row">
                                     <i class="bi bi-plus-circle"></i>
                                     <span>เพิ่มข้อมูล</span>
-                                </a>
+                                </button>
                             <?php endif; ?>
                             <a href="db_table_browser.php?table=<?= urlencode($table) ?>#dbSelectedPanel"
                                class="db-table-export-btn is-ghost">
@@ -817,28 +823,3 @@ TableFilters.init({
             title:   trigger.getAttribute('data-modal-title')   || 'แก้ไขข้อมูล',
             desc:    trigger.getAttribute('data-modal-desc')    || 'ระบบจะบันทึก audit log ทุกครั้งที่มีการเปลี่ยนแปลง',
             eyebrow: trigger.getAttribute('data-modal-eyebrow') || 'Admin Only',
-        };
-        openUserEditModal(editUrl, trigger, meta);
-    });
-
-    window.addEventListener('message', function (event) {
-        if (event.origin !== window.location.origin || !event.data || typeof event.data !== 'object') {
-            return;
-        }
-
-        if (event.data.type === 'db-user-edit-close') {
-            closeUserEditModal();
-            return;
-        }
-
-        if (event.data.type === 'db-user-edit-saved') {
-            closeUserEditModal();
-            window.location.reload();
-        }
-    });
-})();
-</script>
-<?php endif; ?>
-<script src="../assets/js/notifications.js"></script>
-</body>
-</html>
