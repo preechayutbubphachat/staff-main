@@ -182,10 +182,10 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
         </section>
 
         <section class="shift-schedule-toolbar">
-            <form method="get" class="shift-filter-form">
+            <form method="get" class="shift-filter-form" data-filter-form>
                 <label>
                     <span>เดือน</span>
-                    <select name="month" class="form-select">
+                    <select name="month" class="form-select" data-filter-select>
                         <?php foreach ($monthOptions as $value => $label): ?>
                             <option value="<?= (int) $value ?>" <?= (int) $value === $selectedMonth ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($label) ?>
@@ -195,11 +195,11 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                 </label>
                 <label>
                     <span>ปี พ.ศ.</span>
-                    <input type="number" name="year_be" class="form-control" min="2543" max="2643" value="<?= (int) $selectedYearBe ?>">
+                    <input type="number" name="year_be" class="form-control" min="2543" max="2643" value="<?= (int) $selectedYearBe ?>" data-filter-year>
                 </label>
                 <label>
                     <span>แผนก</span>
-                    <select name="department_id" class="form-select" <?= $scope['is_global'] ? '' : 'disabled' ?>>
+                    <select name="department_id" class="form-select" <?= $scope['is_global'] ? 'data-filter-select' : 'disabled' ?>>
                         <?php foreach ($departmentOptions as $department): ?>
                             <option value="<?= (int) $department['id'] ?>" <?= (int) $department['id'] === $selectedDepartmentId ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($department['department_name']) ?>
@@ -210,7 +210,9 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                         <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
                     <?php endif; ?>
                 </label>
-                <button type="submit" class="dash-btn dash-btn-primary"><i class="bi bi-search"></i> โหลดตาราง</button>
+                <button type="submit" class="dash-btn dash-btn-ghost" title="รีเฟรชตาราง">
+                    <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+                </button>
             </form>
             <form method="post" onsubmit="return confirm(<?= htmlspecialchars(json_encode($publishSummary, JSON_UNESCAPED_UNICODE)) ?>);">
                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
@@ -410,7 +412,39 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
     });
     applyShiftTime();
 })();
+
+// Auto-submit filter on change
+(() => {
+    const filterForm = document.querySelector('[data-filter-form]');
+    if (!filterForm) return;
+
+    // month + department selects: submit immediately on change
+    filterForm.querySelectorAll('[data-filter-select]').forEach((sel) => {
+        sel.addEventListener('change', () => filterForm.submit());
+    });
+
+    // year_be input: submit on blur or Enter (with validation)
+    const yearInput = filterForm.querySelector('[data-filter-year]');
+    if (yearInput) {
+        let yearTimer = null;
+        const trySubmitYear = () => {
+            clearTimeout(yearTimer);
+            yearTimer = setTimeout(() => {
+                const val = parseInt(yearInput.value, 10);
+                if (!isNaN(val) && val >= 2543 && val <= 2643) {
+                    filterForm.submit();
+                }
+            }, 0);
+        };
+        yearInput.addEventListener('blur', trySubmitYear);
+        yearInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                trySubmitYear();
+            }
+        });
+    }
+})();
 </script>
 </body>
 </html>
-  
