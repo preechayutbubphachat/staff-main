@@ -27,7 +27,9 @@ function app_shift_access_scope(PDO $conn): array
     if ($role === 'admin' || app_can('can_manage_user_permissions')) {
         return [
             'departments' => $departments,
-            'ids' => array_map(static fn(array $department): int => (int) $department['id'], $departments),
+            'ids' => array_map(static function (array $department): int {
+                return (int) $department['id'];
+            }, $departments),
             'is_global' => true,
         ];
     }
@@ -35,7 +37,9 @@ function app_shift_access_scope(PDO $conn): array
     $departmentId = app_get_current_user_department_id($conn);
     $filtered = array_values(array_filter(
         $departments,
-        static fn(array $department): bool => (int) $department['id'] === $departmentId
+        static function (array $department) use ($departmentId): bool {
+            return (int) $department['id'] === $departmentId;
+        }
     ));
 
     return [
@@ -143,7 +147,9 @@ function app_shift_validate_department(PDO $conn, int $departmentId): void
 
 function app_shift_validate_staff(PDO $conn, int $departmentId, array $staffIds): array
 {
-    $staffIds = array_values(array_unique(array_filter(array_map('intval', $staffIds), static fn(int $id): bool => $id > 0)));
+    $staffIds = array_values(array_unique(array_filter(array_map('intval', $staffIds), static function (int $id): bool {
+        return $id > 0;
+    })));
     if (!$staffIds) {
         throw new RuntimeException('กรุณาเลือกเจ้าหน้าที่อย่างน้อย 1 คน');
     }
@@ -156,7 +162,7 @@ function app_shift_validate_staff(PDO $conn, int $departmentId, array $staffIds)
           AND department_id = ?
           AND COALESCE(is_active, 1) = 1
     ");
-    $stmt->execute([...$staffIds, $departmentId]);
+    $stmt->execute(array_merge($staffIds, [$departmentId]));
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     if (count($rows) !== count($staffIds)) {
         throw new RuntimeException('มีเจ้าหน้าที่ที่ไม่อยู่ในแผนกนี้ หรือไม่มีสิทธิ์จัดเวรให้');
@@ -174,7 +180,7 @@ function app_shift_actor_name(PDO $conn, int $actorUserId): string
     return $name !== '' ? $name : (string) ($_SESSION['fullname'] ?? 'System');
 }
 
-function app_shift_insert_audit(PDO $conn, string $tableName, int|string $rowPrimaryKey, string $actionType, ?array $oldValues, ?array $newValues, int $actorUserId, ?string $note = null): void
+function app_shift_insert_audit(PDO $conn, string $tableName, $rowPrimaryKey, string $actionType, ?array $oldValues, ?array $newValues, int $actorUserId, ?string $note = null): void
 {
     if (!app_table_exists($conn, 'db_admin_audit_logs')) {
         return;

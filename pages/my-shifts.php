@@ -40,7 +40,9 @@ foreach ($assignments as $assignment) {
     }
 }
 $departmentTotal = count($assignments);
-$departmentStaffCount = count(array_filter(array_keys($departmentStaffIds), static fn(int $id): bool => $id > 0));
+$departmentStaffCount = count(array_filter(array_keys($departmentStaffIds), static function (int $id): bool {
+    return $id > 0;
+}));
 $departmentOtherCount = max(0, $departmentTotal - $departmentMineCount);
 $assignmentsByDate = app_my_shifts_group_by_date($assignments);
 $firstDay = new DateTimeImmutable(sprintf('%04d-%02d-01', $selectedYear, $selectedMonth));
@@ -253,7 +255,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                     <?php
                     $date = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $day);
                     $dayAssignments = $assignmentsByDate[$date] ?? [];
-                    $dayHasMine = (bool) array_filter($dayAssignments, static fn(array $assignment): bool => !empty($assignment['is_mine']));
+                    $dayHasMine = (bool) array_filter($dayAssignments, static function (array $assignment): bool {
+                        return !empty($assignment['is_mine']);
+                    });
                     $visibleDayAssignments = array_slice($dayAssignments, 0, 3);
                     $hiddenDayAssignmentCount = max(0, count($dayAssignments) - count($visibleDayAssignments));
                     ?>
