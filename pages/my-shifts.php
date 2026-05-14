@@ -7,7 +7,6 @@ require_once __DIR__ . '/../includes/report_helpers.php';
 require_once __DIR__ . '/../includes/profile_modal.php';
 require_once __DIR__ . '/../includes/notification_helpers.php';
 require_once __DIR__ . '/../includes/shift_schedule_service.php';
-require_once __DIR__ . '/../includes/shift_swap_service.php';
 
 app_require_login();
 date_default_timezone_set('Asia/Bangkok');
@@ -18,6 +17,7 @@ $selectedMonth = (int) $filter['month'];
 $selectedYear = (int) $filter['year'];
 $selectedYearBe = (int) $filter['year_be'];
 $view = (string) $filter['view'];
+$display = (string) $filter['display'];
 $monthOptions = app_get_thai_month_select_options();
 $shiftTypes = app_shift_schedule_types();
 $csrfToken = app_csrf_token('my_shifts_create_time_log');
@@ -25,13 +25,23 @@ $flash = (string) ($_SESSION['my_shifts_flash'] ?? '');
 $flashType = (string) ($_SESSION['my_shifts_flash_type'] ?? 'success');
 unset($_SESSION['my_shifts_flash'], $_SESSION['my_shifts_flash_type']);
 
-$assignments = app_get_my_shift_assignments($conn, $currentUserId, $selectedMonth, $selectedYear);
-$swapEligible = [];
+$currentDepartmentId = app_get_current_user_department_id($conn);
+$myAssignments = app_get_my_shift_assignments($conn, $currentUserId, $selectedMonth, $selectedYear);
+$assignments = $view === 'department' && $currentDepartmentId > 0
+    ? app_get_department_shift_assignments($conn, $currentUserId, $currentDepartmentId, $selectedMonth, $selectedYear)
+    : $myAssignments;
+$stats = app_my_shift_stats($view === 'department' ? $myAssignments : $assignments);
+$departmentStaffIds = [];
+$departmentMineCount = 0;
 foreach ($assignments as $assignment) {
-    $assignmentId = (int) ($assignment['assignment_id'] ?? 0);
-    $swapEligible[$assignmentId] = app_shift_swap_can_request_for_assignment($conn, $currentUserId, $assignmentId);
+    $departmentStaffIds[(int) ($assignment['staff_id'] ?? 0)] = true;
+    if (!empty($assignment['is_mine'])) {
+        $departmentMineCount++;
+    }
 }
-$stats = app_my_shift_stats($assignments);
+$departmentTotal = count($assignments);
+$departmentStaffCount = count(array_filter(array_keys($departmentStaffIds), static fn(int $id): bool => $id > 0));
+$departmentOtherCount = max(0, $departmentTotal - $departmentMineCount);
 $assignmentsByDate = app_my_shifts_group_by_date($assignments);
 $firstDay = new DateTimeImmutable(sprintf('%04d-%02d-01', $selectedYear, $selectedMonth));
 $daysInMonth = (int) $firstDay->format('t');
@@ -75,21 +85,27 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 
 function my_shift_url(array $overrides = []): string
 {
+    global $view, $display, $selectedMonth, $selectedYearBe;
     $query = array_merge([
-        'month' => $_GET['month'] ?? date('n'),
-        'year' => $_GET['year'] ?? ((int) date('Y') + 543),
-        'view' => $_GET['view'] ?? 'calendar',
+        'month' => $selectedMonth,
+        'year' => $selectedYearBe,
+        'view' => $view,
+        'display' => $display,
     ], $overrides);
 
     return 'my-shifts.php?' . http_build_query($query);
 }
 
-function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swapEligible): string
+function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 {
     $statusMeta = $assignment['status_meta'] ?? app_my_shift_status_meta($assignment);
+    $isMine = !empty($assignment['is_mine']);
     $payload = [
         'assignmentId' => (int) $assignment['assignment_id'],
         'scheduleId' => (int) $assignment['schedule_id'],
+        'staffId' => (int) ($assignment['staff_id'] ?? 0),
+        'staffName' => (string) ($assignment['staff_name'] ?? ''),
+        'isMine' => $isMine,
         'date' => app_format_thai_date((string) $assignment['schedule_date'], true),
         'dateRaw' => (string) $assignment['schedule_date'],
         'shiftLabel' => (string) ($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']),
@@ -105,8 +121,6 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
         'timeLogHours' => isset($assignment['time_log_total_hours']) ? number_format((float) $assignment['time_log_total_hours'], 2) : '',
         'source' => (string) ($assignment['time_log_source'] ?? ''),
         'note' => (string) ($assignment['time_log_note'] ?? ''),
-        'canSwap' => !empty($swapEligible[(int) $assignment['assignment_id']]),
-        'swapUrl' => 'shift-swap-requests.php?assignment_id=' . (int) $assignment['assignment_id'],
     ];
 
     return htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
@@ -174,11 +188,20 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
             </div>
         </section>
 
+        <?php if ($view === 'department'): ?>
+            <section class="my-shifts-department-summary" aria-label="department shift summary">
+                <div><span>เวรทั้งแผนก</span><strong><?= number_format($departmentTotal) ?></strong></div>
+                <div><span>เจ้าหน้าที่ที่มีเวร</span><strong><?= number_format($departmentStaffCount) ?></strong></div>
+                <div><span>เวรของฉัน</span><strong><?= number_format($departmentMineCount) ?></strong></div>
+                <div><span>เวรคนอื่น</span><strong><?= number_format($departmentOtherCount) ?></strong></div>
+            </section>
+        <?php endif; ?>
+
         <section class="my-shifts-toolbar">
             <form method="get" class="my-shifts-filter-form">
                 <label>
                     <span>เดือน</span>
-                    <select name="month" class="form-select">
+                    <select name="month" class="form-select" onchange="this.form.submit()">
                         <?php foreach ($monthOptions as $value => $label): ?>
                             <option value="<?= (int) $value ?>" <?= (int) $value === $selectedMonth ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                         <?php endforeach; ?>
@@ -189,11 +212,16 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                     <input type="number" name="year" min="2543" max="2643" class="form-control" value="<?= (int) $selectedYearBe ?>">
                 </label>
                 <div class="my-shifts-view-toggle" role="group" aria-label="เลือกมุมมอง">
-                    <a href="<?= htmlspecialchars(my_shift_url(['view' => 'calendar'])) ?>" class="<?= $view === 'calendar' ? 'is-active' : '' ?>"><i class="bi bi-calendar3"></i> Calendar</a>
-                    <a href="<?= htmlspecialchars(my_shift_url(['view' => 'list'])) ?>" class="<?= $view === 'list' ? 'is-active' : '' ?>"><i class="bi bi-list-check"></i> List</a>
+                    <a href="<?= htmlspecialchars(my_shift_url(['view' => 'my'])) ?>" class="<?= $view === 'my' ? 'is-active' : '' ?>"><i class="bi bi-person-check"></i> เวรของฉัน</a>
+                    <a href="<?= htmlspecialchars(my_shift_url(['view' => 'department'])) ?>" class="<?= $view === 'department' ? 'is-active' : '' ?>"><i class="bi bi-people"></i> เวรในแผนก</a>
+                </div>
+                <div class="my-shifts-view-toggle" role="group" aria-label="display mode">
+                    <a href="<?= htmlspecialchars(my_shift_url(['display' => 'calendar'])) ?>" class="<?= $display === 'calendar' ? 'is-active' : '' ?>"><i class="bi bi-calendar3"></i> Calendar</a>
+                    <a href="<?= htmlspecialchars(my_shift_url(['display' => 'list'])) ?>" class="<?= $display === 'list' ? 'is-active' : '' ?>"><i class="bi bi-list-check"></i> List</a>
                 </div>
                 <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
-                <button type="submit" class="dash-btn dash-btn-primary"><i class="bi bi-search"></i> โหลดเวร</button>
+                <input type="hidden" name="display" value="<?= htmlspecialchars($display) ?>">
+                <button type="submit" class="dash-btn dash-btn-ghost my-shifts-refresh-btn" title="รีเฟรช"><i class="bi bi-arrow-clockwise"></i></button>
             </form>
             <div class="my-shifts-summary-strip">
                 <div><span>เดือนที่เลือก</span><strong><?= htmlspecialchars($monthLabel) ?> <?= (int) $selectedYearBe ?></strong></div>
@@ -213,7 +241,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                 <strong>ยังไม่มีเวรที่ได้รับมอบหมายในเดือนนี้</strong>
                 <span>เมื่อหัวหน้าแผนกเผยแพร่แผนเวร รายการของคุณจะแสดงที่นี่</span>
             </section>
-        <?php elseif ($view === 'calendar'): ?>
+        <?php elseif ($display === 'calendar'): ?>
             <section class="my-shifts-calendar" aria-label="Calendar view เวรของฉัน">
                 <?php foreach (['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์', 'อาทิตย์'] as $weekday): ?>
                     <div class="my-shifts-weekday"><?= htmlspecialchars($weekday) ?></div>
@@ -225,8 +253,11 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                     <?php
                     $date = sprintf('%04d-%02d-%02d', $selectedYear, $selectedMonth, $day);
                     $dayAssignments = $assignmentsByDate[$date] ?? [];
+                    $dayHasMine = (bool) array_filter($dayAssignments, static fn(array $assignment): bool => !empty($assignment['is_mine']));
+                    $visibleDayAssignments = array_slice($dayAssignments, 0, 3);
+                    $hiddenDayAssignmentCount = max(0, count($dayAssignments) - count($visibleDayAssignments));
                     ?>
-                    <article class="my-shifts-day <?= $date === $today ? 'is-today' : '' ?> <?= $dayAssignments ? 'has-shift' : '' ?>">
+                    <article class="my-shifts-day <?= $date === $today ? 'is-today' : '' ?> <?= $dayAssignments ? 'has-shift' : '' ?> <?= $dayHasMine ? 'has-my-shift' : '' ?>">
                         <div class="my-shifts-day-head">
                             <strong><?= (int) $day ?></strong>
                             <?php if ($date === $today): ?><span>วันนี้</span><?php endif; ?>
@@ -234,14 +265,20 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                         <?php if (!$dayAssignments): ?>
                             <div class="my-shifts-day-empty">ไม่มีเวร</div>
                         <?php endif; ?>
-                        <?php foreach ($dayAssignments as $assignment): ?>
+                        <?php foreach ($visibleDayAssignments as $assignment): ?>
                             <?php $statusMeta = $assignment['status_meta']; ?>
-                            <button type="button" class="my-shift-pill is-<?= htmlspecialchars($statusMeta['class']) ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes, $swapEligible) ?>'>
+                            <button type="button" class="my-shift-pill is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
                                 <span><?= htmlspecialchars($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']) ?></span>
+                                <?php if ($view === 'department'): ?>
+                                    <b><?= !empty($assignment['is_mine']) ? 'ของฉัน' : htmlspecialchars((string) ($assignment['staff_name'] ?? '-')) ?></b>
+                                <?php endif; ?>
                                 <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
                                 <em><?= htmlspecialchars($statusMeta['label']) ?></em>
                             </button>
                         <?php endforeach; ?>
+                        <?php if ($hiddenDayAssignmentCount > 0): ?>
+                            <div class="my-shift-overflow">+<?= (int) $hiddenDayAssignmentCount ?> รายการในวันนี้</div>
+                        <?php endif; ?>
                     </article>
                 <?php endfor; ?>
             </section>
@@ -258,7 +295,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                 </div>
                 <?php foreach ($assignments as $assignment): ?>
                     <?php $statusMeta = $assignment['status_meta']; ?>
-                    <article class="my-shifts-list-row">
+                    <article class="my-shifts-list-row <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?>">
                         <div data-label="วันที่"><strong><?= htmlspecialchars(app_format_thai_date((string) $assignment['schedule_date'])) ?></strong></div>
                         <div data-label="กะ"><?= htmlspecialchars($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']) ?></div>
                         <div data-label="เวลา"><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></div>
@@ -266,9 +303,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
                         <div data-label="แผนก"><?= htmlspecialchars($assignment['department_name'] ?? '-') ?></div>
                         <div data-label="สถานะ"><span class="my-shift-status is-<?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span></div>
                         <div data-label="การจัดการ">
-                            <button type="button" class="dash-btn <?= empty($assignment['time_log_id']) ? 'dash-btn-primary' : 'dash-btn-secondary' ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes, $swapEligible) ?>'>
-                                <i class="bi <?= empty($assignment['time_log_id']) ? 'bi-box-arrow-in-right' : 'bi-eye' ?>"></i>
-                                <?= empty($assignment['time_log_id']) ? 'ลงเวร' : 'ดูรายละเอียด' ?>
+                            <button type="button" class="dash-btn <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'dash-btn-primary' : 'dash-btn-secondary' ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
+                                <i class="bi <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'bi-box-arrow-in-right' : 'bi-eye' ?>"></i>
+                                <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'ลงเวร' : 'ดูรายละเอียด' ?>
                             </button>
                         </div>
                     </article>
@@ -286,6 +323,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
             <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
             <input type="hidden" name="year" value="<?= (int) $selectedYearBe ?>">
             <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
+            <input type="hidden" name="display" value="<?= htmlspecialchars($display) ?>">
             <div class="my-shift-modal-head">
                 <div>
                     <p>ลงเวรตามแผน</p>
@@ -311,7 +349,6 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
             </label>
             <div class="my-shift-modal-actions">
                 <button type="button" class="dash-btn dash-btn-ghost" data-my-shift-close>ยกเลิก</button>
-                <a href="#" class="dash-btn dash-btn-secondary" data-modal-swap hidden><i class="bi bi-arrow-left-right"></i> ขอแลกเวร</a>
                 <button type="submit" class="dash-btn dash-btn-primary" data-modal-submit><i class="bi bi-check2-circle"></i> ยืนยันลงเวร</button>
             </div>
         </form>
@@ -327,7 +364,6 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
     const modal = document.querySelector('[data-my-shift-modal]');
     const form = document.querySelector('[data-my-shift-form]');
     const submit = document.querySelector('[data-modal-submit]');
-    const swapLink = document.querySelector('[data-modal-swap]');
     const noteWrap = document.querySelector('[data-modal-note-wrap]');
     const fields = {
         assignmentId: document.querySelector('[data-modal-assignment-id]'),
@@ -353,7 +389,11 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
             fields.hours.textContent = `${payload.hours || '0.00'} ชม.`;
             fields.department.textContent = payload.department || '-';
             fields.status.textContent = payload.statusLabel || '-';
+            if (!payload.isMine) {
+                fields.title.textContent = 'รายละเอียดเวรเจ้าหน้าที่';
+            }
             const details = [
+                payload.staffName ? `เจ้าหน้าที่: ${payload.staffName}` : '',
                 payload.roleNote ? `หน้าที่: ${payload.roleNote}` : '',
                 payload.scheduleNote ? `หมายเหตุแผนเวร: ${payload.scheduleNote}` : '',
                 payload.timeLogId ? `time_logs.id: ${payload.timeLogId}` : '',
@@ -362,13 +402,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
             ].filter(Boolean);
             fields.description.textContent = details.length ? details.join(' | ') : 'ไม่มีรายละเอียดเพิ่มเติม';
 
-            const canCreate = !payload.timeLogId;
+            const canCreate = !payload.timeLogId && payload.isMine;
             if (submit) submit.hidden = !canCreate;
             if (noteWrap) noteWrap.hidden = !canCreate;
-            if (swapLink) {
-                swapLink.hidden = !payload.canSwap;
-                swapLink.href = payload.swapUrl || '#';
-            }
             modal.hidden = false;
             document.body.classList.add('overflow-hidden');
         });
@@ -388,7 +424,19 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes, array $swa
         submit.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังบันทึก...';
     });
 })();
+
+// Auto-submit on year input change (debounced 700 ms)
+var _myShiftsYearTimer;
+(function () {
+    var yearInput = document.querySelector('.my-shifts-filter-form [name="year"]');
+    if (!yearInput) return;
+    yearInput.addEventListener('input', function () {
+        clearTimeout(_myShiftsYearTimer);
+        _myShiftsYearTimer = setTimeout(function () {
+            document.querySelector('.my-shifts-filter-form').submit();
+        }, 700);
+    });
+}());
 </script>
 </body>
 </html>
-  
