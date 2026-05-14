@@ -13,6 +13,7 @@ $cardsQuery = http_build_query(array_filter([
     'date_from' => $filters['date_from'] ?? '',
     'date_to' => $filters['date_to'] ?? '',
     'status' => $filters['status'] ?? 'pending',
+    'classification' => $filters['classification'] ?? 'all',
     'per_page' => $perPage,
     'view' => 'cards',
     'p' => 1,
@@ -24,6 +25,7 @@ $tableQuery = http_build_query(array_filter([
     'date_from' => $filters['date_from'] ?? '',
     'date_to' => $filters['date_to'] ?? '',
     'status' => $filters['status'] ?? 'pending',
+    'classification' => $filters['classification'] ?? 'all',
     'per_page' => $perPage,
     'view' => 'table',
     'p' => 1,
@@ -38,6 +40,17 @@ $thaiWeekdayShort = [
     5 => 'ศ.',
     6 => 'ส.',
 ];
+$renderClassificationBadges = static function (array $row): string {
+    $badges = (array) ($row['classification_badges'] ?? app_shift_classification_badges($row));
+    if (!$badges) {
+        return '';
+    }
+
+    return implode('', array_map(
+        static fn(array $badge): string => '<span class="' . htmlspecialchars((string) ($badge['class'] ?? 'status-chip neutral'), ENT_QUOTES) . '">' . htmlspecialchars((string) ($badge['label'] ?? '-'), ENT_QUOTES) . '</span>',
+        $badges
+    ));
+};
 ?>
 <div class="approval-results-inner"
      data-current-view="<?= htmlspecialchars($view ?? 'table') ?>"
@@ -137,6 +150,10 @@ $thaiWeekdayShort = [
                         <span class="status-chip <?= htmlspecialchars($statusClass) ?>"><?= htmlspecialchars($statusLabel) ?></span>
                         <span class="approval-card-index ms-auto">#<?= $rowNumber ?></span>
                     </div>
+                    <?php $classificationBadgeHtml = $renderClassificationBadges($row); ?>
+                    <?php if ($classificationBadgeHtml !== ''): ?>
+                        <div class="approval-row-status"><?= $classificationBadgeHtml ?></div>
+                    <?php endif; ?>
 
                     <!-- Date tile -->
                     <div class="approval-card-date">
@@ -200,6 +217,7 @@ $thaiWeekdayShort = [
                 <span>ชั่วโมงรวม</span>
                 <span>หมายเหตุ</span>
                 <span>สถานะ</span>
+                <span>ประเภท</span>
                 <span class="text-right">จัดการ</span>
             </div>
 
@@ -268,6 +286,10 @@ $thaiWeekdayShort = [
                             <span class="status-chip <?= htmlspecialchars($statusClass) ?>"><?= htmlspecialchars($statusLabel) ?></span>
                         </div>
 
+                        <div class="approval-row-status">
+                            <?= $renderClassificationBadges($row) ?>
+                        </div>
+
                         <div class="approval-row-actions">
                             <button type="button" class="dash-btn dash-btn-ghost approval-row-btn" data-shift-review-detail data-time-log-id="<?= $rowId ?>">
                                 ดูรายละเอียด
@@ -301,6 +323,7 @@ $thaiWeekdayShort = [
                         'date_from' => $filters['date_from'] ?? '',
                         'date_to' => $filters['date_to'] ?? '',
                         'status' => $filters['status'] ?? '',
+                        'classification' => $filters['classification'] ?? 'all',
                         'per_page' => $perPage,
                         'view' => $view ?? 'table',
                         'p' => $i,

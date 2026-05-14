@@ -50,6 +50,12 @@ if ($type === 'my') {
     fputcsv($output, ['เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานตามตามเวลาราชการนอกเวลาราชการและวันหยุดราชการ (IM)']);
     fputcsv($output, ['ประจำเดือน ' . $thaiMonthName . ' พ.ศ. ' . $thaiYear]);
     fputcsv($output, [$headingContext['department_label'] ?? 'แผนกทั้งหมด']);
+    fputcsv($output, [
+        'ชุดข้อมูล: ' . ($filters['report_dataset_label'] ?? 'จากเวรที่ลงจริง')
+        . ' | สถานะ: ' . ($filters['review_status_label'] ?? 'ทั้งหมด')
+        . ' | ประเภท: ' . ($filters['classification_label'] ?? 'ทั้งหมด')
+    ]);
+    fputcsv($output, ['Legend', 'แผน=ตรงตามแผน', 'นอก=นอกแผน', 'แลก=แลกเวรแล้ว', 'รอแลก=รอแลกเวร']);
     fputcsv($output, []);
 
     $headers = ['ลำดับ', 'ชื่อ-สกุล', 'ตำแหน่ง', 'แผนก'];
@@ -130,7 +136,7 @@ if ($type === 'my') {
     app_require_permission('can_approve_logs');
     $reportData = app_fetch_time_log_report_data($conn, $_GET, 'pending');
 
-    fputcsv($output, ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'หมายเหตุ', 'สถานะ']);
+    fputcsv($output, ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'หมายเหตุ', 'สถานะ', 'ประเภท']);
     foreach ($reportData['rows'] as $index => $row) {
         $status = app_time_log_status_meta($row);
         fputcsv($output, [
@@ -144,6 +150,7 @@ if ($type === 'my') {
             number_format((float) ($row['work_hours'] ?? 0), 2, '.', ''),
             $row['note'] ?? '',
             $status['label'],
+            $row['classification_label'] ?? '',
         ]);
     }
 } elseif ($type === 'manage') {

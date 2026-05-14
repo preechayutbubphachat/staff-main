@@ -108,6 +108,7 @@ if ($type === 'my') {
         'บ = เวรบ่าย เวลา 16.30 - 00.30 น.',
         'ด = เวรดึก เวลา 00.30 - 08.30 น.',
         'BD = เวรนอกเวลาราชการ',
+        'แลก = แลกเวรแล้ว, รอแลก = รอแลกเวร, นอก = นอกแผน',
     ];
     $signatureLabel = 'ผู้ตรวจสอบเวร';
     $notesBlockText = '';
@@ -186,7 +187,7 @@ if ($type === 'my') {
         ['label' => 'แผนก', 'value' => (int) $summary['unique_department_count']],
         ['label' => 'ชั่วโมงรวม', 'value' => number_format((float) $summary['total_hours'], 2)],
     ];
-    $tableHeaders = ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'สถานะ', 'หมายเหตุ'];
+    $tableHeaders = ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'สถานะ', 'ประเภท', 'หมายเหตุ'];
     foreach ($reportData['rows'] as $index => $row) {
         $status = app_time_log_status_meta($row);
         $tableRows[] = [
@@ -199,6 +200,7 @@ if ($type === 'my') {
             $row['time_out'] ? date('H:i', strtotime($row['time_out'])) : '-',
             number_format((float) $row['work_hours'], 2),
             $status['label'],
+            $row['classification_label'] ?? '',
             $row['note'] ?: '-',
         ];
     }

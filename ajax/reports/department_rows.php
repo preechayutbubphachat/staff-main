@@ -22,6 +22,9 @@ $queryBase = [
     'year_be' => $filters['year_be'],
     'per_page' => $perPage,
     'status' => $filters['status'] ?? 'checked',
+    'review_status' => $filters['review_status'] ?? 'reviewed',
+    'report_dataset' => $filters['report_dataset'] ?? 'actual',
+    'classification' => $filters['classification'] ?? 'all',
     'search' => $filters['search'] !== '' ? $filters['search'] : '',
 ];
 

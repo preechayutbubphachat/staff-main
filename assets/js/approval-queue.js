@@ -282,7 +282,23 @@
             setText('shiftDetailTimeIn', record.time_in);
             setText('shiftDetailTimeOut', record.time_out);
             setText('shiftDetailHours', record.work_hours);
-            setText('shiftDetailType', record.shift_type);
+            const classificationLabels = Array.isArray(record.classification_badges)
+                ? record.classification_badges.map(function (badge) { return badge && badge.label ? badge.label : ''; }).filter(Boolean)
+                : [];
+            const planParts = [record.shift_type || '-'];
+            if (classificationLabels.length) {
+                planParts.push(classificationLabels.join(', '));
+            }
+            if (record.plan_reference && record.plan_reference !== '-') {
+                planParts.push(record.plan_reference);
+            }
+            if (record.has_applied_swap) {
+                planParts.push('รายการนี้เกิดจากการแลกเวรที่ได้รับอนุมัติแล้ว');
+            }
+            if (record.has_pending_swap) {
+                planParts.push('รายการนี้มีคำขอแลกเวรรอดำเนินการ');
+            }
+            setText('shiftDetailType', planParts.join(' | '));
             setText('shiftDetailWorkDepartment', record.department_name);
             setText('shiftDetailStatusText', record.status_label);
             setText('shiftDetailChecker', record.checker_name);

@@ -54,6 +54,20 @@ $canReview = $isPending && !$isReturned;
 $statusLabel = $isApproved ? 'อนุมัติแล้ว' : ($isReturned ? 'ตีกลับแก้ไข' : ($isPending ? 'รอตรวจ' : '-'));
 $statusClass = $isApproved ? 'success' : ($isReturned ? 'danger' : ($isPending ? 'warning' : 'neutral'));
 $profileImageUrl = app_resolve_user_image_url($row['profile_image_path'] ?? '');
+$classificationBadges = array_values(array_map(static function (array $badge): array {
+    return [
+        'label' => (string) ($badge['label'] ?? '-'),
+        'class' => (string) ($badge['class'] ?? 'status-chip neutral'),
+    ];
+}, (array) ($row['classification_badges'] ?? [])));
+$planText = '-';
+if (!empty($row['classification_assignment_id'])) {
+    $shiftType = (string) ($row['classification_shift_type'] ?? '-');
+    $scheduleDate = !empty($row['classification_schedule_date'])
+        ? app_format_thai_date((string) $row['classification_schedule_date'], true)
+        : '-';
+    $planText = 'Assignment #' . (int) $row['classification_assignment_id'] . ' | ' . $scheduleDate . ' | ' . $shiftType;
+}
 
 $formatDateTime = static function (?string $value): string {
     $value = trim((string) $value);
@@ -81,7 +95,13 @@ ajax_json([
         'time_out' => $formatClock($timeOut),
         'time_range' => $timeRange,
         'work_hours' => isset($row['work_hours']) ? number_format((float) $row['work_hours'], 2) . ' ชม.' : '-',
-        'shift_type' => '-',
+        'shift_type' => (string) ($row['classification_shift_type'] ?? '-') ?: '-',
+        'schedule_assignment_id' => (int) ($row['schedule_assignment_id'] ?? 0),
+        'classification_badges' => $classificationBadges,
+        'classification_label' => (string) ($row['classification_label'] ?? ''),
+        'plan_reference' => $planText,
+        'has_applied_swap' => !empty($row['applied_swap_request_id']),
+        'has_pending_swap' => !empty($row['pending_swap_request_id']),
         'note' => trim((string) ($row['note'] ?? '')) !== '' ? (string) $row['note'] : '-',
         'status_label' => $statusLabel,
         'status_class' => $statusClass,

@@ -19,6 +19,18 @@ function app_nav_items(): array
             'show' => true,
         ],
         [
+            'href' => 'my-shifts.php',
+            'label' => 'เวรของฉัน',
+            'icon' => 'bi-person-lines-fill',
+            'show' => true,
+        ],
+        [
+            'href' => 'shift-swap-requests.php',
+            'label' => 'คำขอแลกเวร',
+            'icon' => 'bi-arrow-left-right',
+            'show' => true,
+        ],
+        [
             'href' => 'approval_queue.php',
             'label' => 'ตรวจสอบเวร',
             'icon' => 'bi-patch-check',
@@ -29,6 +41,12 @@ function app_nav_items(): array
             'label' => 'เวรวันนี้',
             'icon' => 'bi-calendar-week',
             'show' => true,
+        ],
+        [
+            'href' => 'shift_schedules.php',
+            'label' => 'จัดตารางเวรรายเดือน',
+            'icon' => 'bi-calendar2-plus',
+            'show' => app_current_role() === 'admin' || app_current_role() === 'checker' || app_can('can_approve_logs') || app_can('can_manage_time_logs'),
         ],
         [
             'href' => 'my_reports.php',
@@ -93,6 +111,24 @@ function app_nav_group_items(): array
         ];
     }
 
+    if (isset($indexed['my-shifts.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'my-shifts.php',
+            'label' => 'เวรของฉัน',
+            'icon' => 'bi-person-lines-fill',
+        ];
+    }
+
+    if (isset($indexed['shift-swap-requests.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'shift-swap-requests.php',
+            'label' => 'คำขอแลกเวร',
+            'icon' => 'bi-arrow-left-right',
+        ];
+    }
+
     if (isset($indexed['approval_queue.php'])) {
         $groups[] = [
             'type' => 'link',
@@ -108,6 +144,15 @@ function app_nav_group_items(): array
             'href' => 'daily_schedule.php',
             'label' => 'เวรวันนี้',
             'icon' => 'bi-calendar-week',
+        ];
+    }
+
+    if (isset($indexed['shift_schedules.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'shift_schedules.php',
+            'label' => 'จัดตารางเวรรายเดือน',
+            'icon' => 'bi-calendar2-plus',
         ];
     }
 
@@ -391,7 +436,7 @@ function app_dashboard_sidebar_sections(): array
     $sections = [
         [
             'label' => 'เมนูหลัก',
-            'items' => $sectionItems(['dashboard.php', 'time.php', 'approval_queue.php', 'daily_schedule.php']),
+            'items' => $sectionItems(['dashboard.php', 'time.php', 'my-shifts.php', 'shift-swap-requests.php', 'approval_queue.php', 'daily_schedule.php', 'shift_schedules.php']),
         ],
         [
             'label' => 'รายงาน',

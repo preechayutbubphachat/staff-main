@@ -31,6 +31,9 @@ $queryBase = [
     'year_be' => $filters['year_be'],
     'per_page' => $perPage,
     'status' => $filters['status'] ?? 'checked',
+    'review_status' => $filters['review_status'] ?? 'reviewed',
+    'report_dataset' => $filters['report_dataset'] ?? 'actual',
+    'classification' => $filters['classification'] ?? 'all',
     'search' => $filters['search'] !== '' ? $filters['search'] : '',
 ];
 $printQuery = app_build_table_query($queryBase, ['type' => 'department']);
@@ -214,9 +217,26 @@ $latestLabel = app_format_thai_date(date('Y-m-d'));
                         <div class="department-report-filter-field is-wide">
                             <label class="department-report-field-label">สถานะ</label>
                             <select id="dept-filter-status" name="status" class="form-select">
+                                <option value="rejected" <?= ($filters['status'] ?? 'checked') === 'rejected' ? 'selected' : '' ?>>ตีกลับ</option>
                                 <option value="all" <?= ($filters['status'] ?? 'checked') === 'all' ? 'selected' : '' ?>>ทั้งหมดสถานะ</option>
                                 <option value="checked" <?= ($filters['status'] ?? 'checked') === 'checked' ? 'selected' : '' ?>>ตรวจแล้ว</option>
                                 <option value="pending" <?= ($filters['status'] ?? 'checked') === 'pending' ? 'selected' : '' ?>>รอตรวจ</option>
+                            </select>
+                        </div>
+                        <div class="department-report-filter-field is-wide">
+                            <label class="department-report-field-label">ชุดข้อมูลรายงาน</label>
+                            <select name="report_dataset" class="form-select">
+                                <?php foreach (app_shift_report_dataset_options() as $datasetValue => $datasetLabel): ?>
+                                    <option value="<?= htmlspecialchars($datasetValue) ?>" <?= ($filters['report_dataset'] ?? 'actual') === $datasetValue ? 'selected' : '' ?>><?= htmlspecialchars($datasetLabel) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="department-report-filter-field is-wide">
+                            <label class="department-report-field-label">ประเภทพิเศษ</label>
+                            <select name="classification" class="form-select">
+                                <?php foreach (app_shift_classification_options() as $classificationValue => $classificationMeta): ?>
+                                    <option value="<?= htmlspecialchars($classificationValue) ?>" <?= ($filters['classification'] ?? 'all') === $classificationValue ? 'selected' : '' ?>><?= htmlspecialchars($classificationMeta['label']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>

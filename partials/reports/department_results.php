@@ -14,6 +14,11 @@ $queryBase = $queryBase ?? [];
 if (!isset($queryBase['status']) && isset($filters['status'])) {
     $queryBase['status'] = $filters['status'];
 }
+foreach (['review_status', 'report_dataset', 'classification'] as $phase4FilterKey) {
+    if (!isset($queryBase[$phase4FilterKey]) && isset($filters[$phase4FilterKey])) {
+        $queryBase[$phase4FilterKey] = $filters[$phase4FilterKey];
+    }
+}
 if (!isset($queryBase['search']) && !empty($filters['search'])) {
     $queryBase['search'] = $filters['search'];
 }
@@ -22,6 +27,11 @@ $totalLogs = (int) ($departmentTotals['total_logs'] ?? 0);
 $totalHours = (float) ($departmentTotals['total_hours'] ?? 0);
 $approvedLogs = (int) ($departmentTotals['approved_logs'] ?? 0);
 $pendingLogs = (int) ($departmentTotals['pending_logs'] ?? 0);
+$plannedLogs = (int) ($departmentTotals['planned_logs'] ?? 0);
+$actualLogs = (int) ($departmentTotals['actual_logs'] ?? 0);
+$outsidePlanLogs = (int) ($departmentTotals['outside_plan_logs'] ?? 0);
+$swappedLogs = (int) ($departmentTotals['swapped_logs'] ?? 0);
+$swapPendingLogs = (int) ($departmentTotals['swap_pending_logs'] ?? 0);
 $approvedPercent = $totalLogs > 0 ? ($approvedLogs / $totalLogs) * 100 : 0;
 $pendingPercent = $totalLogs > 0 ? ($pendingLogs / $totalLogs) * 100 : 0;
 $departmentLogTotals = [];
@@ -74,6 +84,41 @@ $toRow = min($totalRows, $page * $perPage);
             <p>แผนกที่มีเวรสูงสุด</p>
             <strong><?= htmlspecialchars($topDepartmentName) ?></strong>
             <span><?= number_format($topDepartmentLogs) ?> เวร (<?= number_format($topDepartmentPercent, 1) ?>%)</span>
+        </div>
+    </article>
+</section>
+
+<section class="department-report-summary-row" aria-label="phase 4 classification summary">
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-green"><i class="bi bi-calendar-check"></i></span>
+        <div>
+            <p>ตรงตามแผน</p>
+            <strong><?= number_format($plannedLogs) ?></strong>
+            <span><?= htmlspecialchars($filters['report_dataset_label'] ?? '') ?></span>
+        </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-amber"><i class="bi bi-exclamation-diamond"></i></span>
+        <div>
+            <p>นอกแผน</p>
+            <strong><?= number_format($outsidePlanLogs) ?></strong>
+            <span>รายการที่ไม่ผูกแผนเวร</span>
+        </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-blue"><i class="bi bi-arrow-left-right"></i></span>
+        <div>
+            <p>แลกเวรแล้ว</p>
+            <strong><?= number_format($swappedLogs) ?></strong>
+            <span>คำขอแลกเวรที่ applied</span>
+        </div>
+    </article>
+    <article class="dash-kpi-card department-report-summary-card">
+        <span class="department-report-summary-icon is-mint"><i class="bi bi-hourglass-split"></i></span>
+        <div>
+            <p>รอแลกเวร</p>
+            <strong><?= number_format($swapPendingLogs) ?></strong>
+            <span>pending target/manager</span>
         </div>
     </article>
 </section>
@@ -136,6 +181,9 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
                         <span><?= (int) $row['total_logs'] ?> เวร</span>
                         <span><?= number_format((float) $row['total_hours'], 2) ?> ชม.</span>
                         <span><?= $rowPending ?> รอตรวจ</span>
+                        <span>แผน <?= (int) ($row['planned_logs'] ?? 0) ?></span>
+                        <span>นอก <?= (int) ($row['outside_plan_logs'] ?? 0) ?></span>
+                        <span>แลก <?= (int) ($row['swapped_logs'] ?? 0) ?></span>
                     </div>
                 </article>
             <?php endforeach; ?>
@@ -154,6 +202,7 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
                         <th>ชั่วโมงรวม</th>
                         <th>ตรวจแล้ว</th>
                         <th>รอตรวจ</th>
+                        <th>ประเภท</th>
                         <th>การจัดการ</th>
                     </tr>
                 </thead>
@@ -174,6 +223,13 @@ $_deptCsvQuery   = app_build_table_query($_deptExportBase, ['type' => 'departmen
                             <td><span class="department-report-hours"><?= number_format((float) $row['total_hours'], 2) ?></span></td>
                             <td><span class="department-report-count-badge is-success"><?= (int) $row['approved_logs'] ?></span></td>
                             <td><span class="department-report-count-badge is-warning"><?= $rowPending ?></span></td>
+                            <td>
+                                <span class="department-report-count-badge is-success">แผน <?= (int) ($row['planned_logs'] ?? 0) ?></span>
+                                <span class="department-report-count-badge is-warning">นอก <?= (int) ($row['outside_plan_logs'] ?? 0) ?></span>
+                                <?php if ((int) ($row['swapped_logs'] ?? 0) > 0): ?>
+                                    <span class="department-report-count-badge is-success">แลก <?= (int) $row['swapped_logs'] ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <div class="department-report-row-actions">
                                     <button type="button" class="department-report-row-btn"

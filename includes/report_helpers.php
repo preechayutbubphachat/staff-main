@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/notification_helpers.php';
+require_once __DIR__ . '/shift_classification_service.php';
 
 function app_parse_table_page_size(array $input, int $default = 20): int
 {
@@ -380,12 +381,18 @@ function app_normalize_department_report_filters(PDO $conn, array $input): array
     $view = trim((string) ($input['view'] ?? 'table'));
     $view = in_array($view, ['cards', 'table'], true) ? $view : 'table';
 
-    $validStatuses = ['all', 'checked', 'pending'];
-    $status = trim((string) ($input['status'] ?? 'checked'));
+    $validStatuses = ['all', 'checked', 'pending', 'rejected'];
+    $reviewStatus = array_key_exists('review_status', $input)
+        ? app_shift_review_status_normalize((string) $input['review_status'])
+        : app_shift_status_to_review_status((string) ($input['status'] ?? 'checked'));
+    $status = app_shift_review_status_to_status($reviewStatus);
     if (!in_array($status, $validStatuses, true)) {
         $status = 'checked';
+        $reviewStatus = 'reviewed';
     }
     $search = trim((string) ($input['search'] ?? ''));
+    $reportDataset = app_shift_report_dataset_normalize((string) ($input['report_dataset'] ?? 'actual'));
+    $classification = app_shift_classification_normalize((string) ($input['classification'] ?? 'all'));
 
     return [
         'month' => $month,
@@ -399,7 +406,13 @@ function app_normalize_department_report_filters(PDO $conn, array $input): array
             ? app_find_department_name($scope['departments'], $selectedDepartmentId)
             : '',
         'view' => $view,
+        'report_dataset' => $reportDataset,
+        'report_dataset_label' => app_shift_report_dataset_options()[$reportDataset] ?? '',
+        'review_status' => $reviewStatus,
+        'review_status_label' => app_shift_review_status_options()[$reviewStatus] ?? '',
         'status' => $status,
+        'classification' => $classification,
+        'classification_label' => app_shift_classification_labels()[$classification] ?? '',
         'search' => $search,
         'scope' => $scope,
         'scope_helper' => 'ค่าเริ่มต้นจะแสดงสรุปรายบุคคลทั้งหมดตามสิทธิ์ที่เข้าถึงได้',
@@ -492,6 +505,10 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
         ];
     }
 
+    if (($filters['report_dataset'] ?? 'actual') === 'planned') {
+        return app_fetch_department_planned_report_data($conn, $filters, $headingContext, $departmentIds);
+    }
+
     $placeholders = implode(', ', array_fill(0, count($departmentIds), '?'));
     $status = (string) ($filters['status'] ?? 'checked');
     $search = trim((string) ($filters['search'] ?? ''));
@@ -505,6 +522,8 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
         $params[] = $likeVal;
         $params[] = $likeVal;
     }
+    $classificationJoinClause = app_shift_classification_actual_filter_clause((string) ($filters['classification'] ?? 'all'), 't');
+    $classificationJoinSql = $classificationJoinClause !== '' ? " AND ({$classificationJoinClause})" : '';
 
     // Build HAVING clause for status filter
     $havingClause = '';
@@ -512,6 +531,13 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
         $havingClause = 'HAVING SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END) > 0';
     } elseif ($status === 'pending') {
         $havingClause = 'HAVING (COUNT(t.id) - SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END)) > 0';
+    } elseif ($status === 'rejected') {
+        $havingClause = 'HAVING SUM(CASE WHEN t.checked_by IS NOT NULL AND t.checked_at IS NULL THEN 1 ELSE 0 END) > 0';
+    }
+    if (($filters['classification'] ?? 'all') !== 'all') {
+        $havingClause = $havingClause === ''
+            ? 'HAVING COUNT(t.id) > 0'
+            : $havingClause . ' AND COUNT(t.id) > 0';
     }
 
 
@@ -523,13 +549,32 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
             d.department_name,
             COUNT(t.id) AS total_logs,
             COALESCE(SUM(t.work_hours), 0) AS total_hours,
-            SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END) AS approved_logs
+            SUM(CASE WHEN t.checked_at IS NOT NULL THEN 1 ELSE 0 END) AS approved_logs,
+            SUM(CASE WHEN t.schedule_assignment_id IS NOT NULL THEN 1 ELSE 0 END) AS planned_logs,
+            SUM(CASE WHEN t.schedule_assignment_id IS NULL THEN 1 ELSE 0 END) AS outside_plan_logs,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM shift_swap_requests sr
+                WHERE sr.status = 'applied'
+                  AND (sr.requester_assignment_id = t.schedule_assignment_id OR sr.target_assignment_id = t.schedule_assignment_id)
+            ) THEN 1 ELSE 0 END) AS swapped_logs,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM shift_swap_requests sr
+                WHERE sr.status IN ('pending_target_confirm', 'pending_manager_approval')
+                  AND (sr.requester_assignment_id = t.schedule_assignment_id OR sr.target_assignment_id = t.schedule_assignment_id)
+            ) THEN 1 ELSE 0 END) AS swap_pending_logs,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM db_admin_audit_logs al
+                WHERE al.table_name = 'shift_assignments'
+                  AND al.row_primary_key = CAST(t.schedule_assignment_id AS CHAR)
+                  AND al.action_type IN ('manager_assignment_change', 'manual_assignment_update', 'change_assignment_staff_by_manager')
+            ) THEN 1 ELSE 0 END) AS manager_changed_logs
         FROM users u
         LEFT JOIN departments d ON u.department_id = d.id
         LEFT JOIN time_logs t
             ON t.user_id = u.id
             AND YEAR(t.work_date) = ?
             AND MONTH(t.work_date) = ?
+            {$classificationJoinSql}
         WHERE u.department_id IN ($placeholders){$searchWhereClause}
         GROUP BY u.id, u.fullname, u.position_name, d.department_name
         {$havingClause}
@@ -544,15 +589,29 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
         'total_hours' => 0.0,
         'approved_logs' => 0,
         'pending_logs' => 0,
+        'reviewed_logs' => 0,
+        'planned_logs' => 0,
+        'actual_logs' => 0,
+        'outside_plan_logs' => 0,
+        'swapped_logs' => 0,
+        'swap_pending_logs' => 0,
+        'manager_changed_logs' => 0,
     ];
 
     foreach ($staffRows as $row) {
         $totalLogs = (int) ($row['total_logs'] ?? 0);
         $approvedLogs = (int) ($row['approved_logs'] ?? 0);
         $departmentTotals['total_logs'] += $totalLogs;
+        $departmentTotals['actual_logs'] += $totalLogs;
         $departmentTotals['total_hours'] += (float) ($row['total_hours'] ?? 0);
         $departmentTotals['approved_logs'] += $approvedLogs;
+        $departmentTotals['reviewed_logs'] += $approvedLogs;
         $departmentTotals['pending_logs'] += max(0, $totalLogs - $approvedLogs);
+        $departmentTotals['planned_logs'] += (int) ($row['planned_logs'] ?? 0);
+        $departmentTotals['outside_plan_logs'] += (int) ($row['outside_plan_logs'] ?? 0);
+        $departmentTotals['swapped_logs'] += (int) ($row['swapped_logs'] ?? 0);
+        $departmentTotals['swap_pending_logs'] += (int) ($row['swap_pending_logs'] ?? 0);
+        $departmentTotals['manager_changed_logs'] += (int) ($row['manager_changed_logs'] ?? 0);
     }
 
     $scopeLabel = $filters['selected_department_id'] > 0 && $filters['selected_department_name'] !== ''
@@ -567,6 +626,173 @@ function app_fetch_department_report_data(PDO $conn, array $input): array
         'scope_label' => $headingContext['department_label'],
         'heading_context' => $headingContext,
     ];
+}
+
+function app_fetch_department_planned_report_data(PDO $conn, array $filters, array $headingContext, array $departmentIds): array
+{
+    $yearNum = (int) ($filters['year_ce'] ?? date('Y'));
+    $monthNum = (int) ($filters['month_number'] ?? date('n'));
+    $placeholders = implode(', ', array_fill(0, count($departmentIds), '?'));
+    $search = trim((string) ($filters['search'] ?? ''));
+    $reviewStatus = (string) ($filters['review_status'] ?? 'all');
+    $classification = app_shift_classification_normalize((string) ($filters['classification'] ?? 'all'));
+    $where = [
+        'YEAR(ss.schedule_date) = ?',
+        'MONTH(ss.schedule_date) = ?',
+        "ss.department_id IN ($placeholders)",
+        "ss.status = 'published'",
+        "sa.assignment_status <> 'cancelled'",
+    ];
+    $params = array_merge([$yearNum, $monthNum], $departmentIds);
+
+    if ($search !== '') {
+        $where[] = "(u.fullname LIKE ? OR COALESCE(u.position_name, '') LIKE ?)";
+        $likeVal = '%' . $search . '%';
+        $params[] = $likeVal;
+        $params[] = $likeVal;
+    }
+    if ($reviewStatus === 'reviewed') {
+        $where[] = 't.checked_at IS NOT NULL';
+    } elseif ($reviewStatus === 'pending') {
+        $where[] = 't.id IS NOT NULL AND ' . app_time_log_pending_condition('t');
+    } elseif ($reviewStatus === 'rejected') {
+        $where[] = 't.id IS NOT NULL AND t.checked_by IS NOT NULL AND t.checked_at IS NULL';
+    }
+    $classificationClause = app_shift_classification_assignment_filter_clause($classification, 'sa');
+    if ($classificationClause !== '') {
+        $where[] = $classificationClause;
+    }
+
+    $classificationSelect = app_shift_classification_select_sql('sa.id');
+    $stmt = $conn->prepare("
+        SELECT
+            sa.id AS classification_assignment_id,
+            sa.id AS assignment_id,
+            sa.staff_id AS user_id,
+            ss.id AS classification_schedule_id,
+            ss.schedule_date,
+            ss.shift_type AS classification_shift_type,
+            ss.start_time,
+            ss.end_time,
+            ss.planned_hours,
+            t.id AS time_log_id,
+            t.checked_at,
+            t.checked_by,
+            t.work_hours,
+            u.id,
+            u.fullname,
+            COALESCE(u.position_name, '') AS position_name,
+            d.department_name,
+            {$classificationSelect}
+        FROM shift_assignments sa
+        INNER JOIN shift_schedules ss ON ss.id = sa.schedule_id
+        INNER JOIN users u ON u.id = sa.staff_id
+        LEFT JOIN departments d ON ss.department_id = d.id
+        LEFT JOIN time_logs t ON t.schedule_assignment_id = sa.id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY u.fullname ASC, ss.schedule_date ASC, ss.start_time ASC, sa.id ASC
+    ");
+    $stmt->execute($params);
+    $assignmentRows = app_shift_classification_enrich_rows($stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    $staffRowsById = [];
+    foreach ($assignmentRows as $row) {
+        $userId = (int) ($row['user_id'] ?? 0);
+        if ($userId <= 0) {
+            continue;
+        }
+        if (!isset($staffRowsById[$userId])) {
+            $staffRowsById[$userId] = [
+                'id' => $userId,
+                'user_id' => $userId,
+                'fullname' => (string) ($row['fullname'] ?? '-'),
+                'position_name' => (string) ($row['position_name'] ?? ''),
+                'department_name' => (string) ($row['department_name'] ?? ''),
+                'total_logs' => 0,
+                'total_hours' => 0.0,
+                'approved_logs' => 0,
+                'pending_logs' => 0,
+                'reviewed_logs' => 0,
+                'planned_logs' => 0,
+                'actual_logs' => 0,
+                'outside_plan_logs' => 0,
+                'swapped_logs' => 0,
+                'swap_pending_logs' => 0,
+                'manager_changed_logs' => 0,
+            ];
+        }
+
+        $staffRowsById[$userId]['total_logs']++;
+        $staffRowsById[$userId]['total_hours'] += (float) ($row['planned_hours'] ?? 0);
+        if (!empty($row['time_log_id'])) {
+            $staffRowsById[$userId]['actual_logs']++;
+        }
+        if (!empty($row['checked_at'])) {
+            $staffRowsById[$userId]['approved_logs']++;
+            $staffRowsById[$userId]['reviewed_logs']++;
+        } else {
+            $staffRowsById[$userId]['pending_logs']++;
+        }
+        app_department_report_accumulate_classification($staffRowsById[$userId], $row);
+    }
+
+    $staffRows = array_values($staffRowsById);
+    $departmentTotals = app_department_report_totals_from_staff_rows($staffRows);
+
+    return [
+        'filters' => $filters,
+        'staff_rows' => $staffRows,
+        'department_totals' => $departmentTotals,
+        'month_label' => $headingContext['month_year_label'],
+        'scope_label' => $headingContext['department_label'],
+        'heading_context' => $headingContext,
+    ];
+}
+
+function app_department_report_accumulate_classification(array &$target, array $row): void
+{
+    foreach ((array) ($row['classification_codes'] ?? []) as $code) {
+        $key = match ($code) {
+            'planned_match' => 'planned_logs',
+            'outside_plan' => 'outside_plan_logs',
+            'swapped' => 'swapped_logs',
+            'swap_pending' => 'swap_pending_logs',
+            'manager_changed' => 'manager_changed_logs',
+            default => '',
+        };
+        if ($key !== '' && array_key_exists($key, $target)) {
+            $target[$key]++;
+        }
+    }
+}
+
+function app_department_report_totals_from_staff_rows(array $staffRows): array
+{
+    $totals = [
+        'staff_count' => count($staffRows),
+        'total_logs' => 0,
+        'total_hours' => 0.0,
+        'approved_logs' => 0,
+        'pending_logs' => 0,
+        'reviewed_logs' => 0,
+        'planned_logs' => 0,
+        'actual_logs' => 0,
+        'outside_plan_logs' => 0,
+        'swapped_logs' => 0,
+        'swap_pending_logs' => 0,
+        'manager_changed_logs' => 0,
+    ];
+
+    foreach ($staffRows as $row) {
+        foreach ($totals as $key => $value) {
+            if ($key === 'staff_count') {
+                continue;
+            }
+            $totals[$key] += (float) ($row[$key] ?? 0);
+        }
+    }
+
+    return $totals;
 }
 
 function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters, ?array $filteredStaffRows = null): array
@@ -625,12 +851,106 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters, ?a
         ];
     }
 
+    if (($filters['report_dataset'] ?? 'actual') === 'planned') {
+        $userPlaceholders = implode(', ', array_fill(0, count($staffUserIds), '?'));
+        $classification = app_shift_classification_normalize((string) ($filters['classification'] ?? 'all'));
+        $classificationClause = app_shift_classification_assignment_filter_clause($classification, 'sa');
+        $reviewStatus = (string) ($filters['review_status'] ?? 'all');
+        $where = [
+            'YEAR(ss.schedule_date) = ?',
+            'MONTH(ss.schedule_date) = ?',
+            "ss.department_id IN ($placeholders)",
+            "sa.staff_id IN ($userPlaceholders)",
+            "ss.status = 'published'",
+            "sa.assignment_status <> 'cancelled'",
+        ];
+        if ($classificationClause !== '') {
+            $where[] = $classificationClause;
+        }
+        if ($reviewStatus === 'reviewed') {
+            $where[] = 't.checked_at IS NOT NULL';
+        } elseif ($reviewStatus === 'pending') {
+            $where[] = 't.id IS NOT NULL AND ' . app_time_log_pending_condition('t');
+        } elseif ($reviewStatus === 'rejected') {
+            $where[] = 't.id IS NOT NULL AND t.checked_by IS NOT NULL AND t.checked_at IS NULL';
+        }
+        $classificationSelect = app_shift_classification_select_sql('sa.id');
+        $logParams = array_merge([$yearCe, $monthNumber], $departmentIds, $staffUserIds);
+        $logStmt = $conn->prepare("
+            SELECT
+                sa.id AS classification_assignment_id,
+                sa.staff_id AS user_id,
+                ss.schedule_date AS work_date,
+                ss.start_time AS time_in,
+                ss.end_time AS time_out,
+                ss.planned_hours AS work_hours,
+                ss.note,
+                NULL AS approval_note,
+                {$classificationSelect}
+            FROM shift_assignments sa
+            INNER JOIN shift_schedules ss ON ss.id = sa.schedule_id
+            LEFT JOIN time_logs t ON t.schedule_assignment_id = sa.id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY ss.schedule_date ASC, ss.start_time ASC, sa.id ASC
+        ");
+        $logStmt->execute($logParams);
+        $logs = app_shift_classification_enrich_rows($logStmt->fetchAll(PDO::FETCH_ASSOC));
+
+        $logsByUserDay = [];
+        foreach ($logs as $log) {
+            $userId = (int) ($log['user_id'] ?? 0);
+            $dayNumber = (int) date('j', strtotime((string) ($log['work_date'] ?? '')));
+            if ($userId > 0 && $dayNumber > 0) {
+                $logsByUserDay[$userId][$dayNumber][] = $log;
+            }
+        }
+
+        $rows = [];
+        foreach ($staffRows as $index => $staff) {
+            $userId = (int) ($staff['user_id'] ?? 0);
+            $dayCells = [];
+            $rowShiftCount = 0;
+            $rowTotalHours = 0.0;
+            foreach ($days as $dayMeta) {
+                $dayNumber = (int) $dayMeta['day'];
+                $dayLogs = $logsByUserDay[$userId][$dayNumber] ?? [];
+                $dayResolution = app_get_department_monthly_matrix_day_resolution($dayLogs);
+                $dayCells[$dayNumber] = $dayResolution['code'];
+                $rowShiftCount += (int) ($dayResolution['counted_shifts'] ?? 0);
+                $rowTotalHours += (float) ($dayResolution['counted_hours'] ?? 0);
+            }
+            $rows[] = [
+                'row_number' => $index + 1,
+                'user_id' => $userId,
+                'fullname' => (string) ($staff['fullname'] ?? '-'),
+                'position_name' => (string) ($staff['position_name'] ?? '-'),
+                'department_name' => (string) ($staff['department_name'] ?? '-'),
+                'day_cells' => $dayCells,
+                'total_shifts' => (int) $rowShiftCount,
+                'total_hours' => (float) $rowTotalHours,
+                'ot_value' => '',
+                'remark' => '',
+            ];
+        }
+
+        return [
+            'days' => $days,
+            'rows' => $rows,
+        ];
+    }
+
     $userPlaceholders = implode(', ', array_fill(0, count($staffUserIds), '?'));
     $statusWhereClause = '';
     if ($status === 'checked') {
         $statusWhereClause = ' AND t.checked_at IS NOT NULL';
     } elseif ($status === 'pending') {
         $statusWhereClause = ' AND t.checked_at IS NULL';
+    } elseif ($status === 'rejected') {
+        $statusWhereClause = ' AND t.checked_by IS NOT NULL AND t.checked_at IS NULL';
+    }
+    $classificationWhere = app_shift_classification_actual_filter_clause((string) ($filters['classification'] ?? 'all'), 't');
+    if ($classificationWhere !== '') {
+        $statusWhereClause .= " AND ({$classificationWhere})";
     }
 
     $logParams = array_merge([$yearCe, $monthNumber], $departmentIds, $staffUserIds);
@@ -647,7 +967,9 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters, ?a
             t.checked_by,
             t.checked_at,
             t.created_at,
-            t.updated_at
+            t.updated_at,
+            t.schedule_assignment_id,
+            " . app_shift_classification_select_sql('t.schedule_assignment_id') . "
         FROM time_logs t
         WHERE YEAR(t.work_date) = ?
           AND MONTH(t.work_date) = ?
@@ -657,7 +979,7 @@ function app_fetch_department_monthly_shift_matrix(PDO $conn, array $filters, ?a
         ORDER BY t.work_date ASC, t.time_in ASC, t.id ASC
     ");
     $logStmt->execute($logParams);
-    $logs = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+    $logs = app_shift_classification_enrich_rows($logStmt->fetchAll(PDO::FETCH_ASSOC));
 
     $logsByUserDay = [];
     foreach ($logs as $log) {
@@ -825,9 +1147,26 @@ function app_get_department_monthly_matrix_day_resolution(array $recordsForOneDa
     if (array_key_exists('BD', $hoursByCode)) {
         $orderedCodes[] = 'BD';
     }
+    $suffixes = [];
+    foreach ($recordsForOneDay as $row) {
+        $codes = (array) ($row['classification_codes'] ?? []);
+        if (in_array('swapped', $codes, true)) {
+            $suffixes['swapped'] = 'แลก';
+        }
+        if (in_array('swap_pending', $codes, true)) {
+            $suffixes['swap_pending'] = 'รอแลก';
+        }
+        if (in_array('outside_plan', $codes, true)) {
+            $suffixes['outside_plan'] = 'นอก';
+        }
+    }
+    $cellCode = implode('/', $orderedCodes);
+    if ($cellCode !== '' && $suffixes) {
+        $cellCode .= ' (' . implode(',', $suffixes) . ')';
+    }
 
     return [
-        'code' => implode('/', $orderedCodes),
+        'code' => $cellCode,
         'counted_shifts' => count($orderedCodes),
         'counted_hours' => array_sum(array_intersect_key($hoursByCode, array_flip($orderedCodes))),
         'remark' => '',
@@ -884,6 +1223,7 @@ function app_build_approval_query_string(array $filters, array $overrides = []):
         'date_from' => $filters['date_from'] ?? '',
         'date_to' => $filters['date_to'] ?? '',
         'status' => $filters['status'] ?? 'pending',
+        'classification' => $filters['classification'] ?? 'all',
         'view' => $overrides['view'] ?? null,
         'p' => $overrides['p'] ?? null,
         'type' => $overrides['type'] ?? null,
@@ -913,6 +1253,7 @@ function app_build_manage_time_logs_query_string(array $filters, array $override
         'date_from' => $filters['date_from'] ?? '',
         'date_to' => $filters['date_to'] ?? '',
         'status' => $filters['status'] ?? 'all',
+        'classification' => $filters['classification'] ?? 'all',
         'p' => $overrides['p'] ?? null,
         'type' => $overrides['type'] ?? null,
         'download' => $overrides['download'] ?? null,
@@ -1748,8 +2089,9 @@ function app_build_time_log_filters(array $input, string $defaultStatus = 'pendi
     $dateFrom = trim((string) ($input['date_from'] ?? ''));
     $dateTo = trim((string) ($input['date_to'] ?? ''));
     $status = trim((string) ($input['status'] ?? $defaultStatus));
-    $allowedStatuses = ['pending', 'checked', 'all'];
+    $allowedStatuses = ['pending', 'checked', 'rejected', 'all'];
     $status = in_array($status, $allowedStatuses, true) ? $status : $defaultStatus;
+    $classification = app_shift_classification_normalize((string) ($input['classification'] ?? 'all'));
 
     $where = ['t.time_out IS NOT NULL'];
     $params = [];
@@ -1783,6 +2125,13 @@ function app_build_time_log_filters(array $input, string $defaultStatus = 'pendi
         $where[] = app_time_log_pending_condition('t');
     } elseif ($status === 'checked') {
         $where[] = app_time_log_checked_condition('t');
+    } elseif ($status === 'rejected') {
+        $where[] = 't.checked_by IS NOT NULL AND t.checked_at IS NULL';
+    }
+
+    $classificationClause = app_shift_classification_actual_filter_clause($classification, 't');
+    if ($classificationClause !== '') {
+        $where[] = $classificationClause;
     }
 
     return [
@@ -1792,6 +2141,8 @@ function app_build_time_log_filters(array $input, string $defaultStatus = 'pendi
         'date_from' => $dateFrom,
         'date_to' => $dateTo,
         'status' => $status,
+        'classification' => $classification,
+        'classification_label' => app_shift_classification_labels()[$classification] ?? '',
         'where_sql' => implode(' AND ', $where),
         'params' => $params,
     ];
@@ -1806,11 +2157,20 @@ function app_get_manage_time_logs(PDO $conn, array $filters, int $limit, int $of
             u.position_name,
             u.profile_image_path,
             d.department_name,
-            c.fullname AS checker_name
+            c.fullname AS checker_name,
+            sa.id AS classification_assignment_id,
+            ss.id AS classification_schedule_id,
+            ss.schedule_date AS classification_schedule_date,
+            ss.shift_type AS classification_shift_type,
+            ss.start_time AS classification_start_time,
+            ss.end_time AS classification_end_time,
+            " . app_shift_classification_select_sql('t.schedule_assignment_id') . "
         FROM time_logs t
         LEFT JOIN users u ON t.user_id = u.id
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users c ON t.checked_by = c.id
+        LEFT JOIN shift_assignments sa ON sa.id = t.schedule_assignment_id
+        LEFT JOIN shift_schedules ss ON ss.id = sa.schedule_id
         WHERE {$filters['where_sql']}
         ORDER BY t.work_date DESC, t.id DESC
         LIMIT ? OFFSET ?
@@ -1826,7 +2186,7 @@ function app_get_manage_time_logs(PDO $conn, array $filters, int $limit, int $of
     $stmt->bindValue($index, $offset, PDO::PARAM_INT);
     $stmt->execute();
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return app_shift_classification_enrich_rows($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
 function app_count_manage_time_logs(PDO $conn, array $filters): int
@@ -1856,11 +2216,20 @@ function app_get_manage_time_logs_all(PDO $conn, array $filters): array
             u.fullname,
             u.position_name,
             d.department_name,
-            c.fullname AS checker_name
+            c.fullname AS checker_name,
+            sa.id AS classification_assignment_id,
+            ss.id AS classification_schedule_id,
+            ss.schedule_date AS classification_schedule_date,
+            ss.shift_type AS classification_shift_type,
+            ss.start_time AS classification_start_time,
+            ss.end_time AS classification_end_time,
+            " . app_shift_classification_select_sql('t.schedule_assignment_id') . "
         FROM time_logs t
         LEFT JOIN users u ON t.user_id = u.id
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users c ON t.checked_by = c.id
+        LEFT JOIN shift_assignments sa ON sa.id = t.schedule_assignment_id
+        LEFT JOIN shift_schedules ss ON ss.id = sa.schedule_id
         WHERE {$filters['where_sql']}
         ORDER BY t.work_date DESC, t.id DESC
     ";
@@ -1868,7 +2237,7 @@ function app_get_manage_time_logs_all(PDO $conn, array $filters): array
     $stmt = $conn->prepare($sql);
     $stmt->execute($filters['params']);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return app_shift_classification_enrich_rows($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
 function app_summarize_time_log_rows(array $rows): array
@@ -1906,7 +2275,7 @@ function app_summarize_time_log_rows(array $rows): array
         'total_hours' => $totalHours,
         'staff_names' => array_keys($uniqueStaff),
         'department_names' => array_keys($uniqueDepartments),
-    ];
+    ] + app_shift_classification_summary($rows);
 }
 
 function app_fetch_time_log_report_data(PDO $conn, array $input, string $defaultStatus = 'all'): array
@@ -1931,18 +2300,27 @@ function app_get_time_log_by_id(PDO $conn, int $timeLogId): ?array
             u.position_name,
             u.profile_image_path,
             d.department_name,
-            c.fullname AS checker_name
+            c.fullname AS checker_name,
+            sa.id AS classification_assignment_id,
+            ss.id AS classification_schedule_id,
+            ss.schedule_date AS classification_schedule_date,
+            ss.shift_type AS classification_shift_type,
+            ss.start_time AS classification_start_time,
+            ss.end_time AS classification_end_time,
+            " . app_shift_classification_select_sql('t.schedule_assignment_id') . "
         FROM time_logs t
         LEFT JOIN users u ON t.user_id = u.id
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users c ON t.checked_by = c.id
+        LEFT JOIN shift_assignments sa ON sa.id = t.schedule_assignment_id
+        LEFT JOIN shift_schedules ss ON ss.id = sa.schedule_id
         WHERE t.id = ?
         LIMIT 1
     ");
     $stmt->execute([$timeLogId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    return $row ?: null;
+    return $row ? app_shift_classification_enrich_row($row) : null;
 }
 
 function app_time_log_within_scope(PDO $conn, array $timeLog): bool

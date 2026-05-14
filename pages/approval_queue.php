@@ -62,6 +62,7 @@ function app_approval_query(array $filters, array $overrides = []): string
         'date_from' => $filters['date_from'],
         'date_to' => $filters['date_to'],
         'status' => $filters['status'],
+        'classification' => $filters['classification'] ?? 'all',
         'per_page' => $overrides['per_page'] ?? ($_GET['per_page'] ?? 20),
         'view' => $overrides['view'] ?? null,
         'p' => $overrides['p'] ?? null,
@@ -334,6 +335,41 @@ $reviewStatCards = [
             <?php endforeach; ?>
         </section>
 
+        <section class="approval-kpi-row" aria-label="สรุปประเภทแหล่งที่มาและแผนเวร">
+            <article class="dash-kpi-card approval-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon"><i class="bi bi-calendar-check"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">ตรงตามแผน</p>
+                    <strong class="time-kpi-value approval-kpi-value"><?= number_format((int) ($summary['planned_match_count'] ?? 0)) ?><span>รายการ</span></strong>
+                    <p class="time-kpi-subtitle">ผูกกับ schedule_assignment_id</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card approval-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon is-amber"><i class="bi bi-exclamation-diamond"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">นอกแผน</p>
+                    <strong class="time-kpi-value approval-kpi-value"><?= number_format((int) ($summary['outside_plan_count'] ?? 0)) ?><span>รายการ</span></strong>
+                    <p class="time-kpi-subtitle">ไม่มี schedule_assignment_id</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card approval-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon is-blue"><i class="bi bi-arrow-left-right"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">แลกเวรแล้ว</p>
+                    <strong class="time-kpi-value approval-kpi-value"><?= number_format((int) ($summary['swapped_count'] ?? 0)) ?><span>รายการ</span></strong>
+                    <p class="time-kpi-subtitle">จากคำขอแลกเวรที่ applied</p>
+                </div>
+            </article>
+            <article class="dash-kpi-card approval-kpi-card">
+                <span class="dash-icon-badge time-kpi-icon is-lilac"><i class="bi bi-hourglass-split"></i></span>
+                <div class="time-kpi-copy">
+                    <p class="time-kpi-label">รอแลกเวร</p>
+                    <strong class="time-kpi-value approval-kpi-value"><?= number_format((int) ($summary['swap_pending_count'] ?? 0)) ?><span>รายการ</span></strong>
+                    <p class="time-kpi-subtitle">pending target/manager</p>
+                </div>
+            </article>
+        </section>
+
         <div id="approvalQueueMessage">
             <?php if ($message !== ''): ?>
                 <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 mb-4"><?= htmlspecialchars($message) ?></div>
@@ -382,9 +418,18 @@ $reviewStatCards = [
                         <div class="approval-filter-field approval-filter-field-full">
                             <label class="approval-field-label" for="approvalStatus">สถานะ</label>
                             <select id="approvalStatus" name="status" class="form-select">
+                                <option value="rejected" <?= $filters['status'] === 'rejected' ? 'selected' : '' ?>>ตีกลับ</option>
                                 <option value="pending" <?= $filters['status'] === 'pending' ? 'selected' : '' ?>>รอตรวจสอบ</option>
                                 <option value="checked" <?= $filters['status'] === 'checked' ? 'selected' : '' ?>>อนุมัติแล้ว</option>
                                 <option value="all" <?= $filters['status'] === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
+                            </select>
+                        </div>
+                        <div class="approval-filter-field approval-filter-field-full">
+                            <label class="approval-field-label" for="approvalClassification">ประเภทแหล่งที่มา/แผนเวร</label>
+                            <select id="approvalClassification" name="classification" class="form-select">
+                                <?php foreach (app_shift_classification_options() as $classificationValue => $classificationMeta): ?>
+                                    <option value="<?= htmlspecialchars($classificationValue) ?>" <?= ($filters['classification'] ?? 'all') === $classificationValue ? 'selected' : '' ?>><?= htmlspecialchars($classificationMeta['label']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="approval-filter-field approval-filter-field-full approval-date-filter-field">

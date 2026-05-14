@@ -292,6 +292,43 @@ function app_find_unread_notification_for_entity(
     return $row ?: null;
 }
 
+function app_find_notification_for_entity(
+    PDO $conn,
+    int $userId,
+    string $type,
+    ?string $entityType = null,
+    ?int $entityId = null
+): ?array {
+    if (!app_notifications_available($conn) || $userId <= 0 || $type === '') {
+        return null;
+    }
+
+    $sql = "
+        SELECT *
+        FROM notifications
+        WHERE user_id = ?
+          AND type = ?
+    ";
+    $params = [$userId, $type];
+
+    if ($entityType !== null) {
+        $sql .= " AND target_entity_type = ?";
+        $params[] = $entityType;
+    }
+
+    if ($entityId !== null) {
+        $sql .= " AND target_entity_id = ?";
+        $params[] = $entityId;
+    }
+
+    $sql .= " ORDER BY id DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
 function app_update_notification_row(PDO $conn, int $notificationId, array $data): void
 {
     if (!app_notifications_available($conn) || $notificationId <= 0) {
@@ -943,4 +980,135 @@ function app_notification_present(array $row): array
         'priority' => (string) ($row['priority'] ?? 'normal'),
         'metadata' => app_notification_decode_metadata($row['metadata_json'] ?? null),
     ];
+}
+
+/**
+ * Notify every staff member who has at least one published shift assignment in
+ * the given department/month/year.
+ *
+ * Dedup strategy: a synthetic entity_id = dept_id * 100000 + (year%100)*12 + month
+ * is stored per user. If any notification with that entity_id already exists for
+ * the user, we update and re-surface that row instead of inserting a duplicate.
+ *
+ * Returns the number of notifications inserted or refreshed.
+ */
+function app_notify_monthly_schedule_published(
+    PDO $conn,
+    int $departmentId,
+    int $month,
+    int $year,
+    int $actorUserId
+): int {
+    if (!app_notifications_available($conn) || $departmentId <= 0) {
+        return 0;
+    }
+
+    // --- Find all users who have assignments in this dept/month that are now published ---
+    $firstDay = sprintf('%04d-%02d-01', $year, $month);
+    $lastDay  = date('Y-m-t', strtotime($firstDay));
+
+    $stmt = $conn->prepare("
+        SELECT DISTINCT sa.staff_id
+        FROM shift_assignments sa
+        INNER JOIN shift_schedules ss ON ss.id = sa.schedule_id
+        INNER JOIN users u ON u.id = sa.staff_id
+        WHERE ss.department_id = ?
+          AND ss.status = 'published'
+          AND ss.schedule_date >= ?
+          AND ss.schedule_date <= ?
+          AND sa.assignment_status <> 'cancelled'
+          AND sa.staff_id > 0
+          AND COALESCE(u.is_active, 1) = 1
+    ");
+    $stmt->execute([$departmentId, $firstDay, $lastDay]);
+    $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+    if (empty($userIds)) {
+        return 0;
+    }
+
+    // --- Build notification payload ---
+    $thaiMonths = [
+        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม',
+    ];
+    $monthName = $thaiMonths[$month] ?? $month;
+    $yearBe    = $year + 543;
+
+    // Fetch department name for the message
+    $deptStmt = $conn->prepare("SELECT department_name FROM departments WHERE id = ? LIMIT 1");
+    $deptStmt->execute([$departmentId]);
+    $deptName = (string) ($deptStmt->fetchColumn() ?: 'แผนกของคุณ');
+
+    $title   = 'ตารางเวรรายเดือนเผยแพร่แล้ว';
+    $message = "ตารางเวรประจำเดือน {$monthName} {$yearBe} ของแผนก {$deptName} ได้รับการเผยแพร่แล้ว กรุณาตรวจสอบเวรของคุณ";
+    $url     = "my-shifts.php?month={$month}&year={$yearBe}&view=my&display=calendar";
+
+    // Synthetic entity_id: unique per dept + year + month combination
+    $entityId   = $departmentId * 100000 + ($year % 100) * 12 + $month;
+    $entityType = 'monthly_schedule';
+    $eventKey = "monthly_schedule_published:{$departmentId}:{$year}:{$month}";
+
+    $notified = 0;
+
+    foreach ($userIds as $userId) {
+        $userId = (int) $userId;
+        if ($userId <= 0) {
+            continue;
+        }
+
+        // Dedup across read/unread rows so re-publishing the same month never spams inboxes.
+        $existing = app_find_notification_for_entity(
+            $conn,
+            $userId,
+            'monthly_schedule_published',
+            $entityType,
+            $entityId
+        );
+
+        if ($existing) {
+            // Re-surface existing notification (update content + mark unread again)
+            app_update_notification_row($conn, (int) $existing['id'], [
+                'title'        => $title,
+                'message'      => $message,
+                'target_url'   => $url,
+                'actor_user_id'=> $actorUserId,
+                'priority'     => 'normal',
+                'metadata'     => [
+                    'event_key' => $eventKey,
+                    'department_id' => $departmentId,
+                    'month' => $month,
+                    'year' => $year,
+                    'year_be' => $yearBe,
+                    'target_url' => $url,
+                ],
+            ]);
+        } else {
+            app_create_notification($conn, [
+                'user_id'            => $userId,
+                'type'               => 'monthly_schedule_published',
+                'title'              => $title,
+                'message'            => $message,
+                'target_url'         => $url,
+                'target_entity_type' => $entityType,
+                'target_entity_id'   => $entityId,
+                'source_type'        => 'shift_schedule',
+                'actor_user_id'      => $actorUserId,
+                'priority'           => 'normal',
+                'metadata'           => [
+                    'event_key' => $eventKey,
+                    'department_id' => $departmentId,
+                    'month' => $month,
+                    'year' => $year,
+                    'year_be' => $yearBe,
+                    'target_url' => $url,
+                ],
+            ]);
+        }
+
+        $notified++;
+    }
+
+    return $notified;
 }
