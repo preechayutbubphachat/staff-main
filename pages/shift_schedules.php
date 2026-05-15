@@ -128,6 +128,20 @@ $hasProfileImageColumn = app_column_exists($conn, 'users', 'profile_image_path')
 $profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
 $displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
 $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
+
+function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $initials, string $className = 'shift-staff-avatar'): string
+{
+    $safeName = htmlspecialchars($name !== '' ? $name : 'staff', ENT_QUOTES, 'UTF-8');
+    $safeInitials = htmlspecialchars($initials !== '' ? $initials : mb_substr($name !== '' ? $name : 'U', 0, 1, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+    $safeClass = htmlspecialchars($className, ENT_QUOTES, 'UTF-8');
+    $html = '<span class="' . $safeClass . '" aria-hidden="true"><span class="shift-staff-avatar-fallback">' . $safeInitials . '</span>';
+    if ($imageUrl) {
+        $html .= '<img src="' . htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') . '" alt="Profile image ' . $safeName . '" loading="lazy" onerror="this.remove();">';
+    }
+    $html .= '</span>';
+
+    return $html;
+}
 ?>
 <!doctype html>
 <html lang="th">
@@ -267,7 +281,8 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                             <div class="shift-staff-list">
                                 <?php foreach ($schedule['assignments'] as $assignment): ?>
                                     <span class="shift-staff-badge">
-                                        <?= htmlspecialchars($assignment['staff_name']) ?>
+                                        <?= app_shift_render_staff_avatar($assignment['staff_profile_image_url'] ?? null, (string) ($assignment['staff_name'] ?? ''), (string) ($assignment['staff_initials'] ?? ''), 'shift-staff-avatar shift-staff-avatar-mini') ?>
+                                        <span class="shift-staff-badge-name"><?= htmlspecialchars($assignment['staff_name']) ?></span>
                                         <form method="post" class="shift-inline-form" onsubmit="return confirm('ยกเลิกเจ้าหน้าที่คนนี้จากเวร?');">
                                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                                             <input type="hidden" name="action" value="cancel_assignment">
@@ -275,7 +290,7 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                                             <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
                                             <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
                                             <input type="hidden" name="year_be" value="<?= (int) $selectedYearBe ?>">
-                                            <button type="submit" aria-label="ยกเลิก <?= htmlspecialchars($assignment['staff_name']) ?>"><i class="bi bi-x"></i></button>
+                                            <button type="submit" title="Remove <?= htmlspecialchars($assignment['staff_name']) ?> from shift" aria-label="Remove <?= htmlspecialchars($assignment['staff_name']) ?> from shift"><i class="bi bi-x"></i></button>
                                         </form>
                                     </span>
                                 <?php endforeach; ?>
@@ -342,15 +357,25 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
                 <input type="search" class="form-control" placeholder="ค้นหาเจ้าหน้าที่" data-staff-search>
                 <div class="shift-staff-options">
                     <?php foreach ($staffRows as $staff): ?>
-                        <label class="shift-staff-option" data-staff-option data-search="<?= htmlspecialchars(mb_strtolower(($staff['fullname'] ?? '') . ' ' . ($staff['position_name'] ?? ''), 'UTF-8')) ?>">
+                        <?php
+                        $staffName = (string) ($staff['fullname'] ?? '-');
+                        $staffPosition = (string) ($staff['position_name'] ?: app_role_label($staff['role'] ?? 'staff'));
+                        $staffDepartment = (string) ($staff['department_name'] ?? $selectedDepartmentName);
+                        $staffMeta = trim($staffPosition . ' / ' . $staffDepartment, ' /');
+                        $staffInitials = (string) ($staff['initials'] ?? app_shift_staff_initials($staffName));
+                        $staffAvatarUrl = $staff['profile_image_url'] ?? null;
+                        ?>
+                        <label class="shift-staff-option" data-staff-option data-staff-name="<?= htmlspecialchars($staffName) ?>" data-staff-meta="<?= htmlspecialchars($staffMeta) ?>" data-staff-initials="<?= htmlspecialchars($staffInitials) ?>" data-staff-avatar="<?= htmlspecialchars((string) $staffAvatarUrl) ?>" data-search="<?= htmlspecialchars(mb_strtolower($staffName . ' ' . $staffPosition . ' ' . $staffDepartment, 'UTF-8')) ?>">
                             <input type="checkbox" name="staff_ids[]" value="<?= (int) $staff['id'] ?>">
-                            <span>
-                                <strong><?= htmlspecialchars($staff['fullname']) ?></strong>
-                                <small><?= htmlspecialchars($staff['position_name'] ?: app_role_label($staff['role'] ?? 'staff')) ?></small>
+                            <?= app_shift_render_staff_avatar($staffAvatarUrl, $staffName, $staffInitials) ?>
+                            <span class="shift-staff-option-copy">
+                                <strong><?= htmlspecialchars($staffName) ?></strong>
+                                <small><?= htmlspecialchars($staffMeta) ?></small>
                             </span>
                         </label>
                     <?php endforeach; ?>
                 </div>
+                <div class="shift-selected-staff" data-selected-staff hidden></div>
             </div>
             <div class="shift-modal-actions">
                 <button type="button" class="dash-btn dash-btn-ghost" data-shift-close>ยกเลิก</button>
@@ -372,13 +397,55 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
     const startInput = document.querySelector('[data-shift-start]');
     const endInput = document.querySelector('[data-shift-end]');
     const countLabel = document.querySelector('[data-selected-count]');
+    const selectedStaff = document.querySelector('[data-selected-staff]');
     const search = document.querySelector('[data-staff-search]');
     const options = Array.from(document.querySelectorAll('[data-staff-option]'));
     const checkboxes = Array.from(document.querySelectorAll('.shift-staff-option input[type="checkbox"]'));
 
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+
+    const staffAvatarHtml = (option, className = 'shift-staff-avatar shift-staff-avatar-chip') => {
+        const name = option?.dataset.staffName || 'staff';
+        const initials = option?.dataset.staffInitials || name.slice(0, 1) || 'U';
+        const avatar = option?.dataset.staffAvatar || '';
+        const fallback = `<span class="shift-staff-avatar-fallback">${escapeHtml(initials)}</span>`;
+        const image = avatar
+            ? `<img src="${escapeHtml(avatar)}" alt="Profile image ${escapeHtml(name)}" loading="lazy" onerror="this.remove();">`
+            : '';
+        return `<span class="${escapeHtml(className)}" aria-hidden="true">${fallback}${image}</span>`;
+    };
+
+    const renderSelectedStaff = () => {
+        if (!selectedStaff) return;
+        const selected = checkboxes.filter((input) => input.checked);
+        selectedStaff.hidden = selected.length === 0;
+        selectedStaff.innerHTML = selected.map((input) => {
+            const option = input.closest('[data-staff-option]');
+            const name = option?.dataset.staffName || input.value;
+            const meta = option?.dataset.staffMeta || '';
+            return `
+                <button type="button" class="shift-selected-chip" data-selected-remove="${escapeHtml(input.value)}" title="Remove ${escapeHtml(name)} from shift" aria-label="Remove ${escapeHtml(name)} from shift">
+                    ${staffAvatarHtml(option)}
+                    <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(meta)}</small></span>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            `;
+        }).join('');
+    };
+
     const updateCount = () => {
         const count = checkboxes.filter((input) => input.checked).length;
         if (countLabel) countLabel.textContent = `${count} คน`;
+        checkboxes.forEach((input) => {
+            input.closest('[data-staff-option]')?.classList.toggle('is-selected', input.checked);
+        });
+        renderSelectedStaff();
     };
 
     const applyShiftTime = () => {
@@ -413,6 +480,15 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 
     shiftType?.addEventListener('change', applyShiftTime);
     checkboxes.forEach((input) => input.addEventListener('change', updateCount));
+    selectedStaff?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-selected-remove]');
+        if (!button) return;
+        const input = checkboxes.find((checkbox) => checkbox.value === button.dataset.selectedRemove);
+        if (input) {
+            input.checked = false;
+            updateCount();
+        }
+    });
     search?.addEventListener('input', () => {
         const keyword = search.value.trim().toLowerCase();
         options.forEach((option) => {

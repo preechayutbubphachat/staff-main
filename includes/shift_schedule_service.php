@@ -124,16 +124,51 @@ function app_shift_month_bounds(int $month, int $year): array
 
 function app_shift_fetch_staff(PDO $conn, int $departmentId): array
 {
+    $profileImageSelect = app_column_exists($conn, 'users', 'profile_image_path')
+        ? 'u.profile_image_path'
+        : 'NULL AS profile_image_path';
     $stmt = $conn->prepare("
-        SELECT id, fullname, position_name, role, department_id
-        FROM users
-        WHERE department_id = ?
-          AND COALESCE(is_active, 1) = 1
-        ORDER BY fullname ASC, id ASC
+        SELECT u.id, u.fullname, u.position_name, u.role, u.department_id, {$profileImageSelect}, d.department_name
+        FROM users u
+        LEFT JOIN departments d ON d.id = u.department_id
+        WHERE u.department_id = ?
+          AND COALESCE(u.is_active, 1) = 1
+        ORDER BY u.fullname ASC, u.id ASC
     ");
     $stmt->execute([$departmentId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as &$row) {
+        $name = (string) ($row['fullname'] ?? '');
+        $row['profile_image_url'] = app_resolve_user_image_url($row['profile_image_path'] ?? '');
+        $row['initials'] = app_shift_staff_initials($name);
+    }
+    unset($row);
+
+    return $rows;
+}
+
+function app_shift_staff_initials(string $name): string
+{
+    $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+    if ($name === '') {
+        return 'U';
+    }
+
+    $parts = preg_split('/\s+/u', $name) ?: [];
+    $initials = '';
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+        $initials .= mb_substr($part, 0, 1, 'UTF-8');
+        if (mb_strlen($initials, 'UTF-8') >= 2) {
+            break;
+        }
+    }
+
+    return $initials !== '' ? $initials : mb_substr($name, 0, 1, 'UTF-8');
 }
 
 function app_shift_validate_department(PDO $conn, int $departmentId): void
@@ -220,6 +255,9 @@ function app_get_monthly_schedules(PDO $conn, int $departmentId, int $month, int
 {
     [$startDate, $endDate] = app_shift_month_bounds($month, $year);
     app_shift_assert_department_access($conn, $departmentId);
+    $profileImageSelect = app_column_exists($conn, 'users', 'profile_image_path')
+        ? 'u.profile_image_path AS staff_profile_image_path'
+        : 'NULL AS staff_profile_image_path';
 
     $stmt = $conn->prepare("
         SELECT
@@ -229,7 +267,8 @@ function app_get_monthly_schedules(PDO $conn, int $departmentId, int $month, int
             a.staff_id,
             a.assignment_status,
             u.fullname AS staff_name,
-            u.position_name AS staff_position
+            u.position_name AS staff_position,
+            {$profileImageSelect}
         FROM shift_schedules s
         LEFT JOIN departments d ON d.id = s.department_id
         LEFT JOIN shift_assignments a ON a.schedule_id = s.id
@@ -267,6 +306,8 @@ function app_get_monthly_schedules(PDO $conn, int $departmentId, int $month, int
                 'staff_id' => (int) $row['staff_id'],
                 'staff_name' => (string) ($row['staff_name'] ?? '-'),
                 'staff_position' => (string) ($row['staff_position'] ?? ''),
+                'staff_initials' => app_shift_staff_initials((string) ($row['staff_name'] ?? '')),
+                'staff_profile_image_url' => app_resolve_user_image_url($row['staff_profile_image_path'] ?? ''),
                 'assignment_status' => (string) $row['assignment_status'],
             ];
         }
