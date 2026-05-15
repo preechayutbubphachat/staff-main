@@ -7,6 +7,7 @@ require_once __DIR__ . '/../includes/report_helpers.php';
 require_once __DIR__ . '/../includes/profile_modal.php';
 require_once __DIR__ . '/../includes/notification_helpers.php';
 require_once __DIR__ . '/../includes/shift_schedule_service.php';
+require_once __DIR__ . '/../includes/shift_swap_service.php';
 
 app_require_login();
 date_default_timezone_set('Asia/Bangkok');
@@ -21,11 +22,31 @@ $display = (string) $filter['display'];
 $monthOptions = app_get_thai_month_select_options();
 $shiftTypes = app_shift_schedule_types();
 $csrfToken = app_csrf_token('my_shifts_create_time_log');
+$swapCsrfToken = app_csrf_token('shift_swap');
 $flash = (string) ($_SESSION['my_shifts_flash'] ?? '');
 $flashType = (string) ($_SESSION['my_shifts_flash_type'] ?? 'success');
 unset($_SESSION['my_shifts_flash'], $_SESSION['my_shifts_flash_type']);
 
 $currentDepartmentId = app_get_current_user_department_id($conn);
+$swapSourceId = max(0, (int) ($_GET['swap_source_id'] ?? 0));
+$openAssignmentId = max(0, (int) ($_GET['open_assignment_id'] ?? 0));
+$swapSelectionMode = false;
+$swapSourceAssignment = null;
+$swapSourceError = '';
+if ($swapSourceId > 0) {
+    $view = 'department';
+    $swapSourceAssignment = app_shift_swap_get_assignment($conn, $swapSourceId);
+    if (!$swapSourceAssignment) {
+        $swapSourceError = 'ไม่พบเวรต้นทางสำหรับแลกเวร';
+    } else {
+        try {
+            app_shift_swap_assert_assignment_swappable($conn, $swapSourceAssignment, $currentUserId);
+            $swapSelectionMode = true;
+        } catch (Throwable $e) {
+            $swapSourceError = $e->getMessage();
+        }
+    }
+}
 $myAssignments = app_get_my_shift_assignments($conn, $currentUserId, $selectedMonth, $selectedYear);
 $assignments = $view === 'department' && $currentDepartmentId > 0
     ? app_get_department_shift_assignments($conn, $currentUserId, $currentDepartmentId, $selectedMonth, $selectedYear)
@@ -44,6 +65,17 @@ $departmentStaffCount = count(array_filter(array_keys($departmentStaffIds), stat
     return $id > 0;
 }));
 $departmentOtherCount = max(0, $departmentTotal - $departmentMineCount);
+$swapEligibleCount = 0;
+foreach ($assignments as &$assignment) {
+    $assignment['swap_source_meta'] = my_shift_swap_source_meta($conn, $assignment, $currentUserId);
+    $assignment['swap_target_meta'] = $swapSelectionMode
+        ? my_shift_swap_target_meta($conn, $assignment, $currentUserId, $swapSourceAssignment)
+        : ['can' => false, 'reason' => ''];
+    if (!empty($assignment['swap_target_meta']['can'])) {
+        $swapEligibleCount++;
+    }
+}
+unset($assignment);
 $assignmentsByDate = app_my_shifts_group_by_date($assignments);
 $firstDay = new DateTimeImmutable(sprintf('%04d-%02d-01', $selectedYear, $selectedMonth));
 $daysInMonth = (int) $firstDay->format('t');
@@ -69,6 +101,15 @@ if ($assignments) {
     $last = $assignments[count($assignments) - 1];
     $latestShiftLabel = app_format_thai_date((string) $last['schedule_date']) . ' ' . ($shiftTypes[(string) $last['shift_type']]['label'] ?? $last['shift_type']);
 }
+$swapSourceSummary = $swapSourceAssignment ? app_shift_swap_assignment_summary($swapSourceAssignment) : null;
+$swapCancelUrl = $swapSourceSummary
+    ? my_shift_url([
+        'view' => 'my',
+        'display' => 'calendar',
+        'swap_source_id' => 0,
+        'open_assignment_id' => (int) $swapSourceSummary['assignment_id'],
+    ])
+    : my_shift_url(['view' => 'my', 'swap_source_id' => 0]);
 
 $userStmt = $conn->prepare("
     SELECT u.*, d.department_name
@@ -87,21 +128,85 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 
 function my_shift_url(array $overrides = []): string
 {
-    global $view, $display, $selectedMonth, $selectedYearBe;
+    global $view, $display, $selectedMonth, $selectedYearBe, $swapSelectionMode, $swapSourceId;
     $query = array_merge([
         'month' => $selectedMonth,
         'year' => $selectedYearBe,
         'view' => $view,
         'display' => $display,
     ], $overrides);
+    if ($swapSelectionMode && !array_key_exists('swap_source_id', $overrides)) {
+        $query['swap_source_id'] = $swapSourceId;
+    }
+    if (array_key_exists('swap_source_id', $overrides) && (int) $overrides['swap_source_id'] <= 0) {
+        unset($query['swap_source_id']);
+    }
 
     return 'my-shifts.php?' . http_build_query($query);
 }
 
+function my_shift_swap_source_meta(PDO $conn, array $assignment, int $currentUserId): array
+{
+    $assignmentId = (int) ($assignment['assignment_id'] ?? 0);
+    if (empty($assignment['is_mine'])) {
+        return ['can' => false, 'reason' => 'เวรของเจ้าหน้าที่คนอื่น'];
+    }
+    if ($assignmentId <= 0) {
+        return ['can' => false, 'reason' => 'ไม่มี assignment อ้างอิง'];
+    }
+    if (app_shift_swap_has_active_request($conn, [$assignmentId])) {
+        return ['can' => false, 'reason' => 'รอคำขอแลกอยู่'];
+    }
+
+    $swapAssignment = app_shift_swap_get_assignment($conn, $assignmentId);
+    if (!$swapAssignment) {
+        return ['can' => false, 'reason' => 'ไม่พบ assignment'];
+    }
+
+    try {
+        app_shift_swap_assert_assignment_swappable($conn, $swapAssignment, $currentUserId);
+        return ['can' => true, 'reason' => ''];
+    } catch (Throwable $e) {
+        return ['can' => false, 'reason' => $e->getMessage()];
+    }
+}
+
+function my_shift_swap_target_meta(PDO $conn, array $assignment, int $currentUserId, ?array $sourceAssignment): array
+{
+    $assignmentId = (int) ($assignment['assignment_id'] ?? 0);
+    if (!$sourceAssignment) {
+        return ['can' => false, 'reason' => 'ไม่มีเวรต้นทาง'];
+    }
+    if ($assignmentId <= 0) {
+        return ['can' => false, 'reason' => 'ไม่มี assignment อ้างอิง'];
+    }
+    if (!empty($assignment['is_mine'])) {
+        return ['can' => false, 'reason' => 'เวรของคุณ'];
+    }
+    if (app_shift_swap_has_active_request($conn, [$assignmentId])) {
+        return ['can' => false, 'reason' => 'รอคำขอแลก'];
+    }
+
+    $targetAssignment = app_shift_swap_get_assignment($conn, $assignmentId);
+    if (!$targetAssignment) {
+        return ['can' => false, 'reason' => 'ไม่พบ assignment'];
+    }
+
+    try {
+        app_shift_swap_assert_assignment_swappable($conn, $targetAssignment);
+        app_shift_swap_revalidate_pair($conn, $sourceAssignment, $targetAssignment);
+        return ['can' => true, 'reason' => 'แลกได้'];
+    } catch (Throwable $e) {
+        return ['can' => false, 'reason' => $e->getMessage()];
+    }
+}
+
 function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 {
+    global $selectedMonth, $selectedYearBe;
     $statusMeta = $assignment['status_meta'] ?? app_my_shift_status_meta($assignment);
     $isMine = !empty($assignment['is_mine']);
+    $swapSourceMeta = $assignment['swap_source_meta'] ?? ['can' => false, 'reason' => ''];
     $payload = [
         'assignmentId' => (int) $assignment['assignment_id'],
         'scheduleId' => (int) $assignment['schedule_id'],
@@ -123,6 +228,15 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         'timeLogHours' => isset($assignment['time_log_total_hours']) ? number_format((float) $assignment['time_log_total_hours'], 2) : '',
         'source' => (string) ($assignment['time_log_source'] ?? ''),
         'note' => (string) ($assignment['time_log_note'] ?? ''),
+        'canRequestSwap' => !empty($swapSourceMeta['can']),
+        'swapBlockedReason' => (string) ($swapSourceMeta['reason'] ?? ''),
+        'swapUrl' => 'my-shifts.php?' . http_build_query([
+            'month' => $selectedMonth,
+            'year' => $selectedYearBe,
+            'view' => 'department',
+            'display' => 'calendar',
+            'swap_source_id' => (int) $assignment['assignment_id'],
+        ]),
     ];
 
     return htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
@@ -174,6 +288,11 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 <?= htmlspecialchars($flash) ?>
             </div>
         <?php endif; ?>
+        <?php if ($swapSourceError !== ''): ?>
+            <div class="alert alert-warning rounded-4 border-0 shadow-sm" role="alert">
+                <?= htmlspecialchars($swapSourceError) ?>
+            </div>
+        <?php endif; ?>
 
         <section class="my-shifts-hero">
             <div class="my-shifts-hero-copy">
@@ -223,6 +342,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 </div>
                 <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
                 <input type="hidden" name="display" value="<?= htmlspecialchars($display) ?>">
+                <?php if ($swapSelectionMode): ?>
+                    <input type="hidden" name="swap_source_id" value="<?= (int) $swapSourceId ?>">
+                <?php endif; ?>
                 <button type="submit" class="dash-btn dash-btn-ghost my-shifts-refresh-btn" title="รีเฟรช"><i class="bi bi-arrow-clockwise"></i></button>
             </form>
             <div class="my-shifts-summary-strip">
@@ -236,6 +358,29 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 </div>
             </div>
         </section>
+
+        <?php if ($swapSelectionMode && $swapSourceSummary): ?>
+            <section class="my-shifts-swap-banner" aria-label="เลือกเวรที่ต้องการแลก">
+                <div class="my-shifts-swap-banner-copy">
+                    <span><i class="bi bi-arrow-left-right"></i> เลือกเวรที่ต้องการแลก</span>
+                    <h3>เลือกเวรในแผนกที่ต้องการแลกกับเวรของคุณ</h3>
+                    <p>
+                        เวรต้นทาง:
+                        <?= htmlspecialchars(app_format_thai_date((string) $swapSourceSummary['date'])) ?>
+                        · <?= htmlspecialchars((string) $swapSourceSummary['shift_label']) ?>
+                        · <?= htmlspecialchars((string) $swapSourceSummary['time']) ?>
+                        · <?= htmlspecialchars((string) $swapSourceSummary['department_name']) ?>
+                    </p>
+                </div>
+                <div class="my-shifts-swap-banner-actions">
+                    <span class="my-shifts-swap-count"><?= number_format($swapEligibleCount) ?> เวรที่ขอแลกได้</span>
+                    <a class="dash-btn dash-btn-ghost" href="<?= htmlspecialchars($swapCancelUrl) ?>"><i class="bi bi-x-circle"></i> ยกเลิกแลกเวร</a>
+                </div>
+                <?php if ($swapEligibleCount <= 0): ?>
+                    <div class="my-shifts-swap-empty">ไม่มีเวรในแผนกที่สามารถขอแลกได้ในช่วงเวลานี้</div>
+                <?php endif; ?>
+            </section>
+        <?php endif; ?>
 
         <?php if (!$assignments): ?>
             <section class="my-shifts-empty">
@@ -270,8 +415,14 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                             <div class="my-shifts-day-empty">ไม่มีเวร</div>
                         <?php endif; ?>
                         <?php foreach ($visibleDayAssignments as $assignment): ?>
-                            <?php $statusMeta = $assignment['status_meta']; ?>
-                            <button type="button" class="my-shift-pill is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
+                            <?php
+                            $statusMeta = $assignment['status_meta'];
+                            $swapTargetMeta = $assignment['swap_target_meta'] ?? ['can' => false, 'reason' => ''];
+                            $swapClass = $swapSelectionMode
+                                ? (!empty($swapTargetMeta['can']) ? 'is-swap-eligible' : 'is-swap-unavailable')
+                                : '';
+                            ?>
+                            <button type="button" class="my-shift-pill is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?> <?= htmlspecialchars($swapClass) ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
                                 <span><?= htmlspecialchars($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']) ?></span>
                                 <?php if ($view === 'department'): ?>
                                     <b><?= !empty($assignment['is_mine']) ? 'ของฉัน' : htmlspecialchars((string) ($assignment['staff_name'] ?? '-')) ?></b>
@@ -279,6 +430,23 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                                 <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
                                 <em><?= htmlspecialchars($statusMeta['label']) ?></em>
                             </button>
+                            <?php if ($swapSelectionMode): ?>
+                                <?php if (!empty($swapTargetMeta['can'])): ?>
+                                    <form method="post" action="../actions/create-shift-swap-request.php" class="my-shift-swap-action">
+                                        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($swapCsrfToken) ?>">
+                                        <input type="hidden" name="requester_assignment_id" value="<?= (int) $swapSourceId ?>">
+                                        <input type="hidden" name="target_assignment_id" value="<?= (int) $assignment['assignment_id'] ?>">
+                                        <input type="hidden" name="reason" value="ขอแลกเวรจากหน้าเวรของฉัน">
+                                        <input type="hidden" name="return_to" value="my-shifts">
+                                        <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
+                                        <input type="hidden" name="year" value="<?= (int) $selectedYearBe ?>">
+                                        <input type="hidden" name="display" value="<?= htmlspecialchars($display) ?>">
+                                        <button type="submit"><i class="bi bi-arrow-left-right"></i> ขอแลกเวร</button>
+                                    </form>
+                                <?php else: ?>
+                                    <div class="my-shift-swap-reason"><?= htmlspecialchars((string) ($swapTargetMeta['reason'] ?? 'ไม่สามารถแลกได้')) ?></div>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                         <?php if ($hiddenDayAssignmentCount > 0): ?>
                             <div class="my-shift-overflow">+<?= (int) $hiddenDayAssignmentCount ?> รายการในวันนี้</div>
@@ -307,7 +475,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                         <div data-label="แผนก"><?= htmlspecialchars($assignment['department_name'] ?? '-') ?></div>
                         <div data-label="สถานะ"><span class="my-shift-status is-<?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span></div>
                         <div data-label="การจัดการ">
-                            <button type="button" class="dash-btn <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'dash-btn-primary' : 'dash-btn-secondary' ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
+                            <button type="button" class="dash-btn <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'dash-btn-primary' : 'dash-btn-secondary' ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
                                 <i class="bi <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'bi-box-arrow-in-right' : 'bi-eye' ?>"></i>
                                 <?= empty($assignment['time_log_id']) && !empty($assignment['is_mine']) ? 'ลงเวร' : 'ดูรายละเอียด' ?>
                             </button>
@@ -353,6 +521,8 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             </label>
             <div class="my-shift-modal-actions">
                 <button type="button" class="dash-btn dash-btn-ghost" data-my-shift-close>ยกเลิก</button>
+                <a class="dash-btn dash-btn-secondary my-shift-swap-start" href="#" data-modal-swap hidden><i class="bi bi-arrow-left-right"></i> แลกเวร</a>
+                <span class="my-shift-swap-pending" data-modal-swap-status hidden>รอคำขอแลกอยู่</span>
                 <button type="submit" class="dash-btn dash-btn-primary" data-modal-submit><i class="bi bi-check2-circle"></i> ยืนยันลงเวร</button>
             </div>
         </form>
@@ -369,6 +539,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const form = document.querySelector('[data-my-shift-form]');
     const submit = document.querySelector('[data-modal-submit]');
     const noteWrap = document.querySelector('[data-modal-note-wrap]');
+    const swapLink = document.querySelector('[data-modal-swap]');
+    const swapStatus = document.querySelector('[data-modal-swap-status]');
+    const openAssignmentId = <?= (int) $openAssignmentId ?>;
     const fields = {
         assignmentId: document.querySelector('[data-modal-assignment-id]'),
         title: document.querySelector('[data-modal-title]'),
@@ -409,10 +582,23 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             const canCreate = !payload.timeLogId && payload.isMine;
             if (submit) submit.hidden = !canCreate;
             if (noteWrap) noteWrap.hidden = !canCreate;
+            if (swapLink) {
+                swapLink.hidden = !payload.canRequestSwap;
+                swapLink.href = payload.swapUrl || '#';
+            }
+            if (swapStatus) {
+                const hasSwapStatus = payload.isMine && !payload.canRequestSwap && payload.swapBlockedReason === 'รอคำขอแลกอยู่';
+                swapStatus.hidden = !hasSwapStatus;
+                swapStatus.textContent = payload.swapBlockedReason || '';
+            }
             modal.hidden = false;
             document.body.classList.add('overflow-hidden');
         });
     });
+
+    if (openAssignmentId > 0) {
+        document.querySelector(`[data-my-shift-open][data-assignment-id="${openAssignmentId}"]`)?.click();
+    }
 
     document.querySelectorAll('[data-my-shift-close]').forEach((button) => {
         button.addEventListener('click', () => {

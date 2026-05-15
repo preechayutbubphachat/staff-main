@@ -9,6 +9,25 @@ app_require_login();
 
 $currentUserId = (int) ($_SESSION['id'] ?? 0);
 $redirect = '../pages/shift-swap-requests.php';
+$returnToMyShifts = (string) ($_POST['return_to'] ?? '') === 'my-shifts';
+if ($returnToMyShifts) {
+    $month = max(1, min(12, (int) ($_POST['month'] ?? date('n'))));
+    $yearBe = (int) ($_POST['year'] ?? ($_POST['year_be'] ?? ((int) date('Y') + 543)));
+    if ($yearBe < 2400) {
+        $yearBe += 543;
+    }
+    $display = in_array((string) ($_POST['display'] ?? 'calendar'), ['calendar', 'list'], true)
+        ? (string) $_POST['display']
+        : 'calendar';
+    $openAssignmentId = max(0, (int) ($_POST['requester_assignment_id'] ?? 0));
+    $redirect = '../pages/my-shifts.php?' . http_build_query([
+        'month' => $month,
+        'year' => $yearBe,
+        'view' => 'my',
+        'display' => $display,
+        'open_assignment_id' => $openAssignmentId,
+    ]);
+}
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -25,14 +44,24 @@ try {
         (int) ($_POST['target_assignment_id'] ?? 0),
         (string) ($_POST['reason'] ?? '')
     );
-    $_SESSION['shift_swap_flash'] = $result['message'];
-    $_SESSION['shift_swap_flash_type'] = 'success';
+    if ($returnToMyShifts) {
+        $_SESSION['my_shifts_flash'] = $result['message'];
+        $_SESSION['my_shifts_flash_type'] = 'success';
+    } else {
+        $_SESSION['shift_swap_flash'] = $result['message'];
+        $_SESSION['shift_swap_flash_type'] = 'success';
+    }
 } catch (Throwable $e) {
-    $_SESSION['shift_swap_flash'] = $e->getMessage();
-    $_SESSION['shift_swap_flash_type'] = 'danger';
-    $assignmentId = (int) ($_POST['requester_assignment_id'] ?? 0);
-    if ($assignmentId > 0) {
-        $redirect .= '?assignment_id=' . $assignmentId;
+    if ($returnToMyShifts) {
+        $_SESSION['my_shifts_flash'] = $e->getMessage();
+        $_SESSION['my_shifts_flash_type'] = 'danger';
+    } else {
+        $_SESSION['shift_swap_flash'] = $e->getMessage();
+        $_SESSION['shift_swap_flash_type'] = 'danger';
+        $assignmentId = (int) ($_POST['requester_assignment_id'] ?? 0);
+        if ($assignmentId > 0) {
+            $redirect .= '?assignment_id=' . $assignmentId;
+        }
     }
 }
 

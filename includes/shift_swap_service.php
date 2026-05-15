@@ -98,6 +98,17 @@ function app_shift_swap_assignment_summary(array $assignment): array
     ];
 }
 
+function app_shift_swap_start_at(array $assignment): DateTimeImmutable
+{
+    $date = (string) ($assignment['schedule_date'] ?? '');
+    $startTime = substr((string) ($assignment['start_time'] ?? '00:00:00'), 0, 8);
+    if (strlen($startTime) === 5) {
+        $startTime .= ':00';
+    }
+
+    return new DateTimeImmutable(trim($date . ' ' . $startTime));
+}
+
 function app_shift_swap_assert_assignment_swappable(PDO $conn, array $assignment, ?int $expectedStaffId = null): void
 {
     if ($expectedStaffId !== null && (int) $assignment['staff_id'] !== $expectedStaffId) {
@@ -109,7 +120,7 @@ function app_shift_swap_assert_assignment_swappable(PDO $conn, array $assignment
     if ((string) $assignment['schedule_status'] !== 'published') {
         throw new RuntimeException('แลกได้เฉพาะเวรที่เผยแพร่แล้วเท่านั้น');
     }
-    if ((string) $assignment['schedule_date'] < date('Y-m-d')) {
+    if (app_shift_swap_start_at($assignment) <= new DateTimeImmutable('now')) {
         throw new RuntimeException('ไม่สามารถแลกเวรย้อนหลังได้');
     }
     if (!empty($assignment['time_log_id'])) {

@@ -218,6 +218,61 @@
     @apply mt-1 rounded-xl border border-dashed border-slate-300 bg-white/80 px-3 py-2 text-center text-xs font-bold text-hospital-muted;
   }
 
+  .my-shifts-swap-banner {
+    @apply grid gap-4 rounded-2xl border border-hospital-teal/25 bg-white/95 p-4 shadow-soft xl:grid-cols-[minmax(0,1fr)_auto];
+  }
+
+  .my-shifts-swap-banner-copy span {
+    @apply inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-hospital-teal;
+  }
+
+  .my-shifts-swap-banner-copy h3 {
+    @apply mt-3 font-prompt text-xl font-bold text-hospital-ink;
+  }
+
+  .my-shifts-swap-banner-copy p {
+    @apply mt-2 text-sm font-semibold text-hospital-muted;
+  }
+
+  .my-shifts-swap-banner-actions {
+    @apply flex flex-wrap items-center gap-2 xl:justify-end;
+  }
+
+  .my-shifts-swap-count {
+    @apply inline-flex min-h-10 items-center rounded-xl bg-hospital-mist px-3 text-sm font-bold text-hospital-ink;
+  }
+
+  .my-shifts-swap-empty {
+    @apply rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700 xl:col-span-2;
+  }
+
+  .my-shift-pill.is-swap-eligible,
+  .my-shifts-list-row.is-swap-eligible {
+    @apply border-hospital-teal bg-teal-50/80;
+  }
+
+  .my-shift-pill.is-swap-unavailable,
+  .my-shifts-list-row.is-swap-unavailable {
+    @apply opacity-60;
+  }
+
+  .my-shift-swap-action {
+    @apply mb-2;
+  }
+
+  .my-shift-swap-action button {
+    @apply inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-xl border border-hospital-teal bg-white px-3 text-xs font-bold text-hospital-teal transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
+  }
+
+  .my-shift-swap-reason,
+  .my-shift-swap-pending {
+    @apply mb-2 inline-flex min-h-8 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-hospital-muted;
+  }
+
+  .my-shift-swap-start {
+    @apply border border-hospital-teal/40 bg-white text-hospital-teal hover:bg-teal-50;
+  }
+
   .my-shift-pill.is-not-logged,
   .my-shift-status.is-not-logged {
     @apply border-sky-200 bg-sky-50 text-sky-700;
