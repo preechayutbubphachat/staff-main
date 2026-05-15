@@ -1147,23 +1147,7 @@ function app_get_department_monthly_matrix_day_resolution(array $recordsForOneDa
     if (array_key_exists('BD', $hoursByCode)) {
         $orderedCodes[] = 'BD';
     }
-    $suffixes = [];
-    foreach ($recordsForOneDay as $row) {
-        $codes = (array) ($row['classification_codes'] ?? []);
-        if (in_array('swapped', $codes, true)) {
-            $suffixes['swapped'] = 'แลก';
-        }
-        if (in_array('swap_pending', $codes, true)) {
-            $suffixes['swap_pending'] = 'รอแลก';
-        }
-        if (in_array('outside_plan', $codes, true)) {
-            $suffixes['outside_plan'] = 'นอก';
-        }
-    }
     $cellCode = implode('/', $orderedCodes);
-    if ($cellCode !== '' && $suffixes) {
-        $cellCode .= ' (' . implode(',', $suffixes) . ')';
-    }
 
     return [
         'code' => $cellCode,
