@@ -672,6 +672,8 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
     }
 
     $sourceSelect = app_column_exists($conn, 'time_logs', 'source') ? 'tl.source AS time_log_source,' : "NULL AS time_log_source,";
+
+    // --- Part 1: published shift_assignments ---
     $stmt = $conn->prepare("
         SELECT
             a.id AS assignment_id,
@@ -712,6 +714,7 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $assignments = [];
+    $coveredTimeLogIds = [];
     foreach ($rows as $row) {
         $assignmentId = (int) $row['assignment_id'];
         if (isset($assignments[$assignmentId])) {
@@ -723,9 +726,100 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
         $row['start_time_label'] = substr((string) $row['start_time'], 0, 5);
         $row['end_time_label'] = substr((string) $row['end_time'], 0, 5);
         $assignments[$assignmentId] = $row;
+        if (!empty($row['time_log_id'])) {
+            $coveredTimeLogIds[(int) $row['time_log_id']] = true;
+        }
     }
 
-    return array_values($assignments);
+    // --- Part 2: standalone time_logs (no schedule_assignment_id) — req. 3 ---
+    $hasAssignmentCol = app_column_exists($conn, 'time_logs', 'schedule_assignment_id');
+    $standaloneWhere = $hasAssignmentCol
+        ? "(tl.schedule_assignment_id IS NULL OR tl.schedule_assignment_id = 0)"
+        : "1 = 1";
+    $tlSourceSelect = app_column_exists($conn, 'time_logs', 'source') ? 'tl.source AS time_log_source,' : "NULL AS time_log_source,";
+    $tlStmt = $conn->prepare("
+        SELECT
+            tl.id,
+            tl.user_id,
+            tl.department_id,
+            tl.work_date,
+            tl.time_in,
+            tl.time_out,
+            tl.work_hours,
+            tl.note,
+            tl.status,
+            tl.checked_by,
+            tl.checked_at,
+            {$tlSourceSelect}
+            d.department_name
+        FROM time_logs tl
+        LEFT JOIN departments d ON d.id = tl.department_id
+        WHERE tl.user_id = ?
+          AND {$standaloneWhere}
+          AND tl.work_date BETWEEN ? AND ?
+        ORDER BY tl.work_date ASC, tl.time_in ASC, tl.id ASC
+    ");
+    $tlStmt->execute([$userId, $startDate, $endDate]);
+    $tlRows = $tlStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($tlRows as $tlRow) {
+        $tlId = (int) $tlRow['id'];
+        if (isset($coveredTimeLogIds[$tlId])) {
+            continue;
+        }
+        $timeIn = (string) ($tlRow['time_in'] ?? '');
+        $timeOut = (string) ($tlRow['time_out'] ?? '');
+        // time_in/time_out may be full datetime (Y-m-d H:i:s) or just time (H:i:s)
+        $startTimeLabel = strlen($timeIn) > 10 ? substr($timeIn, 11, 5) : (strlen($timeIn) >= 5 ? substr($timeIn, 0, 5) : '--:--');
+        $endTimeLabel   = strlen($timeOut) > 10 ? substr($timeOut, 11, 5) : (strlen($timeOut) >= 5 ? substr($timeOut, 0, 5) : '--:--');
+        $startTimeFull  = $startTimeLabel !== '--:--' ? $startTimeLabel . ':00' : '00:00:00';
+        $endTimeFull    = $endTimeLabel   !== '--:--' ? $endTimeLabel   . ':00' : '00:00:00';
+
+        $synthetic = [
+            'assignment_id'        => 0,
+            'schedule_id'          => 0,
+            'staff_id'             => (int) $tlRow['user_id'],
+            'assignment_status'    => 'standalone',
+            'role_note'            => '',
+            'department_id'        => (int) ($tlRow['department_id'] ?? 0),
+            'schedule_date'        => (string) $tlRow['work_date'],
+            'shift_type'           => 'custom',
+            'start_time'           => $startTimeFull,
+            'end_time'             => $endTimeFull,
+            'planned_hours'        => (float) $tlRow['work_hours'],
+            'schedule_status'      => 'standalone',
+            'schedule_note'        => '',
+            'department_name'      => (string) ($tlRow['department_name'] ?? '-'),
+            'time_log_id'          => $tlId,
+            'time_log_status'      => (string) ($tlRow['status'] ?? ''),
+            'time_log_total_hours' => (float) $tlRow['work_hours'],
+            'time_log_source'      => (string) ($tlRow['time_log_source'] ?? 'manual'),
+            'time_log_note'        => (string) ($tlRow['note'] ?? ''),
+            'time_log_checked_by'  => $tlRow['checked_by'] ?? null,
+            'time_log_checked_at'  => $tlRow['checked_at'] ?? null,
+            'time_log_time_in'     => $timeIn,
+            'time_log_time_out'    => $timeOut,
+            'staff_name'           => (string) ($_SESSION['fullname'] ?? ''),
+            'is_mine'              => true,
+        ];
+        $synthetic['status_meta']    = app_my_shift_status_meta($synthetic);
+        $synthetic['start_time_label'] = $startTimeLabel;
+        $synthetic['end_time_label']   = $endTimeLabel;
+        // Use prefixed string key to avoid clashing with real assignment integer keys
+        $assignments['tl_' . $tlId] = $synthetic;
+    }
+
+    // Re-sort merged result by date then start_time
+    $result = array_values($assignments);
+    usort($result, static function (array $a, array $b): int {
+        $d = strcmp((string) $a['schedule_date'], (string) $b['schedule_date']);
+        if ($d !== 0) {
+            return $d;
+        }
+        return strcmp((string) $a['start_time'], (string) $b['start_time']);
+    });
+
+    return $result;
 }
 
 function app_get_department_shift_assignments(PDO $conn, int $currentUserId, int $departmentId, int $month, int $year): array
