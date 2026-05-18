@@ -308,6 +308,7 @@ function app_notification_ui_state(?int $userId = null, int $limit = 6): array
     return [
         'unread_count' => app_get_unread_notification_count($conn, $safeUserId),
         'items' => app_get_recent_notifications($conn, $safeUserId, $safeLimit),
+        'sidebar_counts' => app_get_sidebar_notification_counts($conn, $safeUserId),
         'csrf' => app_csrf_token('notifications_ajax'),
     ];
 }
@@ -466,20 +467,38 @@ function app_dashboard_sidebar_sections(): array
 
 function render_dashboard_sidebar_links(string $currentPage): void
 {
+    global $conn;
+    $uiStateContext = app_ui_state_context();
+    $sidebarCounts = isset($conn) && $conn instanceof PDO
+        ? app_get_sidebar_notification_counts($conn, (int) $uiStateContext['user_id'])
+        : [];
+
     foreach (app_dashboard_sidebar_sections() as $section) {
         ?>
         <div class="dash-nav-section">
             <div class="dash-section-label"><?= htmlspecialchars($section['label']) ?></div>
             <div class="dash-nav-list">
                 <?php foreach ($section['items'] as $item): ?>
-                    <?php $isActive = $currentPage === $item['href']; ?>
+                    <?php
+                    $isActive = $currentPage === $item['href'];
+                    $sidebarKey = app_notification_sidebar_key_for_page((string) $item['href']);
+                    $badgeCount = $sidebarKey !== null ? (int) ($sidebarCounts[$sidebarKey] ?? 0) : 0;
+                    ?>
                     <a
                         class="dash-nav-link <?= $isActive ? 'active' : '' ?>"
                         href="<?= htmlspecialchars(app_nav_resolve_href($item['href'])) ?>"
+                        <?= $sidebarKey !== null ? 'data-notification-sidebar-link="' . htmlspecialchars($sidebarKey) . '"' : '' ?>
                         <?= $isActive ? 'aria-current="page"' : '' ?>
                     >
                         <span class="dash-nav-icon"><i class="bi <?= htmlspecialchars($item['icon']) ?>"></i></span>
                         <span class="dash-nav-text"><?= htmlspecialchars($item['label']) ?></span>
+                        <?php if ($sidebarKey !== null): ?>
+                            <span
+                                class="dash-nav-notification-badge <?= $badgeCount > 0 ? '' : 'd-none' ?>"
+                                data-notification-sidebar-badge="<?= htmlspecialchars($sidebarKey) ?>"
+                                <?= $badgeCount > 0 ? '' : 'hidden' ?>
+                            ><?= $badgeCount > 99 ? '99+' : (int) $badgeCount ?></span>
+                        <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -488,9 +507,21 @@ function render_dashboard_sidebar_links(string $currentPage): void
     }
 }
 
+function app_sidebar_notification_key_is_visible(string $moduleKey): bool
+{
+    foreach (app_nav_items() as $item) {
+        if (app_notification_sidebar_key_for_page((string) ($item['href'] ?? '')) === $moduleKey) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function render_dashboard_sidebar(string $currentPage, string $displayName, string $roleLabel, ?string $profileImageSrc = null): void
 {
     $uiStateContext = app_ui_state_context();
+    $pageNotificationKey = app_notification_sidebar_key_for_page($currentPage);
     ?>
     <script src="../assets/js/page-state.js"></script>
     <script src="../assets/js/dashboard-state.js"></script>
@@ -502,7 +533,10 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
     </script>
     <aside class="dash-sidebar" aria-label="เมนูหลัก"
            data-ui-user-id="<?= (int) $uiStateContext['user_id'] ?>"
-           data-ui-login-marker="<?= htmlspecialchars($uiStateContext['login_marker']) ?>">
+           data-ui-login-marker="<?= htmlspecialchars($uiStateContext['login_marker']) ?>"
+           data-notification-page-key="<?= htmlspecialchars((string) $pageNotificationKey) ?>"
+           data-notification-mark-module-url="../ajax/notifications/mark_module_read.php"
+           data-notification-csrf="<?= htmlspecialchars(app_csrf_token('notifications_ajax')) ?>">
         <div class="dash-sidebar-panel">
             <a href="dashboard.php" class="dash-sidebar-brand">
                 <span class="dash-sidebar-logo">

@@ -1245,6 +1245,15 @@
     @apply min-w-0 truncate;
   }
 
+  .dash-nav-notification-badge {
+    @apply ml-auto inline-grid min-h-5 min-w-5 shrink-0 place-items-center rounded-full border border-white bg-rose-500 px-1.5 text-[0.68rem] font-black leading-none text-white shadow-[0_8px_18px_rgba(239,63,95,0.22)];
+  }
+
+  .dash-nav-notification-badge.d-none,
+  .dash-nav-notification-badge[hidden] {
+    display: none !important;
+  }
+
   .dash-sidebar-user-card {
     @apply mt-4 rounded-[1.375rem] border border-white/75 bg-hospital-mist p-3.5;
   }

@@ -41,6 +41,51 @@
             + '</div>';
     }
 
+    function formatBadgeCount(count) {
+        const safeCount = Math.max(0, Number(count || 0));
+        return safeCount > 99 ? '99+' : String(safeCount);
+    }
+
+    function updateSidebarNotificationBadge(moduleKey, count) {
+        if (!moduleKey) {
+            return;
+        }
+
+        const safeCount = Math.max(0, Number(count || 0));
+        document.querySelectorAll('[data-notification-sidebar-badge="' + moduleKey + '"]').forEach(function (badge) {
+            badge.textContent = formatBadgeCount(safeCount);
+            badge.hidden = safeCount <= 0;
+            badge.classList.toggle('d-none', safeCount <= 0);
+        });
+    }
+
+    function updateSidebarNotificationBadges(counts) {
+        if (!counts || typeof counts !== 'object') {
+            return;
+        }
+
+        document.querySelectorAll('[data-notification-sidebar-badge]').forEach(function (badge) {
+            const moduleKey = badge.getAttribute('data-notification-sidebar-badge') || '';
+            updateSidebarNotificationBadge(moduleKey, counts[moduleKey] || 0);
+        });
+    }
+
+    function updateBellNotificationCount(count) {
+        const safeCount = Math.max(0, Number(count || 0));
+        document.querySelectorAll('[data-notification-root]').forEach(function (root) {
+            const toggle = root.querySelector('[data-notification-toggle]');
+            const countBadge = root.querySelector('[data-notification-count]');
+            if (!toggle || !countBadge) {
+                return;
+            }
+            countBadge.textContent = formatBadgeCount(safeCount);
+            countBadge.classList.toggle('d-none', safeCount <= 0);
+            countBadge.hidden = safeCount <= 0;
+            toggle.classList.toggle('has-unread', safeCount > 0);
+            toggle.classList.toggle('notification-bell--active', safeCount > 0);
+        });
+    }
+
     function initNotificationRoot(root, options) {
         if (!root || root.dataset.notificationReady === '1') {
             return;
@@ -78,6 +123,19 @@
             profile_updated_by_admin:     'profile.php',
             system_notice:                'notifications.php',
             report_ready:                 'my_reports.php',
+            monthly_schedule_published:   'my-shifts.php',
+            swap_request_created:         'shift-swap-requests.php',
+            swap_target_confirmed:        'shift-swap-requests.php',
+            swap_target_rejected:         'shift-swap-requests.php',
+            swap_manager_approved:        'shift-swap-requests.php',
+            swap_manager_rejected:        'shift-swap-requests.php',
+            swap_cancelled:               'shift-swap-requests.php',
+            shift_swap_request_created:   'shift-swap-requests.php',
+            shift_swap_target_confirmed:  'shift-swap-requests.php',
+            shift_swap_target_rejected:   'shift-swap-requests.php',
+            shift_swap_manager_approved:  'shift-swap-requests.php',
+            shift_swap_manager_rejected:  'shift-swap-requests.php',
+            shift_swap_cancelled:         'shift-swap-requests.php',
         };
         const FALLBACK_URL = 'notifications.php';
 
@@ -93,7 +151,7 @@
 
         function setCount(count) {
             const safeCount = Math.max(0, Number(count || 0));
-            countBadge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+            countBadge.textContent = formatBadgeCount(safeCount);
             countBadge.classList.toggle('d-none', safeCount <= 0);
             countBadge.hidden = safeCount <= 0;
             toggle.classList.toggle('has-unread', safeCount > 0);
@@ -141,6 +199,7 @@
                 if (response.ok && payload.success) {
                     renderItems(payload.items || []);
                     setCount(payload.unread_count || 0);
+                    updateSidebarNotificationBadges(payload.sidebar_counts || {});
                 }
             } catch (error) {
                 list.innerHTML = '<div class="notification-empty notification-empty--error">ไม่สามารถโหลดการแจ้งเตือนได้</div>';
@@ -161,6 +220,7 @@
                 const payload = await response.json();
                 if (response.ok && payload.success) {
                     setCount(payload.count || 0);
+                    updateSidebarNotificationBadges(payload.sidebar_counts || {});
                 }
             } catch (error) {
                 // Keep the topbar quiet when polling fails.
@@ -191,6 +251,7 @@
                 const payload = await response.json();
                 if (response.ok && payload.success) {
                     setCount(payload.unread_count || 0);
+                    updateSidebarNotificationBadges(payload.sidebar_counts || {});
                     return true;
                 }
             } catch (error) {
@@ -223,6 +284,7 @@
                 const payload = await response.json();
                 if (response.ok && payload.success) {
                     setCount(payload.unread_count || 0);
+                    updateSidebarNotificationBadges(payload.sidebar_counts || {});
                     await fetchRecent();
                 }
             } catch (error) {
@@ -313,9 +375,57 @@
         roots.forEach(function (root) {
             initNotificationRoot(root, options);
         });
+        initPageNotificationReadTracking();
     }
 
-    window.AppNotifications = { init: initNotifications };
+    async function initPageNotificationReadTracking() {
+        const pageRoot = document.querySelector('[data-notification-page-key][data-notification-mark-module-url]');
+        if (!pageRoot || pageRoot.dataset.notificationPageReadReady === '1') {
+            return;
+        }
+
+        const moduleKey = pageRoot.getAttribute('data-notification-page-key') || '';
+        const endpoint = pageRoot.getAttribute('data-notification-mark-module-url') || '';
+        const csrfToken = pageRoot.getAttribute('data-notification-csrf') || '';
+        if (!moduleKey || !endpoint) {
+            return;
+        }
+
+        pageRoot.dataset.notificationPageReadReady = '1';
+
+        const body = new URLSearchParams();
+        body.set('module', moduleKey);
+        if (csrfToken) {
+            body.set('_csrf', csrfToken);
+        }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body.toString()
+            });
+            const payload = await response.json();
+            if (response.ok && payload.success) {
+                updateSidebarNotificationBadges(payload.sidebar_counts || {});
+                updateBellNotificationCount(payload.unread_count || 0);
+            }
+        } catch (error) {
+            if (window.console && typeof window.console.warn === 'function') {
+                window.console.warn('Unable to mark page notifications as read.', error);
+            }
+        }
+    }
+
+    window.AppNotifications = {
+        init: initNotifications,
+        updateSidebarNotificationBadge: updateSidebarNotificationBadge,
+        updateSidebarNotificationBadges: updateSidebarNotificationBadges,
+        updateBellNotificationCount: updateBellNotificationCount
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {

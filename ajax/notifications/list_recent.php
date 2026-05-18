@@ -13,4 +13,5 @@ ajax_json([
     'success' => true,
     'items' => app_get_recent_notifications($conn, $userId, $limit),
     'unread_count' => app_get_unread_notification_count($conn, $userId),
+    'sidebar_counts' => app_get_sidebar_notification_counts($conn, $userId),
 ]);

@@ -982,6 +982,181 @@ function app_notification_present(array $row): array
     ];
 }
 
+function app_notification_sidebar_mapping(): array
+{
+    return [
+        'time' => [
+            'pages' => ['time.php'],
+            'types' => ['approval_completed', 'attendance_log_returned'],
+            'entity_types' => ['time_log'],
+            'url_contains' => ['time.php'],
+        ],
+        'my_shifts' => [
+            'pages' => ['my-shifts.php'],
+            'types' => ['monthly_schedule_published', 'my_shift', 'shift_assignment', 'schedule_published'],
+            'entity_types' => ['monthly_schedule', 'shift_assignment'],
+            'url_contains' => ['my-shifts.php'],
+        ],
+        'shift_swaps' => [
+            'pages' => ['shift-swap-requests.php'],
+            'types' => [
+                'swap_request_created',
+                'swap_target_confirmed',
+                'swap_target_rejected',
+                'swap_manager_approved',
+                'swap_manager_rejected',
+                'swap_cancelled',
+                'shift_swap_request_created',
+                'shift_swap_target_confirmed',
+                'shift_swap_target_rejected',
+                'shift_swap_manager_approved',
+                'shift_swap_manager_rejected',
+                'shift_swap_cancelled',
+            ],
+            'entity_types' => ['shift_swap_request'],
+            'url_contains' => ['shift-swap-requests.php'],
+        ],
+        'review' => [
+            'pages' => ['approval_queue.php'],
+            'types' => ['approval_queue_pending', 'approval_queue_ready', 'reviewer_queue_pending_summary'],
+            'entity_types' => ['approval_queue'],
+            'url_contains' => ['approval_queue.php'],
+        ],
+        'today' => [
+            'pages' => ['daily_schedule.php'],
+            'types' => ['today_shift', 'shift_today', 'assigned_today'],
+            'entity_types' => ['daily_schedule', 'today_shift'],
+            'url_contains' => ['daily_schedule.php'],
+        ],
+        'shift_schedules' => [
+            'pages' => ['shift_schedules.php'],
+            'types' => ['monthly_schedule', 'schedule_publish', 'schedule_management'],
+            'entity_types' => ['shift_schedule_management'],
+            'url_contains' => ['shift_schedules.php'],
+        ],
+        'my_reports' => [
+            'pages' => ['my_reports.php'],
+            'types' => ['report_ready', 'export_or_report_job_completed'],
+            'entity_types' => ['report_job'],
+            'url_contains' => ['my_reports.php'],
+        ],
+        'department_reports' => [
+            'pages' => ['department_reports.php'],
+            'types' => ['department_report', 'department_report_ready'],
+            'entity_types' => ['department_report'],
+            'url_contains' => ['department_reports.php'],
+        ],
+    ];
+}
+
+function app_notification_sidebar_key_for_page(string $page): ?string
+{
+    $page = strtolower(trim(basename(parse_url($page, PHP_URL_PATH) ?: $page)));
+    if ($page === '') {
+        return null;
+    }
+
+    foreach (app_notification_sidebar_mapping() as $key => $rule) {
+        if (in_array($page, array_map('strtolower', $rule['pages'] ?? []), true)) {
+            return $key;
+        }
+    }
+
+    return null;
+}
+
+function app_notification_sidebar_key_for_row(array $row): ?string
+{
+    $type = strtolower((string) ($row['type'] ?? ''));
+    $entityType = strtolower((string) ($row['target_entity_type'] ?? ''));
+    $targetUrl = strtolower((string) ($row['target_url'] ?? ''));
+    $targetPage = strtolower(basename(parse_url($targetUrl, PHP_URL_PATH) ?: $targetUrl));
+
+    foreach (app_notification_sidebar_mapping() as $key => $rule) {
+        if ($type !== '' && in_array($type, array_map('strtolower', $rule['types'] ?? []), true)) {
+            return $key;
+        }
+        if ($entityType !== '' && in_array($entityType, array_map('strtolower', $rule['entity_types'] ?? []), true)) {
+            return $key;
+        }
+        if ($targetPage !== '' && in_array($targetPage, array_map('strtolower', $rule['pages'] ?? []), true)) {
+            return $key;
+        }
+        foreach ($rule['url_contains'] ?? [] as $needle) {
+            if ($needle !== '' && $targetUrl !== '' && strpos($targetUrl, strtolower($needle)) !== false) {
+                return $key;
+            }
+        }
+    }
+
+    return null;
+}
+
+function app_get_sidebar_notification_counts(PDO $conn, int $userId): array
+{
+    if (!app_notifications_available($conn) || $userId <= 0) {
+        return [];
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, target_url, target_entity_type, target_entity_id, metadata_json
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+    ");
+    $stmt->execute([$userId]);
+
+    $counts = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        $key = app_notification_sidebar_key_for_row($row);
+        if ($key === null) {
+            continue;
+        }
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+
+    return $counts;
+}
+
+function app_mark_notifications_read_for_sidebar_key(PDO $conn, int $userId, string $moduleKey): int
+{
+    $moduleKey = trim($moduleKey);
+    if (!app_notifications_available($conn) || $userId <= 0 || !isset(app_notification_sidebar_mapping()[$moduleKey])) {
+        return 0;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, target_url, target_entity_type, target_entity_id, metadata_json
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+    ");
+    $stmt->execute([$userId]);
+
+    $ids = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        if (app_notification_sidebar_key_for_row($row) === $moduleKey) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $updated = 0;
+    foreach (array_chunk($ids, 100) as $chunk) {
+        $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+        $update = $conn->prepare("
+            UPDATE notifications
+            SET is_read = 1, read_at = COALESCE(read_at, NOW())
+            WHERE user_id = ? AND is_read = 0 AND id IN ({$placeholders})
+        ");
+        $update->execute(array_merge([$userId], $chunk));
+        $updated += (int) $update->rowCount();
+    }
+
+    return $updated;
+}
+
 /**
  * Notify every staff member who has at least one published shift assignment in
  * the given department/month/year.

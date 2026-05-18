@@ -11,4 +11,5 @@ if (app_can('can_approve_logs')) {
 ajax_json([
     'success' => true,
     'count' => app_get_unread_notification_count($conn, $userId),
+    'sidebar_counts' => app_get_sidebar_notification_counts($conn, $userId),
 ]);
