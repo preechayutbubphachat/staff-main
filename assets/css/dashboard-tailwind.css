@@ -877,12 +877,42 @@
   }
 
   .notification-focus-highlight {
-    outline: 2px solid rgba(244, 63, 94, .58);
-    outline-offset: 4px;
-    background: rgba(255, 241, 242, .92) !important;
-    box-shadow: 0 0 0 6px rgba(244, 63, 94, .09), 0 18px 48px rgba(15, 23, 42, .12);
+    position: relative;
+    outline: 3px solid rgba(244, 63, 94, .68);
+    outline-offset: 5px;
+    background: rgba(255, 241, 242, .96) !important;
+    box-shadow: 0 0 0 8px rgba(244, 63, 94, .11), 0 22px 54px rgba(15, 23, 42, .16);
     animation: notification-focus-pulse 1.05s ease-in-out 0s 3;
     transition: background-color .45s ease, box-shadow .45s ease, outline-color .45s ease;
+  }
+
+  .notification-focus-note {
+    position: absolute;
+    top: -0.85rem;
+    right: 1rem;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(244, 63, 94, .28);
+    background: #fff1f2;
+    color: #be123c;
+    padding: .25rem .6rem;
+    font-size: .72rem;
+    font-weight: 800;
+    box-shadow: 0 10px 24px rgba(244, 63, 94, .14);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .notification-focus-note::before {
+    content: "";
+    width: .45rem;
+    height: .45rem;
+    border-radius: 999px;
+    background: #f43f5e;
+    box-shadow: 0 0 0 4px rgba(244, 63, 94, .12);
   }
 
   .notification-focus-highlight.is-fading {
@@ -915,16 +945,16 @@
 
 @keyframes notification-focus-pulse {
   0% {
-    outline-color: rgba(244, 63, 94, .36);
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, .16), 0 18px 48px rgba(15, 23, 42, .10);
+    outline-color: rgba(244, 63, 94, .42);
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, .18), 0 18px 48px rgba(15, 23, 42, .10);
   }
   50% {
-    outline-color: rgba(244, 63, 94, .72);
-    box-shadow: 0 0 0 9px rgba(244, 63, 94, .10), 0 18px 48px rgba(15, 23, 42, .14);
+    outline-color: rgba(244, 63, 94, .82);
+    box-shadow: 0 0 0 12px rgba(244, 63, 94, .13), 0 20px 52px rgba(15, 23, 42, .16);
   }
   100% {
-    outline-color: rgba(244, 63, 94, .48);
-    box-shadow: 0 0 0 3px rgba(244, 63, 94, .08), 0 18px 48px rgba(15, 23, 42, .12);
+    outline-color: rgba(244, 63, 94, .56);
+    box-shadow: 0 0 0 5px rgba(244, 63, 94, .10), 0 18px 48px rgba(15, 23, 42, .13);
   }
 }
 

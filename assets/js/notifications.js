@@ -491,7 +491,7 @@
         };
     }
 
-    function findNotificationFocusElement(moduleKey, target) {
+    function resolveNotificationFocusElement(moduleKey, target) {
         if (!moduleKey || !target) {
             return null;
         }
@@ -500,7 +500,7 @@
             try {
                 const bySelector = document.querySelector(target.selector);
                 if (bySelector) {
-                    return bySelector;
+                    return { element: bySelector, exact: true };
                 }
             } catch (error) {
                 if (window.console && typeof window.console.warn === 'function') {
@@ -514,11 +514,26 @@
                 '[data-notification-module="' + moduleKey + '"][data-notification-section="' + target.section + '"]'
             );
             if (bySection) {
-                return bySection;
+                return { element: bySection, exact: false };
             }
         }
 
-        return document.querySelector('[data-notification-module="' + moduleKey + '"]');
+        const byModule = document.querySelector('[data-notification-module="' + moduleKey + '"]');
+        return byModule ? { element: byModule, exact: false } : null;
+    }
+
+    function showNotificationFocusNote(element, exact) {
+        const existing = element.querySelector(':scope > [data-notification-focus-note]');
+        const note = existing || document.createElement('span');
+        note.setAttribute('data-notification-focus-note', '1');
+        note.className = 'notification-focus-note';
+        note.textContent = exact
+            ? 'รายการจากแจ้งเตือน'
+            : 'มีแจ้งเตือนในหมวดนี้';
+        if (!existing) {
+            element.appendChild(note);
+        }
+        return note;
     }
 
     function highlightNotificationTarget(moduleKey, target) {
@@ -526,23 +541,42 @@
             return false;
         }
 
-        const element = findNotificationFocusElement(moduleKey, target);
-        if (!element) {
+        const resolved = resolveNotificationFocusElement(moduleKey, target);
+        if (!resolved || !resolved.element) {
             return false;
         }
 
+        const element = resolved.element;
         rememberNotificationHighlight(moduleKey, target);
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         element.classList.remove('is-fading');
         element.classList.add('notification-focus-highlight');
+        const note = showNotificationFocusNote(element, resolved.exact);
         window.setTimeout(function () {
             element.classList.add('is-fading');
             window.setTimeout(function () {
                 element.classList.remove('notification-focus-highlight', 'is-fading');
+                if (note && note.parentNode === element) {
+                    note.parentNode.removeChild(note);
+                }
             }, 700);
         }, 7800);
 
         return true;
+    }
+
+    function highlightFirstAvailableTarget(moduleKey, targets) {
+        if (!Array.isArray(targets)) {
+            return false;
+        }
+
+        for (let i = 0; i < targets.length; i += 1) {
+            if (highlightNotificationTarget(moduleKey, targets[i])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     async function fetchNotificationTargets(endpoint, moduleKey, csrfToken) {
@@ -606,7 +640,7 @@
         if (!highlighted) {
             const targets = await fetchNotificationTargets(targetsEndpoint, moduleKey, csrfToken);
             if (targets.length) {
-                highlightNotificationTarget(moduleKey, targets[0]);
+                highlightFirstAvailableTarget(moduleKey, targets);
             }
         }
 
