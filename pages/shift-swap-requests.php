@@ -110,7 +110,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         </button>
     </header>
 
-    <div class="shift-swap-frame">
+    <div class="shift-swap-frame" data-notification-module="shift_swaps">
         <?php if ($flash !== ''): ?>
             <div class="alert alert-<?= htmlspecialchars($flashType) ?> rounded-4 border-0 shadow-sm" role="alert">
                 <?= htmlspecialchars($flash) ?>
@@ -131,7 +131,9 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
             </div>
         </section>
 
-        <section class="shift-swap-create-card">
+        <section class="shift-swap-create-card"
+                 data-notification-module="shift_swaps"
+                 data-notification-section="create">
             <div class="shift-swap-card-head">
                 <div>
                     <h3>ขอแลกเวร</h3>
@@ -173,14 +175,21 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         </section>
 
         <section class="shift-swap-grid">
-            <div class="shift-swap-panel" id="sent">
+            <div class="shift-swap-panel"
+                 id="sent"
+                 data-notification-module="shift_swaps"
+                 data-notification-section="sent">
                 <div class="shift-swap-card-head"><h3>คำขอที่ฉันส่ง</h3></div>
                 <?php if (!$activeSentRows): ?>
                     <div class="shift-swap-empty">ยังไม่มีคำขอที่กำลังดำเนินการ</div>
                 <?php endif; ?>
                 <?php foreach ($activeSentRows as $row): ?>
                     <?php $meta = $row['status_meta']; ?>
-                    <article class="shift-swap-request-card">
+                    <article class="shift-swap-request-card"
+                             data-notification-module="shift_swaps"
+                             data-notification-section="sent"
+                             data-swap-request-id="<?= (int) $row['id'] ?>"
+                             data-notification-target="shift-swap-request-<?= (int) $row['id'] ?>">
                         <div class="shift-swap-request-top">
                             <span class="shift-swap-status is-<?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
                             <strong>#<?= (int) $row['id'] ?></strong>
@@ -199,13 +208,20 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                 <?php endforeach; ?>
             </div>
 
-            <div class="shift-swap-panel" id="incoming">
+            <div class="shift-swap-panel"
+                 id="incoming"
+                 data-notification-module="shift_swaps"
+                 data-notification-section="incoming">
                 <div class="shift-swap-card-head"><h3>รอฉันยืนยัน</h3></div>
                 <?php if (!$incomingRows): ?>
                     <div class="shift-swap-empty">ยังไม่มีคำขอที่รอคุณยืนยัน</div>
                 <?php endif; ?>
                 <?php foreach ($incomingRows as $row): ?>
-                    <article class="shift-swap-request-card">
+                    <article class="shift-swap-request-card"
+                             data-notification-module="shift_swaps"
+                             data-notification-section="incoming"
+                             data-swap-request-id="<?= (int) $row['id'] ?>"
+                             data-notification-target="shift-swap-request-<?= (int) $row['id'] ?>">
                         <div class="shift-swap-request-top">
                             <span class="shift-swap-status is-pending-target">รอคุณยืนยัน</span>
                             <strong>#<?= (int) $row['id'] ?></strong>
@@ -228,7 +244,10 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         </section>
 
         <?php if ($managerRows): ?>
-            <section class="shift-swap-panel shift-swap-manager-panel" id="manager">
+            <section class="shift-swap-panel shift-swap-manager-panel"
+                     id="manager"
+                     data-notification-module="shift_swaps"
+                     data-notification-section="manager">
                 <div class="shift-swap-card-head">
                     <div>
                         <h3>คำขอแลกเวรรออนุมัติ</h3>
@@ -236,7 +255,11 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                     </div>
                 </div>
                 <?php foreach ($managerRows as $row): ?>
-                    <article class="shift-swap-request-card">
+                    <article class="shift-swap-request-card"
+                             data-notification-module="shift_swaps"
+                             data-notification-section="manager"
+                             data-swap-request-id="<?= (int) $row['id'] ?>"
+                             data-notification-target="shift-swap-request-<?= (int) $row['id'] ?>">
                         <div class="shift-swap-request-top">
                             <span class="shift-swap-status is-pending-manager">รออนุมัติ</span>
                             <strong>#<?= (int) $row['id'] ?> · <?= htmlspecialchars((string) ($row['department_name'] ?? '-')) ?></strong>
@@ -261,14 +284,21 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
             </section>
         <?php endif; ?>
 
-        <section class="shift-swap-panel" id="history">
+        <section class="shift-swap-panel"
+                 id="history"
+                 data-notification-module="shift_swaps"
+                 data-notification-section="history">
             <div class="shift-swap-card-head"><h3>ประวัติคำขอของฉัน</h3></div>
             <?php if (!$historyRows): ?>
                 <div class="shift-swap-empty">ยังไม่มีประวัติคำขอที่จบแล้ว</div>
             <?php endif; ?>
             <?php foreach ($historyRows as $row): ?>
                 <?php $meta = $row['status_meta']; ?>
-                <article class="shift-swap-history-row">
+                <article class="shift-swap-history-row"
+                         data-notification-module="shift_swaps"
+                         data-notification-section="history"
+                         data-swap-request-id="<?= (int) $row['id'] ?>"
+                         data-notification-target="shift-swap-request-<?= (int) $row['id'] ?>">
                     <span class="shift-swap-status is-<?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
                     <strong>#<?= (int) $row['id'] ?></strong>
                     <span><?= htmlspecialchars($row['target_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></span>

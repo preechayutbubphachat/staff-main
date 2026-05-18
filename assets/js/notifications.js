@@ -378,6 +378,168 @@
         initPageNotificationReadTracking();
     }
 
+    function notificationHighlightStorageKey(moduleKey, target) {
+        const targetKey = target && target.notification_id
+            ? 'notification-' + target.notification_id
+            : [
+                target && target.target_type ? target.target_type : 'section',
+                target && target.target_id ? target.target_id : (target && target.section ? target.section : 'module')
+            ].join('-');
+
+        return 'notification-focus:' + window.location.pathname + ':' + moduleKey + ':' + targetKey;
+    }
+
+    function hasShownNotificationHighlight(moduleKey, target) {
+        try {
+            return window.sessionStorage.getItem(notificationHighlightStorageKey(moduleKey, target)) === '1';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function rememberNotificationHighlight(moduleKey, target) {
+        try {
+            window.sessionStorage.setItem(notificationHighlightStorageKey(moduleKey, target), '1');
+        } catch (error) {
+            // sessionStorage can be blocked; highlighting still works for this page load.
+        }
+    }
+
+    function clearNotificationFocusParams() {
+        const url = new URL(window.location.href);
+        const params = ['highlight', 'notification_id', 'request_id', 'swap_request_id', 'focus'];
+        let changed = false;
+        params.forEach(function (param) {
+            if (url.searchParams.has(param)) {
+                url.searchParams.delete(param);
+                changed = true;
+            }
+        });
+        if (changed && window.history && typeof window.history.replaceState === 'function') {
+            window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        }
+    }
+
+    function buildTargetFromUrl(moduleKey) {
+        const params = new URLSearchParams(window.location.search || '');
+        const highlightId = params.get('highlight') || params.get('swap_request_id') || params.get('request_id');
+        const notificationId = params.get('notification_id') || '';
+
+        if (!highlightId && !notificationId) {
+            return null;
+        }
+
+        const numericTarget = Number(highlightId || 0);
+        if (moduleKey === 'shift_swaps' && numericTarget > 0) {
+            return {
+                notification_id: notificationId ? Number(notificationId) : 0,
+                module: moduleKey,
+                target_type: 'shift_swap_request',
+                target_id: numericTarget,
+                section: 'history',
+                selector: '[data-notification-target="shift-swap-request-' + numericTarget + '"]'
+            };
+        }
+
+        return {
+            notification_id: notificationId ? Number(notificationId) : 0,
+            module: moduleKey,
+            target_type: 'module',
+            target_id: null,
+            section: moduleKey,
+            selector: ''
+        };
+    }
+
+    function findNotificationFocusElement(moduleKey, target) {
+        if (!moduleKey || !target) {
+            return null;
+        }
+
+        if (target.selector) {
+            try {
+                const bySelector = document.querySelector(target.selector);
+                if (bySelector) {
+                    return bySelector;
+                }
+            } catch (error) {
+                if (window.console && typeof window.console.warn === 'function') {
+                    window.console.warn('Invalid notification target selector.', error);
+                }
+            }
+        }
+
+        if (target.section) {
+            const bySection = document.querySelector(
+                '[data-notification-module="' + moduleKey + '"][data-notification-section="' + target.section + '"]'
+            );
+            if (bySection) {
+                return bySection;
+            }
+        }
+
+        return document.querySelector('[data-notification-module="' + moduleKey + '"]');
+    }
+
+    function highlightNotificationTarget(moduleKey, target) {
+        if (!moduleKey || !target || hasShownNotificationHighlight(moduleKey, target)) {
+            return false;
+        }
+
+        const element = findNotificationFocusElement(moduleKey, target);
+        if (!element) {
+            return false;
+        }
+
+        rememberNotificationHighlight(moduleKey, target);
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.remove('is-fading');
+        element.classList.add('notification-focus-highlight');
+        window.setTimeout(function () {
+            element.classList.add('is-fading');
+            window.setTimeout(function () {
+                element.classList.remove('notification-focus-highlight', 'is-fading');
+            }, 700);
+        }, 7800);
+
+        return true;
+    }
+
+    async function fetchNotificationTargets(endpoint, moduleKey, csrfToken) {
+        if (!endpoint || !moduleKey) {
+            return [];
+        }
+
+        const body = new URLSearchParams();
+        body.set('module', moduleKey);
+        if (csrfToken) {
+            body.set('_csrf', csrfToken);
+        }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body.toString()
+            });
+            const payload = await response.json();
+            if (response.ok && payload.success) {
+                updateSidebarNotificationBadges(payload.sidebar_counts || {});
+                updateBellNotificationCount(payload.unread_count || 0);
+                return Array.isArray(payload.targets) ? payload.targets : [];
+            }
+        } catch (error) {
+            if (window.console && typeof window.console.warn === 'function') {
+                window.console.warn('Unable to fetch notification focus targets.', error);
+            }
+        }
+
+        return [];
+    }
+
     async function initPageNotificationReadTracking() {
         const pageRoot = document.querySelector('[data-notification-page-key][data-notification-mark-module-url]');
         if (!pageRoot || pageRoot.dataset.notificationPageReadReady === '1') {
@@ -386,12 +548,27 @@
 
         const moduleKey = pageRoot.getAttribute('data-notification-page-key') || '';
         const endpoint = pageRoot.getAttribute('data-notification-mark-module-url') || '';
+        const targetsEndpoint = pageRoot.getAttribute('data-notification-targets-url') || '';
         const csrfToken = pageRoot.getAttribute('data-notification-csrf') || '';
         if (!moduleKey || !endpoint) {
             return;
         }
 
         pageRoot.dataset.notificationPageReadReady = '1';
+
+        const urlTarget = buildTargetFromUrl(moduleKey);
+        let highlighted = false;
+        if (urlTarget) {
+            highlighted = highlightNotificationTarget(moduleKey, urlTarget);
+            clearNotificationFocusParams();
+        }
+
+        if (!highlighted) {
+            const targets = await fetchNotificationTargets(targetsEndpoint, moduleKey, csrfToken);
+            if (targets.length) {
+                highlightNotificationTarget(moduleKey, targets[0]);
+            }
+        }
 
         const body = new URLSearchParams();
         body.set('module', moduleKey);

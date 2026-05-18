@@ -1117,6 +1117,128 @@ function app_get_sidebar_notification_counts(PDO $conn, int $userId): array
     return $counts;
 }
 
+function app_notification_target_section_for_row(array $row, string $moduleKey): string
+{
+    $type = strtolower((string) ($row['type'] ?? ''));
+
+    if ($moduleKey === 'shift_swaps') {
+        if (strpos($type, 'request_created') !== false) {
+            return 'incoming';
+        }
+        if (strpos($type, 'target_confirmed') !== false) {
+            return 'manager';
+        }
+        if (
+            strpos($type, 'target_rejected') !== false
+            || strpos($type, 'manager_approved') !== false
+            || strpos($type, 'manager_rejected') !== false
+            || strpos($type, 'cancelled') !== false
+        ) {
+            return 'history';
+        }
+
+        return 'sent';
+    }
+
+    return $moduleKey;
+}
+
+function app_notification_target_id_from_row(array $row): ?int
+{
+    $entityId = isset($row['target_entity_id']) ? (int) $row['target_entity_id'] : 0;
+    if ($entityId > 0) {
+        return $entityId;
+    }
+
+    $metadata = app_notification_decode_metadata($row['metadata_json'] ?? null);
+    foreach (['swap_request_id', 'request_id', 'target_id'] as $key) {
+        $value = isset($metadata[$key]) ? (int) $metadata[$key] : 0;
+        if ($value > 0) {
+            return $value;
+        }
+    }
+
+    $targetUrl = (string) ($row['target_url'] ?? '');
+    $query = parse_url($targetUrl, PHP_URL_QUERY);
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $params);
+        foreach (['highlight', 'swap_request_id', 'request_id'] as $key) {
+            $value = isset($params[$key]) ? (int) $params[$key] : 0;
+            if ($value > 0) {
+                return $value;
+            }
+        }
+    }
+
+    return null;
+}
+
+function app_notification_focus_target_for_row(array $row): ?array
+{
+    $moduleKey = app_notification_sidebar_key_for_row($row);
+    if ($moduleKey === null) {
+        return null;
+    }
+
+    $targetId = app_notification_target_id_from_row($row);
+    $section = app_notification_target_section_for_row($row, $moduleKey);
+    $targetType = (string) ($row['target_entity_type'] ?? '');
+    $selector = null;
+
+    if ($moduleKey === 'shift_swaps' && $targetId !== null) {
+        $targetType = $targetType !== '' ? $targetType : 'shift_swap_request';
+        $selector = '[data-notification-target="shift-swap-request-' . $targetId . '"]';
+    }
+
+    return [
+        'notification_id' => (int) ($row['id'] ?? 0),
+        'module' => $moduleKey,
+        'target_type' => $targetType,
+        'target_id' => $targetId,
+        'section' => $section,
+        'selector' => $selector,
+        'target_url' => (string) ($row['target_url'] ?? ''),
+        'message' => (string) ($row['message'] ?? ''),
+        'created_at' => (string) ($row['created_at'] ?? ''),
+    ];
+}
+
+function app_get_unread_notification_targets_for_sidebar_key(PDO $conn, int $userId, string $moduleKey, int $limit = 5): array
+{
+    $moduleKey = trim($moduleKey);
+    if (!app_notifications_available($conn) || $userId <= 0 || !isset(app_notification_sidebar_mapping()[$moduleKey])) {
+        return [];
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, message, target_url, target_entity_type, target_entity_id, metadata_json, created_at
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+        ORDER BY created_at DESC, id DESC
+        LIMIT 100
+    ");
+    $stmt->execute([$userId]);
+
+    $targets = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        if (app_notification_sidebar_key_for_row($row) !== $moduleKey) {
+            continue;
+        }
+
+        $target = app_notification_focus_target_for_row($row);
+        if ($target === null) {
+            continue;
+        }
+
+        $targets[] = $target;
+        if (count($targets) >= max(1, $limit)) {
+            break;
+        }
+    }
+
+    return $targets;
+}
+
 function app_mark_notifications_read_for_sidebar_key(PDO $conn, int $userId, string $moduleKey): int
 {
     $moduleKey = trim($moduleKey);

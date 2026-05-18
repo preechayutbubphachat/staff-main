@@ -536,6 +536,7 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
            data-ui-login-marker="<?= htmlspecialchars($uiStateContext['login_marker']) ?>"
            data-notification-page-key="<?= htmlspecialchars((string) $pageNotificationKey) ?>"
            data-notification-mark-module-url="../ajax/notifications/mark_module_read.php"
+           data-notification-targets-url="../ajax/notifications/module_targets.php"
            data-notification-csrf="<?= htmlspecialchars(app_csrf_token('notifications_ajax')) ?>">
         <div class="dash-sidebar-panel">
             <a href="dashboard.php" class="dash-sidebar-brand">
