@@ -7,6 +7,9 @@ require_once __DIR__ . '/../includes/shift_swap_service.php';
 
 app_require_login();
 
+// Detect fetch/XHR request (from JS confirm modal) — respond JSON instead of redirect
+$isFetchRequest = (string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'fetch';
+
 $currentUserId = (int) ($_SESSION['id'] ?? 0);
 $redirect = '../pages/shift-swap-requests.php';
 $returnToMyShifts = (string) ($_POST['return_to'] ?? '') === 'my-shifts';
@@ -44,6 +47,13 @@ try {
         (int) ($_POST['target_assignment_id'] ?? 0),
         (string) ($_POST['reason'] ?? '')
     );
+
+    if ($isFetchRequest) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true, 'message' => $result['message']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     if ($returnToMyShifts) {
         $_SESSION['my_shifts_flash'] = $result['message'];
         $_SESSION['my_shifts_flash_type'] = 'success';
@@ -52,6 +62,13 @@ try {
         $_SESSION['shift_swap_flash_type'] = 'success';
     }
 } catch (Throwable $e) {
+    if ($isFetchRequest) {
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     if ($returnToMyShifts) {
         $_SESSION['my_shifts_flash'] = $e->getMessage();
         $_SESSION['my_shifts_flash_type'] = 'danger';

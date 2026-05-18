@@ -403,8 +403,6 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                     $dayHasMine = (bool) array_filter($dayAssignments, static function (array $assignment): bool {
                         return !empty($assignment['is_mine']);
                     });
-                    $visibleDayAssignments = array_slice($dayAssignments, 0, 3);
-                    $hiddenDayAssignmentCount = max(0, count($dayAssignments) - count($visibleDayAssignments));
                     ?>
                     <article class="my-shifts-day <?= $date === $today ? 'is-today' : '' ?> <?= $dayAssignments ? 'has-shift' : '' ?> <?= $dayHasMine ? 'has-my-shift' : '' ?>">
                         <div class="my-shifts-day-head">
@@ -414,7 +412,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                         <?php if (!$dayAssignments): ?>
                             <div class="my-shifts-day-empty">ไม่มีเวร</div>
                         <?php endif; ?>
-                        <?php foreach ($visibleDayAssignments as $assignment): ?>
+                        <?php if ($dayAssignments): ?>
+                        <div class="my-shifts-day-scroll">
+                        <?php foreach ($dayAssignments as $assignment): ?>
                             <?php
                             $statusMeta = $assignment['status_meta'];
                             $swapTargetMeta = $assignment['swap_target_meta'] ?? ['can' => false, 'reason' => ''];
@@ -432,24 +432,52 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                             </button>
                             <?php if ($swapSelectionMode): ?>
                                 <?php if (!empty($swapTargetMeta['can'])): ?>
-                                    <form method="post" action="../actions/create-shift-swap-request.php" class="my-shift-swap-action">
-                                        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($swapCsrfToken) ?>">
-                                        <input type="hidden" name="requester_assignment_id" value="<?= (int) $swapSourceId ?>">
-                                        <input type="hidden" name="target_assignment_id" value="<?= (int) $assignment['assignment_id'] ?>">
-                                        <input type="hidden" name="reason" value="ขอแลกเวรจากหน้าเวรของฉัน">
-                                        <input type="hidden" name="return_to" value="my-shifts">
-                                        <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
-                                        <input type="hidden" name="year" value="<?= (int) $selectedYearBe ?>">
-                                        <input type="hidden" name="display" value="<?= htmlspecialchars($display) ?>">
-                                        <button type="submit"><i class="bi bi-arrow-left-right"></i> ขอแลกเวร</button>
-                                    </form>
+                                    <?php
+                                    // Build target payload for JS confirm modal
+                                    $targetPayloadJson = htmlspecialchars(json_encode([
+                                        'assignmentId'   => (int) $assignment['assignment_id'],
+                                        'staffName'      => (string) ($assignment['staff_name'] ?? ''),
+                                        'date'           => app_format_thai_date((string) $assignment['schedule_date'], true),
+                                        'dateRaw'        => (string) $assignment['schedule_date'],
+                                        'shiftLabel'     => (string) ($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']),
+                                        'timeRange'      => (string) $assignment['start_time_label'] . '-' . (string) $assignment['end_time_label'],
+                                        'hours'          => number_format((float) $assignment['planned_hours'], 2),
+                                        'department'     => (string) ($assignment['department_name'] ?? '-'),
+                                        'statusLabel'    => (string) ($statusMeta['label'] ?? ''),
+                                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+                                    ?>
+                                    <div class="my-shift-swap-action">
+                                        <button type="button"
+                                                class="my-shift-swap-request-btn"
+                                                data-swap-request
+                                                data-target='<?= $targetPayloadJson ?>'
+                                                data-csrf="<?= htmlspecialchars($swapCsrfToken) ?>"
+                                                data-source-id="<?= (int) $swapSourceId ?>"
+                                                data-month="<?= (int) $selectedMonth ?>"
+                                                data-year="<?= (int) $selectedYearBe ?>"
+                                                data-display="<?= htmlspecialchars($display) ?>">
+                                            <i class="bi bi-arrow-left-right"></i> ขอแลกเวร
+                                        </button>
+                                    </div>
                                 <?php else: ?>
-                                    <div class="my-shift-swap-reason"><?= htmlspecialchars((string) ($swapTargetMeta['reason'] ?? 'ไม่สามารถแลกได้')) ?></div>
+                                    <?php
+                                    $reason = (string) ($swapTargetMeta['reason'] ?? 'ไม่สามารถแลกได้');
+                                    $badgeClass = match(true) {
+                                        str_contains($reason, 'ย้อนหลัง') || str_contains($reason, 'เลย') => 'is-past',
+                                        str_contains($reason, 'ลงเวร')   => 'is-logged',
+                                        str_contains($reason, 'รอคำขอ') => 'is-pending-swap',
+                                        str_contains($reason, 'ของคุณ') => 'is-own',
+                                        default                           => '',
+                                    };
+                                    ?>
+                                    <div class="my-shift-swap-badge <?= htmlspecialchars($badgeClass) ?>">
+                                        <i class="bi bi-slash-circle"></i>
+                                        <?= htmlspecialchars($reason) ?>
+                                    </div>
                                 <?php endif; ?>
                             <?php endif; ?>
                         <?php endforeach; ?>
-                        <?php if ($hiddenDayAssignmentCount > 0): ?>
-                            <div class="my-shift-overflow">+<?= (int) $hiddenDayAssignmentCount ?> รายการในวันนี้</div>
+                        </div><!-- /.my-shifts-day-scroll -->
                         <?php endif; ?>
                     </article>
                 <?php endfor; ?>
@@ -529,104 +557,40 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     </div>
 </div>
 
-<?php render_staff_profile_modal(); ?>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../assets/js/notifications.js"></script>
-<?php render_staff_profile_modal_script(); ?>
-<script>
-(() => {
-    const modal = document.querySelector('[data-my-shift-modal]');
-    const form = document.querySelector('[data-my-shift-form]');
-    const submit = document.querySelector('[data-modal-submit]');
-    const noteWrap = document.querySelector('[data-modal-note-wrap]');
-    const swapLink = document.querySelector('[data-modal-swap]');
-    const swapStatus = document.querySelector('[data-modal-swap-status]');
-    const openAssignmentId = <?= (int) $openAssignmentId ?>;
-    const fields = {
-        assignmentId: document.querySelector('[data-modal-assignment-id]'),
-        title: document.querySelector('[data-modal-title]'),
-        date: document.querySelector('[data-modal-date]'),
-        shift: document.querySelector('[data-modal-shift]'),
-        time: document.querySelector('[data-modal-time]'),
-        hours: document.querySelector('[data-modal-hours]'),
-        department: document.querySelector('[data-modal-department]'),
-        status: document.querySelector('[data-modal-status]'),
-        description: document.querySelector('[data-modal-description]')
-    };
-
-    document.querySelectorAll('[data-my-shift-open]').forEach((button) => {
-        button.addEventListener('click', () => {
-            if (!modal) return;
-            const payload = JSON.parse(button.dataset.shift || '{}');
-            fields.assignmentId.value = payload.assignmentId || '';
-            fields.title.textContent = payload.timeLogId ? 'รายละเอียดเวรที่ลงแล้ว' : 'ลงเวรตามแผน';
-            fields.date.textContent = payload.date || '-';
-            fields.shift.textContent = payload.shiftLabel || '-';
-            fields.time.textContent = payload.timeRange || '-';
-            fields.hours.textContent = `${payload.hours || '0.00'} ชม.`;
-            fields.department.textContent = payload.department || '-';
-            fields.status.textContent = payload.statusLabel || '-';
-            if (!payload.isMine) {
-                fields.title.textContent = 'รายละเอียดเวรเจ้าหน้าที่';
-            }
-            const details = [
-                payload.staffName ? `เจ้าหน้าที่: ${payload.staffName}` : '',
-                payload.roleNote ? `หน้าที่: ${payload.roleNote}` : '',
-                payload.scheduleNote ? `หมายเหตุแผนเวร: ${payload.scheduleNote}` : '',
-                payload.timeLogId ? `time_logs.id: ${payload.timeLogId}` : '',
-                payload.source ? `source: ${payload.source}` : '',
-                payload.note ? `หมายเหตุลงเวร: ${payload.note}` : ''
-            ].filter(Boolean);
-            fields.description.textContent = details.length ? details.join(' | ') : 'ไม่มีรายละเอียดเพิ่มเติม';
-
-            const canCreate = !payload.timeLogId && payload.isMine;
-            if (submit) submit.hidden = !canCreate;
-            if (noteWrap) noteWrap.hidden = !canCreate;
-            if (swapLink) {
-                swapLink.hidden = !payload.canRequestSwap;
-                swapLink.href = payload.swapUrl || '#';
-            }
-            if (swapStatus) {
-                const hasSwapStatus = payload.isMine && !payload.canRequestSwap && payload.swapBlockedReason === 'รอคำขอแลกอยู่';
-                swapStatus.hidden = !hasSwapStatus;
-                swapStatus.textContent = payload.swapBlockedReason || '';
-            }
-            modal.hidden = false;
-            document.body.classList.add('overflow-hidden');
-        });
-    });
-
-    if (openAssignmentId > 0) {
-        document.querySelector(`[data-my-shift-open][data-assignment-id="${openAssignmentId}"]`)?.click();
-    }
-
-    document.querySelectorAll('[data-my-shift-close]').forEach((button) => {
-        button.addEventListener('click', () => {
-            if (!modal) return;
-            modal.hidden = true;
-            document.body.classList.remove('overflow-hidden');
-        });
-    });
-
-    form?.addEventListener('submit', () => {
-        if (!submit) return;
-        submit.disabled = true;
-        submit.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังบันทึก...';
-    });
-})();
-
-// Auto-submit on year input change (debounced 700 ms)
-var _myShiftsYearTimer;
-(function () {
-    var yearInput = document.querySelector('.my-shifts-filter-form [name="year"]');
-    if (!yearInput) return;
-    yearInput.addEventListener('input', function () {
-        clearTimeout(_myShiftsYearTimer);
-        _myShiftsYearTimer = setTimeout(function () {
-            document.querySelector('.my-shifts-filter-form').submit();
-        }, 700);
-    });
-}());
-</script>
-</body>
-</html>
+<!-- ── Confirm Swap Modal ──────────────────────────────────────────────── -->
+<div class="swap-confirm-backdrop" id="swapConfirmBackdrop" hidden>
+    <div class="swap-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="swapConfirmTitle">
+        <div class="swap-confirm-head">
+            <p><i class="bi bi-arrow-left-right"></i> ยืนยันการแลกเวร</p>
+            <h3 id="swapConfirmTitle">ยืนยันการขอแลกเวร</h3>
+        </div>
+        <div class="swap-confirm-sides">
+            <div class="swap-confirm-side is-source">
+                <span class="swap-confirm-side-label"><i class="bi bi-person-check"></i> เวรของฉัน (ต้นทาง)</span>
+                <div class="swap-confirm-detail" id="swapConfirmSource">
+                    <div><span>วันที่</span><strong data-confirm-src-date>-</strong></div>
+                    <div><span>กะ</span><strong data-confirm-src-shift>-</strong></div>
+                    <div><span>เวลา</span><strong data-confirm-src-time>-</strong></div>
+                    <div><span>ชั่วโมง</span><strong data-confirm-src-hours>-</strong></div>
+                    <div><span>แผนก</span><strong data-confirm-src-dept>-</strong></div>
+                    <div><span>สถานะ</span><strong data-confirm-src-status>-</strong></div>
+                </div>
+            </div>
+            <div class="swap-confirm-side is-target">
+                <span class="swap-confirm-side-label"><i class="bi bi-person-lines-fill"></i> เวรปลายทาง</span>
+                <div class="swap-confirm-detail" id="swapConfirmTarget">
+                    <div><span>เจ้าหน้าที่</span><strong data-confirm-tgt-staff>-</strong></div>
+                    <div><span>วันที่</span><strong data-confirm-tgt-date>-</strong></div>
+                    <div><span>กะ</span><strong data-confirm-tgt-shift>-</strong></div>
+                    <div><span>เวลา</span><strong data-confirm-tgt-time>-</strong></div>
+                    <div><span>ชั่วโมง</span><strong data-confirm-tgt-hours>-</strong></div>
+                    <div><span>แผนก</span><strong data-confirm-tgt-dept>-</strong></div>
+                    <div><span>สถานะ</span><strong data-confirm-tgt-status>-</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="swap-confirm-warning">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            การยืนยันนี้เป็นการส่งคำขอแลกเวรเท่านั้น เวรจะยังไม่ถูกสลับจนกว่าเจ้าหน้าที่ปลายทางและผู้มีสิทธิ์อนุมัติจะดำเนินการครบตามขั้นตอน
+        </div>
+        <div id="swapConfirmError" class="mt-3 rounded-xl border bo
