@@ -25,9 +25,11 @@
 
                 const itemUrl = escapeHtml(item.target_url || '');
                 const itemType = escapeHtml(item.type || '');
+                const itemEntityType = escapeHtml(item.target_entity_type || '');
+                const itemEntityId = item.target_entity_id ? escapeHtml(item.target_entity_id) : '';
                 return ''
                     + '<div class="notification-item' + unreadClass + '" data-notification-item>'
-                    + '  <button type="button" class="notification-link" data-notification-open data-notification-id="' + escapeHtml(item.id) + '" data-notification-url="' + itemUrl + '" data-notification-type="' + itemType + '">'
+                    + '  <button type="button" class="notification-link" data-notification-open data-notification-id="' + escapeHtml(item.id) + '" data-notification-url="' + itemUrl + '" data-notification-type="' + itemType + '" data-notification-entity-type="' + itemEntityType + '" data-notification-entity-id="' + itemEntityId + '">'
                     + '      <span class="notification-item-head">'
                     + '          <span class="notification-item-title" title="' + escapeHtml(item.title || '') + '">' + escapeHtml(item.title || '') + '</span>'
                     +            unreadDot
@@ -147,6 +149,37 @@
                 return TYPE_URL_MAP[type];
             }
             return FALLBACK_URL;
+        }
+
+        function appendNotificationFocusParams(destination, notificationId, entityType, entityId) {
+            const safeDestination = destination || FALLBACK_URL;
+            let url;
+
+            try {
+                url = new URL(safeDestination, window.location.href);
+            } catch (error) {
+                return safeDestination;
+            }
+
+            if (notificationId && !url.searchParams.has('notification_id')) {
+                url.searchParams.set('notification_id', String(notificationId));
+            }
+
+            const normalizedEntityType = String(entityType || '').toLowerCase();
+            const numericEntityId = Number(entityId || 0);
+            if (
+                normalizedEntityType === 'shift_swap_request'
+                && numericEntityId > 0
+                && !url.searchParams.has('highlight')
+            ) {
+                url.searchParams.set('highlight', String(numericEntityId));
+            }
+
+            if (url.origin === window.location.origin) {
+                return url.pathname + url.search + url.hash;
+            }
+
+            return url.toString();
         }
 
         function setCount(count) {
@@ -320,7 +353,14 @@
                 const notifId  = itemButton.getAttribute('data-notification-id');
                 const notifUrl = itemButton.getAttribute('data-notification-url') || '';
                 const notifType = itemButton.getAttribute('data-notification-type') || '';
-                const destination = resolveNotificationUrl(notifUrl, notifType);
+                const entityType = itemButton.getAttribute('data-notification-entity-type') || '';
+                const entityId = itemButton.getAttribute('data-notification-entity-id') || '';
+                const destination = appendNotificationFocusParams(
+                    resolveNotificationUrl(notifUrl, notifType),
+                    notifId,
+                    entityType,
+                    entityId
+                );
 
                 // Mark as read (fire-and-forget) — navigate regardless of outcome.
                 markRead(notifId).then(function (ok) {
