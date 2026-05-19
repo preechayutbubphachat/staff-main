@@ -145,7 +145,6 @@ $form = [
     'can_view_all_staff' => '0',
     'can_view_department_reports' => '0',
     'can_export_reports' => '0',
-    'can_manage_shift_schedules' => '0',
 ];
 $message = '';
 $messageType = '';
@@ -182,7 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['can_view_all_staff'] = isset($_POST['can_view_all_staff']) ? '1' : '0';
     $form['can_view_department_reports'] = isset($_POST['can_view_department_reports']) ? '1' : '0';
     $form['can_export_reports'] = isset($_POST['can_export_reports']) ? '1' : '0';
-    $form['can_manage_shift_schedules'] = isset($_POST['can_manage_shift_schedules']) ? '1' : '0';
 
     $password = (string) ($_POST['password'] ?? '');
     $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
@@ -241,7 +239,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $permissions['can_view_all_staff'] = (int) $form['can_view_all_staff'];
                     $permissions['can_view_department_reports'] = (int) $form['can_view_department_reports'];
                     $permissions['can_export_reports'] = (int) $form['can_export_reports'];
-                    $permissions['can_manage_shift_schedules'] = (int) $form['can_manage_shift_schedules'];
                 }
 
                 $columns = ['fullname', 'username', 'password', 'department_id', 'signature_path', 'role', 'can_view_all_staff', 'can_view_department_reports', 'can_export_reports', 'can_approve_logs'];
@@ -1248,15 +1245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     name="can_export_reports" value="1"
                                     <?= $form['can_export_reports'] === '1' ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="perm_export">ส่งออกรายงานได้</label>
-                            </div>
-                            <div class="form-check mt-1">
-                                <input class="form-check-input" type="checkbox" id="perm_manage_shift_schedules"
-                                    name="can_manage_shift_schedules" value="1"
-                                    <?= $form['can_manage_shift_schedules'] === '1' ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="perm_manage_shift_schedules">
-                                    จัดตารางเวรรายเดือนได้
-                                    <span class="d-block text-muted" style="font-size:11.5px;font-weight:400;">สามารถวางแผนและเผยแพร่ตารางเวรรายเดือนของแผนกที่รับผิดชอบได้</span>
-                                </label>
                             </div>
                         </div>
                     </div>

@@ -18,7 +18,7 @@ DEALLOCATE PREPARE add_manage_shift_schedules_column_stmt;
 
 UPDATE users
 SET can_manage_shift_schedules = 1
-WHERE role IN ('admin', 'checker')
+WHERE role IN ('admin', 'checker', 'finance')
    OR can_approve_logs = 1
    OR can_manage_time_logs = 1;
 
