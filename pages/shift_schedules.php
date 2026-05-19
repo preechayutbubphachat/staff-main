@@ -59,6 +59,16 @@ function app_shift_json_response(array $payload, int $statusCode = 200): void
     exit;
 }
 
+function app_shift_public_error_message(Throwable $e): string
+{
+    $message = $e->getMessage();
+    if ($e instanceof PDOException || stripos($message, 'SQLSTATE') !== false) {
+        return 'ไม่สามารถบันทึกข้อมูลตารางเวรได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง';
+    }
+
+    return $message;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isAjaxRequest = app_shift_is_ajax_request();
     try {
@@ -105,13 +115,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = 'success';
         }
     } catch (Throwable $e) {
+        $publicError = app_shift_public_error_message($e);
         if ($isAjaxRequest ?? false) {
             app_shift_json_response([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $publicError,
             ], 400);
         }
-        $message = $e->getMessage();
+        $message = $publicError;
         $messageType = 'danger';
     }
 }
