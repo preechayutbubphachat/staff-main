@@ -55,23 +55,48 @@ function app_store_avatar_file(string $username, array $file, ?string &$error = 
 function app_store_signature_file(string $username, array $post, array $files, ?string &$error = null): ?string
 {
     $error = null;
+    $mode = (string) ($post['signature_mode'] ?? 'draw');
     $folder = __DIR__ . '/../uploads/signatures/';
     if (!is_dir($folder)) {
         mkdir($folder, 0777, true);
     }
 
-    if (!empty($post['signature_base64'])) {
-        $parts = explode(';base64,', (string) $post['signature_base64']);
-        $binary = isset($parts[1]) ? base64_decode($parts[1], true) : false;
-        if ($binary !== false) {
-            $name = 'sig_' . date('YmdHis') . '_' . app_register_slug($username) . '.png';
-            file_put_contents($folder . $name, $binary);
-            return $name;
+    $file = $files['signature_file'] ?? null;
+    $hasUploadedFile = is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+
+    if ($mode === 'draw' && !empty($post['signature_base64'])) {
+        $dataUrl = (string) $post['signature_base64'];
+        if (strlen($dataUrl) > 1024 * 1024) {
+            $error = 'ข้อมูลลายเซ็นมีขนาดใหญ่เกินไป';
+            return null;
         }
+
+        if (!preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/', $dataUrl, $matches)) {
+            $error = 'รูปแบบลายเซ็นไม่ถูกต้อง';
+            return null;
+        }
+
+        $binary = base64_decode($matches[1], true);
+        if ($binary === false || strlen($binary) > 768 * 1024) {
+            $error = 'ข้อมูลลายเซ็นไม่ถูกต้องหรือมีขนาดใหญ่เกินไป';
+            return null;
+        }
+
+        $imageInfo = @getimagesizefromstring($binary);
+        if (!is_array($imageInfo) || ($imageInfo['mime'] ?? '') !== 'image/png') {
+            $error = 'รองรับลายเซ็นที่วาดเป็น PNG เท่านั้น';
+            return null;
+        }
+
+        $name = 'sig_' . date('YmdHis') . '_' . app_register_slug($username) . '_' . bin2hex(random_bytes(4)) . '.png';
+        if (file_put_contents($folder . $name, $binary) === false) {
+            $error = 'ไม่สามารถบันทึกลายเซ็นได้';
+            return null;
+        }
+        return $name;
     }
 
-    $file = $files['signature_file'] ?? null;
-    if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+    if ($mode !== 'upload' || !$hasUploadedFile) {
         return null;
     }
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
@@ -82,6 +107,10 @@ function app_store_signature_file(string $username, array $post, array $files, ?
     $tmp = (string) ($file['tmp_name'] ?? '');
     if ($tmp === '' || !is_uploaded_file($tmp)) {
         $error = 'ไม่พบไฟล์ลายเซ็น';
+        return null;
+    }
+    if ((int) ($file['size'] ?? 0) > 1024 * 1024) {
+        $error = 'ไฟล์ลายเซ็นต้องมีขนาดไม่เกิน 1 MB';
         return null;
     }
 
@@ -98,7 +127,11 @@ function app_store_signature_file(string $username, array $post, array $files, ?
     }
 
     $name = 'sig_' . date('YmdHis') . '_' . app_register_slug($username) . '_' . bin2hex(random_bytes(4)) . '.' . $allowed[$mime];
-    return move_uploaded_file($tmp, $folder . $name) ? $name : null;
+    if (!move_uploaded_file($tmp, $folder . $name)) {
+        $error = 'ไม่สามารถบันทึกไฟล์ลายเซ็นได้';
+        return null;
+    }
+    return $name;
 }
 
 $form = [
@@ -857,10 +890,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             height: 130px;
             border-radius: 10px;
-            border: 1.5px dashed #B8D8DE;
+            border: 1.5px dashed #86C9C5;
             background: #FAFCFD;
             touch-action: none;
+            overscroll-behavior: contain;
             display: block;
+            cursor: crosshair;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .sig-canvas:focus {
+            outline: 2px solid rgba(15, 159, 149, .28);
+            outline-offset: 2px;
+        }
+
+        .sig-status {
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ot-muted);
+        }
+
+        .sig-status.ready {
+            color: var(--ot-teal-dk);
+        }
+
+        .sig-fallback {
+            display: none;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #C0392B;
         }
 
         .sig-controls {
@@ -1265,14 +1325,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <button type="button" class="btn-sig-clear" id="clearSigBtn">ล้าง</button>
                                     </div>
                                     <div id="sigDrawPanel">
-                                        <canvas id="sigCanvas" class="sig-canvas"></canvas>
+                                        <canvas id="sigCanvas" class="sig-canvas" aria-label="พื้นที่วาดลายเซ็น" tabindex="0"></canvas>
+                                        <input type="hidden" name="signature_mode" id="sigModeInput" value="draw">
                                         <input type="hidden" name="signature_base64" id="sigBase64">
                                         <div class="field-hint mt-1">ใช้เมาส์หรือหน้าจอสัมผัสวาดลายเซ็นในกรอบด้านบน</div>
+                                        <div class="sig-status" id="sigStatus">ยังไม่ได้วาดลายเซ็น</div>
+                                        <div class="sig-fallback" id="sigFallback">เบราว์เซอร์นี้ไม่รองรับการวาดลายเซ็น กรุณาใช้อัปโหลดรูปภาพแทน</div>
                                     </div>
                                     <div id="sigUploadPanel" hidden>
-                                        <input type="file" name="signature_file" class="form-control"
+                                        <input type="file" name="signature_file" id="sigFileInput" class="form-control"
                                             accept="image/png,image/jpeg,image/webp" style="height:42px;padding:8px 12px;">
-                                        <div class="field-hint mt-1">JPG / PNG / WEBP · เพิ่มลายเซ็นภายหลังได้จากโปรไฟล์</div>
+                                        <div class="field-hint mt-1">JPG / PNG / WEBP ไม่เกิน 1MB · ลายเซ็นเป็นข้อมูลไม่บังคับ</div>
                                     </div>
                                 </div>
                             </div>
@@ -1346,24 +1409,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* ── Signature accordion ── */
     const sigToggle = document.getElementById('sigToggle');
     const sigBody   = document.getElementById('sigBody');
+    let resizeSignatureCanvas = function () {};
 
     sigToggle?.addEventListener('click', function () {
         const open = sigBody.classList.toggle('open');
         sigToggle.classList.toggle('open', open);
-        if (open) resizeCanvas();
+        if (open) window.requestAnimationFrame(resizeSignatureCanvas);
     });
 
     /* ── Signature mode switch ── */
     const sigModeBtns     = document.querySelectorAll('[data-sig-mode]');
     const sigDrawPanel    = document.getElementById('sigDrawPanel');
     const sigUploadPanel  = document.getElementById('sigUploadPanel');
+    const sigModeInput    = document.getElementById('sigModeInput');
+    const sigFileInput    = document.getElementById('sigFileInput');
+    const sigStatus       = document.getElementById('sigStatus');
+    const sigFallback     = document.getElementById('sigFallback');
 
     function setSigMode(mode) {
         sigModeBtns.forEach(function (b) {
             b.classList.toggle('active', b.dataset.sigMode === mode);
         });
-        if (sigDrawPanel)   sigDrawPanel.hidden   = mode !== 'draw';
-        if (sigUploadPanel) sigUploadPanel.hidden  = mode !== 'upload';
+        if (sigModeInput) sigModeInput.value = mode;
+        if (sigDrawPanel) sigDrawPanel.hidden = mode !== 'draw';
+        if (sigUploadPanel) sigUploadPanel.hidden = mode !== 'upload';
+
+        if (mode === 'draw') {
+            if (sigFileInput) {
+                sigFileInput.value = '';
+                sigFileInput.disabled = true;
+            }
+            window.requestAnimationFrame(resizeSignatureCanvas);
+            return;
+        }
+
+        clearSignatureCanvas();
+        if (sigFileInput) sigFileInput.disabled = false;
     }
 
     sigModeBtns.forEach(function (b) {
@@ -1375,14 +1456,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const canvas   = document.getElementById('sigCanvas');
     const sigB64   = document.getElementById('sigBase64');
     const clearBtn = document.getElementById('clearSigBtn');
-    let ctx, isDrawing = false;
+    let ctx, isDrawing = false, hasSignature = false;
+
+    function updateSigStatus(done) {
+        if (!sigStatus) return;
+        sigStatus.textContent = done ? 'บันทึกลายเซ็นแล้ว' : 'ยังไม่ได้วาดลายเซ็น';
+        sigStatus.classList.toggle('ready', !!done);
+    }
+
+    function clearSignatureCanvas() {
+        if (ctx && canvas) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        hasSignature = false;
+        if (sigB64) sigB64.value = '';
+        updateSigStatus(false);
+    }
 
     if (canvas) {
         ctx = canvas.getContext('2d');
 
-        function resizeCanvas() {
+        if (!ctx && sigFallback) {
+            sigFallback.style.display = 'block';
+        }
+
+        resizeSignatureCanvas = function () {
+            if (!ctx || canvas.offsetParent === null) return;
+            const saved = hasSignature ? canvas.toDataURL('image/png') : '';
             const ratio = window.devicePixelRatio || 1;
             const rect  = canvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
             canvas.width  = rect.width  * ratio;
             canvas.height = rect.height * ratio;
             ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1391,32 +1494,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ctx.lineJoin  = 'round';
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#0D3347';
-        }
+            if (saved) {
+                const image = new Image();
+                image.onload = function () {
+                    ctx.drawImage(image, 0, 0, rect.width, rect.height);
+                    if (sigB64) sigB64.value = canvas.toDataURL('image/png');
+                };
+                image.src = saved;
+            }
+        };
 
         function pt(e) {
             const r = canvas.getBoundingClientRect();
-            const s = e.touches ? e.touches[0] : e;
+            const s = e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : e;
             return { x: s.clientX - r.left, y: s.clientY - r.top };
         }
 
-        canvas.addEventListener('mousedown',  function (e) { isDrawing = true; ctx.beginPath(); const p = pt(e); ctx.moveTo(p.x, p.y); });
-        canvas.addEventListener('mousemove',  function (e) { if (!isDrawing) return; const p = pt(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if (sigB64) sigB64.value = canvas.toDataURL('image/png'); });
-        canvas.addEventListener('mouseup',    function ()  { isDrawing = false; ctx.closePath(); });
-        canvas.addEventListener('mouseleave', function ()  { isDrawing = false; });
-        canvas.addEventListener('touchstart', function (e) { isDrawing = true; ctx.beginPath(); const p = pt(e); ctx.moveTo(p.x, p.y); }, { passive: true });
-        canvas.addEventListener('touchmove',  function (e) { if (!isDrawing) return; e.preventDefault(); const p = pt(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if (sigB64) sigB64.value = canvas.toDataURL('image/png'); }, { passive: false });
-        canvas.addEventListener('touchend',   function ()  { isDrawing = false; });
+        function persistSignature() {
+            if (sigB64 && hasSignature) sigB64.value = canvas.toDataURL('image/png');
+            updateSigStatus(hasSignature);
+        }
+
+        function startDraw(e) {
+            if (!ctx || sigModeInput?.value !== 'draw') return;
+            e.preventDefault();
+            isDrawing = true;
+            hasSignature = true;
+            canvas.setPointerCapture?.(e.pointerId);
+            ctx.beginPath();
+            const p = pt(e);
+            ctx.moveTo(p.x, p.y);
+            persistSignature();
+        }
+
+        function draw(e) {
+            if (!isDrawing || !ctx) return;
+            e.preventDefault();
+            const p = pt(e);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            persistSignature();
+        }
+
+        function stopDraw(e) {
+            if (!isDrawing || !ctx) return;
+            e.preventDefault();
+            isDrawing = false;
+            ctx.closePath();
+            persistSignature();
+        }
+
+        if (window.PointerEvent) {
+            canvas.addEventListener('touchstart', function (e) {
+                if (sigModeInput?.value === 'draw') e.preventDefault();
+            }, { passive: false });
+            canvas.addEventListener('touchmove', function (e) {
+                if (sigModeInput?.value === 'draw') e.preventDefault();
+            }, { passive: false });
+            canvas.addEventListener('pointerdown', startDraw);
+            canvas.addEventListener('pointermove', draw);
+            canvas.addEventListener('pointerup', stopDraw);
+            canvas.addEventListener('pointercancel', stopDraw);
+            canvas.addEventListener('pointerleave', stopDraw);
+        } else {
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDraw);
+            canvas.addEventListener('mouseleave', stopDraw);
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDraw, { passive: false });
+            canvas.addEventListener('touchcancel', stopDraw, { passive: false });
+        }
 
         clearBtn?.addEventListener('click', function () {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (sigB64) sigB64.value = '';
+            if (sigModeInput?.value === 'upload') {
+                if (sigFileInput) sigFileInput.value = '';
+                return;
+            }
+            clearSignatureCanvas();
         });
 
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-    }
+        sigFileInput?.addEventListener('change', function () {
+            clearSignatureCanvas();
+        });
 
-    window.resizeCanvas = resizeCanvas || function(){};
+        window.addEventListener('resize', resizeSignatureCanvas);
+        window.requestAnimationFrame(resizeSignatureCanvas);
+    }
 
     /* ── Submit loading state ── */
     document.getElementById('regForm')?.addEventListener('submit', function () {
