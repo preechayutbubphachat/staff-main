@@ -653,6 +653,31 @@
     @apply flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-transparent bg-white/70 text-[0.62rem] text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-200;
   }
 
+  .shift-loading-overlay {
+    @apply fixed inset-0 z-[95] flex items-center justify-center bg-hospital-ink/25 p-4 backdrop-blur-[2px];
+  }
+
+  .shift-loading-overlay[hidden] {
+    @apply hidden;
+  }
+
+  .shift-loading-card {
+    @apply flex min-w-[18rem] max-w-sm flex-col items-center gap-2 rounded-2xl border border-white/80 bg-white/95 px-6 py-5 text-center shadow-glass;
+  }
+
+  .shift-loading-spinner {
+    @apply h-10 w-10 rounded-full border-4 border-hospital-mint border-t-hospital-teal;
+    animation: shift-loading-spin 0.8s linear infinite;
+  }
+
+  .shift-loading-card strong {
+    @apply mt-1 font-prompt text-lg font-bold text-hospital-ink;
+  }
+
+  .shift-loading-card small {
+    @apply text-sm font-semibold text-hospital-muted;
+  }
+
   .shift-toast-region {
     @apply fixed bottom-5 right-5 z-[90] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 pointer-events-none;
   }
@@ -992,6 +1017,12 @@
       scroll-behavior: auto !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+@keyframes shift-loading-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

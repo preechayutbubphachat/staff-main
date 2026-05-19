@@ -69,6 +69,23 @@ function app_shift_public_error_message(Throwable $e): string
     return $message;
 }
 
+function app_shift_schedule_page_url(int $departmentId, int $month, int $yearBe): string
+{
+    return 'shift_schedules.php?' . http_build_query([
+        'department_id' => $departmentId,
+        'month' => $month,
+        'year_be' => $yearBe,
+    ]);
+}
+
+function app_shift_set_flash_message(string $message, string $type = 'success'): void
+{
+    $_SESSION['shift_schedule_flash'] = [
+        'message' => $message,
+        'type' => $type,
+    ];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isAjaxRequest = app_shift_is_ajax_request();
     try {
@@ -82,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $selectedMonth = (int) ($_POST['month'] ?? $selectedMonth);
             $selectedYearBe = (int) ($_POST['year_be'] ?? $selectedYearBe);
             $selectedYear = $selectedYearBe > 2400 ? $selectedYearBe - 543 : $selectedYearBe;
-            app_create_or_update_schedule(
+            $result = app_create_or_update_schedule(
                 $conn,
                 $selectedDepartmentId,
                 (string) ($_POST['schedule_date'] ?? ''),
@@ -93,12 +110,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (string) ($_POST['note'] ?? ''),
                 $currentUserId
             );
-            $message = 'บันทึก draft ตารางเวรเรียบร้อย';
+            if ($isAjaxRequest) {
+                app_shift_json_response(['success' => true] + $result);
+            }
+            $message = (string) ($result['message'] ?? 'บันทึก draft ตารางเวรเรียบร้อย');
             $messageType = 'success';
+            app_shift_set_flash_message($message, $messageType);
+            header('Location: ' . app_shift_schedule_page_url($selectedDepartmentId, $selectedMonth, $selectedYearBe));
+            exit;
         } elseif ($action === 'publish_month') {
             $result = app_publish_monthly_schedule($conn, $selectedDepartmentId, $selectedMonth, $selectedYear, $currentUserId);
             $message = $result['message'];
             $messageType = 'success';
+            app_shift_set_flash_message($message, $messageType);
+            header('Location: ' . app_shift_schedule_page_url($selectedDepartmentId, $selectedMonth, $selectedYearBe));
+            exit;
         } elseif ($action === 'cancel_assignment') {
             $result = app_cancel_shift_assignment($conn, (int) ($_POST['assignment_id'] ?? 0), $currentUserId);
             if ($isAjaxRequest) {
@@ -106,6 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $message = (string) ($result['message'] ?? 'ยกเลิกเจ้าหน้าที่จากเวรเรียบร้อย');
             $messageType = 'success';
+            app_shift_set_flash_message($message, $messageType);
+            header('Location: ' . app_shift_schedule_page_url($selectedDepartmentId, $selectedMonth, $selectedYearBe));
+            exit;
         } elseif ($action === 'delete_draft') {
             $result = app_delete_shift_schedule_draft($conn, (int) ($_POST['schedule_id'] ?? 0), $currentUserId);
             if ($isAjaxRequest) {
@@ -113,6 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $message = (string) ($result['message'] ?? 'ลบดราฟเรียบร้อยแล้ว');
             $messageType = 'success';
+            app_shift_set_flash_message($message, $messageType);
+            header('Location: ' . app_shift_schedule_page_url($selectedDepartmentId, $selectedMonth, $selectedYearBe));
+            exit;
         }
     } catch (Throwable $e) {
         $publicError = app_shift_public_error_message($e);
@@ -125,6 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = $publicError;
         $messageType = 'danger';
     }
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_SESSION['shift_schedule_flash']) && is_array($_SESSION['shift_schedule_flash'])) {
+    $message = (string) ($_SESSION['shift_schedule_flash']['message'] ?? '');
+    $messageType = (string) ($_SESSION['shift_schedule_flash']['type'] ?? 'success');
+    unset($_SESSION['shift_schedule_flash']);
 }
 
 $monthOptions = app_get_thai_month_select_options();
@@ -446,6 +484,13 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 </div>
 
 <?php render_staff_profile_modal(); ?>
+<div class="shift-loading-overlay" data-shift-loading hidden aria-live="assertive" aria-busy="true">
+    <div class="shift-loading-card" role="status">
+        <span class="shift-loading-spinner" aria-hidden="true"></span>
+        <strong data-shift-loading-title>โปรดรอสักครู่...</strong>
+        <small data-shift-loading-detail>กำลังบันทึกและอัปเดตตารางเวร</small>
+    </div>
+</div>
 <div class="shift-toast-region" data-shift-toast-region aria-live="polite" aria-atomic="true"></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/notifications.js"></script>
@@ -561,7 +606,11 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 
 (() => {
     const toastRegion = document.querySelector('[data-shift-toast-region]');
+    const loadingOverlay = document.querySelector('[data-shift-loading]');
+    const loadingTitle = document.querySelector('[data-shift-loading-title]');
+    const loadingDetail = document.querySelector('[data-shift-loading-detail]');
     const toastTimers = new WeakMap();
+    let actionInProgress = false;
 
     const escapeToastHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -597,6 +646,50 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         toastTimers.set(toast, window.setTimeout(closeToast, 5000));
     };
 
+    const setShiftLoading = (visible, title = 'โปรดรอสักครู่...', detail = 'กำลังบันทึกและอัปเดตตารางเวร') => {
+        if (!loadingOverlay) return;
+        if (loadingTitle) loadingTitle.textContent = title;
+        if (loadingDetail) loadingDetail.textContent = detail;
+        loadingOverlay.hidden = !visible;
+        if (visible) {
+            document.body.classList.add('overflow-hidden');
+        } else if (document.querySelector('[data-shift-modal]')?.hidden !== false) {
+            document.body.classList.remove('overflow-hidden');
+        }
+    };
+
+    const buildScheduleUrl = (form) => {
+        const url = new URL(window.location.href);
+        const formData = new FormData(form);
+        ['department_id', 'month', 'year_be'].forEach((key) => {
+            const value = formData.get(key);
+            if (value !== null && value !== '') {
+                url.searchParams.set(key, String(value));
+            }
+        });
+        url.hash = '';
+        return url.toString();
+    };
+
+    const storeToastForNextPage = (message, type = 'success') => {
+        try {
+            window.sessionStorage.setItem('shiftScheduleToast', JSON.stringify({ message, type }));
+        } catch (error) {
+            // Ignore storage failures; the action itself has already completed.
+        }
+    };
+
+    try {
+        const storedToast = window.sessionStorage.getItem('shiftScheduleToast');
+        if (storedToast) {
+            window.sessionStorage.removeItem('shiftScheduleToast');
+            const parsedToast = JSON.parse(storedToast);
+            showShiftToast(parsedToast.message || '', parsedToast.type || 'success');
+        }
+    } catch (error) {
+        window.sessionStorage.removeItem('shiftScheduleToast');
+    }
+
     document.querySelectorAll('[data-shift-initial-toast]').forEach((node) => {
         showShiftToast(node.dataset.toastMessage || '', node.dataset.toastType || 'success');
         node.remove();
@@ -618,6 +711,28 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         return payload;
     };
 
+    document.querySelector('.shift-modal-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (actionInProgress) return;
+
+        const form = event.currentTarget;
+        const submitButton = form.querySelector('button[type="submit"]');
+        actionInProgress = true;
+        submitButton?.setAttribute('disabled', 'disabled');
+        setShiftLoading(true, 'โปรดรอสักครู่...', 'กำลังบันทึก draft และโหลดตารางเวรใหม่');
+        try {
+            const payload = await postScheduleAction(form);
+            storeToastForNextPage(payload.message || 'บันทึก draft ตารางเวรเรียบร้อย', 'success');
+            setShiftLoading(true, 'โปรดรอสักครู่...', 'กำลังโหลดตารางเวรล่าสุด');
+            window.location.href = buildScheduleUrl(form);
+        } catch (error) {
+            actionInProgress = false;
+            submitButton?.removeAttribute('disabled');
+            setShiftLoading(false);
+            showShiftToast(error.message || 'ไม่สามารถบันทึก draft ตารางเวรได้', 'danger');
+        }
+    });
+
     document.addEventListener('submit', async (event) => {
         const assignmentForm = event.target.closest('[data-assignment-delete-form]');
         const draftForm = event.target.closest('[data-draft-delete-form]');
@@ -625,20 +740,26 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         if (!form) return;
 
         event.preventDefault();
+        if (actionInProgress) return;
         const confirmMessage = assignmentForm
             ? 'ยกเลิกเจ้าหน้าที่คนนี้จากเวร?'
             : 'ต้องการลบดราฟเวรนี้ทั้งหมดหรือไม่? รายชื่อเจ้าหน้าที่ในดราฟนี้จะถูกลบทั้งหมด';
         if (!confirm(confirmMessage)) return;
 
         const button = form.querySelector('button[type="submit"]');
+        actionInProgress = true;
         button?.setAttribute('disabled', 'disabled');
+        setShiftLoading(true, 'โปรดรอสักครู่...', assignmentForm ? 'กำลังลบเจ้าหน้าที่และอัปเดตตารางเวร' : 'กำลังลบดราฟและอัปเดตตารางเวร');
         try {
             const payload = await postScheduleAction(form);
-            showShiftToast(payload.message || (assignmentForm ? 'ลบเจ้าหน้าที่ออกจากดราฟเรียบร้อยแล้ว' : 'ลบดราฟเรียบร้อยแล้ว'), 'success');
-            window.location.reload();
+            storeToastForNextPage(payload.message || (assignmentForm ? 'ลบเจ้าหน้าที่ออกจากดราฟเรียบร้อยแล้ว' : 'ลบดราฟเรียบร้อยแล้ว'), 'success');
+            setShiftLoading(true, 'โปรดรอสักครู่...', 'กำลังโหลดตารางเวรล่าสุด');
+            window.location.href = buildScheduleUrl(form);
         } catch (error) {
+            actionInProgress = false;
             showShiftToast(error.message || (assignmentForm ? 'ไม่สามารถลบเจ้าหน้าที่จากดราฟได้' : 'ไม่สามารถลบดราฟนี้ได้'), 'danger');
             button?.removeAttribute('disabled');
+            setShiftLoading(false);
         }
     });
 })();

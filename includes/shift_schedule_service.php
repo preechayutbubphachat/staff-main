@@ -538,8 +538,28 @@ function app_create_or_update_schedule(PDO $conn, int $departmentId, string $dat
             ], $currentUserId, 'เพิ่มเจ้าหน้าที่เข้าแผนเวร');
         }
 
+        $activeAssignmentStmt = $conn->prepare("
+            SELECT id, staff_id
+            FROM shift_assignments
+            WHERE schedule_id = ?
+              AND assignment_status <> 'cancelled'
+            ORDER BY id ASC
+        ");
+        $activeAssignmentStmt->execute([$scheduleId]);
+        $assignmentIds = [];
+        foreach (($activeAssignmentStmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $activeAssignment) {
+            $assignmentIds[] = [
+                'assignment_id' => (int) $activeAssignment['id'],
+                'staff_id' => (int) $activeAssignment['staff_id'],
+            ];
+        }
+
         $conn->commit();
-        return ['schedule_id' => $scheduleId, 'message' => 'บันทึก draft ตารางเวรเรียบร้อย'];
+        return [
+            'schedule_id' => $scheduleId,
+            'assignment_ids' => $assignmentIds,
+            'message' => 'บันทึก draft ตารางเวรเรียบร้อย',
+        ];
     } catch (Throwable $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
@@ -684,6 +704,7 @@ function app_cancel_shift_assignment(PDO $conn, int $assignmentId, int $currentU
             'assignment_removed' => true,
             'draft_deleted' => $draftDeleted,
             'schedule_id' => $scheduleId,
+            'assignment_id' => $assignmentId,
             'remaining_assignments' => $remainingAssignments,
             'message' => $draftDeleted ? 'ลบเจ้าหน้าที่คนสุดท้ายและลบดราฟเรียบร้อยแล้ว' : 'ลบเจ้าหน้าที่ออกจากดราฟเรียบร้อยแล้ว',
         ];
