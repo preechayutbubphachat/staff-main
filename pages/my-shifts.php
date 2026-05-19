@@ -491,26 +491,21 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                             $shiftType = (string) ($assignment['shift_type'] ?? 'custom');
                             $shiftLabel = (string) ($shiftTypes[$shiftType]['label'] ?? $shiftType);
                             $shiftClass = my_shift_type_class($shiftType);
-                            $tooltipStaff = (string) ($assignment['staff_name'] ?? '-');
-                            $tooltipDepartment = (string) ($assignment['department_name'] ?? '-');
                             $swapTargetMeta = $assignment['swap_target_meta'] ?? ['can' => false, 'reason' => ''];
                             $swapClass = $swapSelectionMode
                                 ? (!empty($swapTargetMeta['can']) ? 'is-swap-eligible' : 'is-swap-unavailable')
                                 : '';
                             ?>
-                            <button type="button" class="my-shift-pill is-shift-<?= htmlspecialchars($shiftClass) ?> is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?> <?= htmlspecialchars($swapClass) ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
-                                <span><?= htmlspecialchars($shiftLabel) ?></span>
-                                <?php if ($view === 'department'): ?>
-                                    <b><?= !empty($assignment['is_mine']) ? 'ของฉัน' : htmlspecialchars((string) ($assignment['staff_name'] ?? '-')) ?></b>
-                                <?php endif; ?>
+                            <button type="button" class="my-shift-pill is-shift-<?= htmlspecialchars($shiftClass) ?> is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?> <?= htmlspecialchars($swapClass) ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>' aria-describedby="myShiftFloatingTooltip">
+                                <span class="my-shift-pill-top">
+                                    <span class="my-shift-pill-shift"><?= htmlspecialchars($shiftLabel) ?></span>
+                                    <?php if (!empty($assignment['is_mine'])): ?>
+                                        <b>ของฉัน</b>
+                                    <?php endif; ?>
+                                </span>
+                                <span class="my-shift-pill-staff"><?= htmlspecialchars((string) ($assignment['staff_name'] ?? '-')) ?></span>
                                 <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
                                 <em><?= htmlspecialchars($statusMeta['label']) ?></em>
-                                <span class="my-shift-tooltip" role="tooltip">
-                                    <strong><?= htmlspecialchars($shiftLabel) ?></strong>
-                                    <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
-                                    <small><?= htmlspecialchars($tooltipStaff) ?> &middot; <?= htmlspecialchars($tooltipDepartment) ?></small>
-                                    <small><?= htmlspecialchars((string) ($statusMeta['label'] ?? '')) ?></small>
-                                </span>
                             </button>
                             <?php if ($swapSelectionMode): ?>
                                 <?php if (!empty($swapTargetMeta['can'])): ?>
@@ -660,6 +655,8 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     </div>
 </div>
 
+<div class="my-shift-floating-tooltip" id="myShiftFloatingTooltip" role="tooltip" data-shift-floating-tooltip hidden></div>
+
 <div class="swap-confirm-backdrop" id="swapConfirmBackdrop" hidden>
     <div class="swap-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="swapConfirmTitle">
         <div class="swap-confirm-head">
@@ -734,6 +731,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const dayModalDate    = document.querySelector('[data-day-modal-date]');
     const dayModalDepts   = document.querySelector('[data-day-modal-departments]');
     const dayModalBody    = document.querySelector('[data-day-modal-body]');
+    const floatingTooltip = document.querySelector('[data-shift-floating-tooltip]');
 
     const openAssignmentId = <?= (int) $openAssignmentId ?>;
 
@@ -784,8 +782,65 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         return `<span class="my-shift-day-avatar">${escapeHtml(initials)}</span>`;
     }
 
+    function tooltipHtml(payload) {
+        const mineText = payload.isMine ? '<span class="my-shift-floating-badge">เวรของฉัน</span>' : '';
+        const position = payload.staffPosition || 'ไม่ระบุตำแหน่ง';
+        const note = payload.roleNote || payload.scheduleNote || '';
+        return `
+            <div class="my-shift-floating-head">
+                <strong>${escapeHtml(payload.shiftLabel || '-')}</strong>
+                ${mineText}
+            </div>
+            <div class="my-shift-floating-grid">
+                <span>เวลา</span><b>${escapeHtml(payload.timeRange || '-')}</b>
+                <span>เจ้าหน้าที่</span><b>${escapeHtml(payload.staffName || '-')}</b>
+                <span>ตำแหน่ง</span><b>${escapeHtml(position)}</b>
+                <span>แผนก</span><b>${escapeHtml(payload.department || '-')}</b>
+                <span>สถานะ</span><b>${escapeHtml(payload.statusLabel || '-')}</b>
+            </div>
+            ${note ? `<p>${escapeHtml(note)}</p>` : ''}
+        `;
+    }
+
+    function positionFloatingTooltip(anchor) {
+        if (!floatingTooltip || floatingTooltip.hidden) return;
+        const rect = anchor.getBoundingClientRect();
+        const tooltipRect = floatingTooltip.getBoundingClientRect();
+        const gap = 10;
+        let left = rect.left + Math.min(18, rect.width / 2);
+        let top = rect.bottom + gap;
+
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+            left = window.innerWidth - tooltipRect.width - 12;
+        }
+        if (left < 12) left = 12;
+
+        if (top + tooltipRect.height > window.innerHeight - 12) {
+            top = rect.top - tooltipRect.height - gap;
+        }
+        if (top < 12) top = 12;
+
+        floatingTooltip.style.left = `${Math.round(left)}px`;
+        floatingTooltip.style.top = `${Math.round(top)}px`;
+    }
+
+    function showShiftTooltip(button) {
+        if (!floatingTooltip) return;
+        const payload = JSON.parse(button.dataset.shift || '{}');
+        floatingTooltip.innerHTML = tooltipHtml(payload);
+        floatingTooltip.hidden = false;
+        positionFloatingTooltip(button);
+    }
+
+    function hideShiftTooltip() {
+        if (!floatingTooltip) return;
+        floatingTooltip.hidden = true;
+        floatingTooltip.innerHTML = '';
+    }
+
     function openDayModal(payload) {
         if (!dayModal || !dayModalBody) return;
+        hideShiftTooltip();
         if (dayModalDate) dayModalDate.textContent = payload.date || '-';
         if (dayModalDepts) {
             const departments = Array.isArray(payload.departments) && payload.departments.length
@@ -837,6 +892,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 
     function openDetailModal(payload) {
         if (!modal) return;
+        hideShiftTooltip();
         fields.assignmentId.value = payload.assignmentId || '';
         fields.title.textContent = payload.timeLogId
             ? 'รายละเอียดเวรที่ลงแล้ว'
@@ -946,11 +1002,19 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 
     // ── Detail modal open/close ───────────────────────────────────────────
     document.querySelectorAll('[data-my-shift-open]').forEach((button) => {
+        button.addEventListener('mouseenter', () => showShiftTooltip(button));
+        button.addEventListener('focus', () => showShiftTooltip(button));
+        button.addEventListener('mousemove', () => positionFloatingTooltip(button));
+        button.addEventListener('mouseleave', hideShiftTooltip);
+        button.addEventListener('blur', hideShiftTooltip);
         button.addEventListener('click', () => {
             const payload = JSON.parse(button.dataset.shift || '{}');
             openDetailModal(payload);
         });
     });
+
+    window.addEventListener('scroll', hideShiftTooltip, true);
+    window.addEventListener('resize', hideShiftTooltip);
 
     if (openAssignmentId > 0) {
         document.querySelector(`[data-my-shift-open][data-assignment-id="${openAssignmentId}"]`)?.click();

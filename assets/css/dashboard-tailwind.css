@@ -187,27 +187,35 @@
   }
 
   .my-shift-pill {
-    @apply relative mb-2 flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
+    @apply relative mb-1.5 flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg border bg-white px-2 py-1.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
   }
 
-  .my-shift-pill span {
-    @apply text-sm font-bold text-hospital-ink;
+  .my-shift-pill-top {
+    @apply flex w-full min-w-0 items-center justify-between gap-1.5;
+  }
+
+  .my-shift-pill-shift {
+    @apply min-w-0 truncate text-xs font-bold text-hospital-ink;
+  }
+
+  .my-shift-pill-staff {
+    @apply block max-w-full truncate text-[0.72rem] font-semibold text-hospital-muted;
   }
 
   .my-shift-pill small {
-    @apply text-xs font-semibold text-hospital-muted;
+    @apply text-[0.68rem] font-semibold leading-tight text-hospital-muted;
   }
 
   .my-shift-pill em {
-    @apply mt-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold not-italic;
+    @apply mt-0.5 rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold leading-tight not-italic;
   }
 
   .my-shift-pill b {
-    @apply rounded-full px-2 py-0.5 text-[0.68rem] font-bold;
+    @apply shrink-0 rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold leading-tight;
   }
 
   .my-shift-pill.is-mine {
-    @apply border-2 border-hospital-teal bg-teal-50 text-hospital-ink shadow-soft ring-1 ring-hospital-teal/20;
+    @apply border border-hospital-teal/55 bg-teal-50 text-hospital-ink shadow-sm ring-1 ring-hospital-teal/10;
   }
 
   .my-shift-pill.is-mine b {
@@ -215,7 +223,7 @@
   }
 
   .my-shift-pill.is-other {
-    @apply border border-dashed border-slate-300 bg-white/85 text-hospital-muted shadow-none;
+    @apply border border-dashed border-slate-200 bg-white/85 text-hospital-muted shadow-none;
   }
 
   .my-shift-pill.is-other b {
@@ -224,55 +232,70 @@
 
   .my-shift-pill.is-shift-morning,
   .my-shifts-list-row.is-shift-morning {
-    @apply border-sky-200 bg-sky-50/90;
+    @apply border-sky-200 bg-sky-50/55;
   }
 
   .my-shift-pill.is-shift-afternoon,
   .my-shifts-list-row.is-shift-afternoon {
-    @apply border-amber-200 bg-amber-50/90;
+    @apply border-amber-200 bg-amber-50/55;
   }
 
   .my-shift-pill.is-shift-night,
   .my-shifts-list-row.is-shift-night {
-    @apply border-indigo-200 bg-indigo-50/90;
+    @apply border-indigo-200 bg-indigo-50/55;
   }
 
   .my-shift-pill.is-shift-other,
   .my-shifts-list-row.is-shift-other {
-    @apply border-slate-200 bg-slate-50/90;
+    @apply border-slate-200 bg-slate-50/65;
   }
 
-  .my-shift-pill.is-mine.is-shift-morning {
-    @apply border-sky-300 bg-sky-50 ring-sky-200;
+  .my-shift-pill.is-shift-morning {
+    @apply border-l-4 border-l-sky-400;
   }
 
-  .my-shift-pill.is-mine.is-shift-afternoon {
-    @apply border-amber-300 bg-amber-50 ring-amber-200;
+  .my-shift-pill.is-shift-afternoon {
+    @apply border-l-4 border-l-amber-400;
   }
 
-  .my-shift-pill.is-mine.is-shift-night {
-    @apply border-indigo-300 bg-indigo-50 ring-indigo-200;
+  .my-shift-pill.is-shift-night {
+    @apply border-l-4 border-l-indigo-400;
   }
 
-  .my-shift-pill.is-mine.is-shift-other {
-    @apply border-hospital-teal bg-teal-50 ring-hospital-teal/20;
+  .my-shift-pill.is-shift-other {
+    @apply border-l-4 border-l-slate-400;
   }
 
-  .my-shift-tooltip {
-    @apply pointer-events-none absolute left-3 top-full z-20 mt-2 hidden w-56 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-glass;
+  .my-shift-floating-tooltip {
+    @apply pointer-events-none fixed z-[79] max-w-[20rem] rounded-xl border border-hospital-teal/20 bg-white p-3 text-left text-xs shadow-glass;
   }
 
-  .my-shift-tooltip strong {
-    @apply block text-sm font-bold text-hospital-ink;
+  .my-shift-floating-head {
+    @apply mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2;
   }
 
-  .my-shift-tooltip small {
-    @apply mt-1 block text-xs font-semibold text-hospital-muted;
+  .my-shift-floating-head strong {
+    @apply font-prompt text-sm font-bold text-hospital-ink;
   }
 
-  .my-shift-pill:hover .my-shift-tooltip,
-  .my-shift-pill:focus-visible .my-shift-tooltip {
-    @apply block;
+  .my-shift-floating-badge {
+    @apply rounded-full bg-hospital-teal px-2 py-0.5 text-[0.65rem] font-bold text-white;
+  }
+
+  .my-shift-floating-grid {
+    @apply grid grid-cols-[4.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5;
+  }
+
+  .my-shift-floating-grid span {
+    @apply text-[0.7rem] font-bold text-hospital-muted;
+  }
+
+  .my-shift-floating-grid b {
+    @apply min-w-0 text-[0.78rem] font-bold text-hospital-ink;
+  }
+
+  .my-shift-floating-tooltip p {
+    @apply mt-2 rounded-lg bg-hospital-mist px-2 py-1.5 text-[0.72rem] font-semibold text-hospital-muted;
   }
 
   .my-shift-overflow {
@@ -336,38 +359,58 @@
 
   .my-shift-pill.is-not-logged,
   .my-shift-status.is-not-logged {
-    @apply border-sky-200 bg-sky-50 text-sky-700;
+    @apply border-sky-200 text-sky-700;
   }
 
   .my-shift-pill.is-pending,
   .my-shift-status.is-pending {
-    @apply border-amber-200 bg-amber-50 text-amber-700;
+    @apply border-amber-200 text-amber-700;
   }
 
   .my-shift-pill.is-approved,
   .my-shift-status.is-approved {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+    @apply border-emerald-200 text-emerald-700;
   }
 
   .my-shift-pill.is-returned,
   .my-shift-status.is-returned {
-    @apply border-rose-200 bg-rose-50 text-rose-700;
+    @apply border-rose-200 text-rose-700;
+  }
+
+  .my-shift-pill.is-not-logged em,
+  .my-shift-status.is-not-logged {
+    @apply bg-sky-100 text-sky-700;
+  }
+
+  .my-shift-pill.is-pending em,
+  .my-shift-status.is-pending {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .my-shift-pill.is-approved em,
+  .my-shift-status.is-approved {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .my-shift-pill.is-returned em,
+  .my-shift-status.is-returned {
+    @apply bg-rose-100 text-rose-700;
   }
 
   .my-shift-pill.is-shift-morning {
-    @apply border-sky-200 bg-sky-50/90;
+    @apply border-sky-200 bg-sky-50/55;
   }
 
   .my-shift-pill.is-shift-afternoon {
-    @apply border-amber-200 bg-amber-50/90;
+    @apply border-amber-200 bg-amber-50/55;
   }
 
   .my-shift-pill.is-shift-night {
-    @apply border-indigo-200 bg-indigo-50/90;
+    @apply border-indigo-200 bg-indigo-50/55;
   }
 
   .my-shift-pill.is-shift-other {
-    @apply border-slate-200 bg-slate-50/90;
+    @apply border-slate-200 bg-slate-50/65;
   }
 
   .my-shifts-list {
@@ -569,9 +612,11 @@
 
   /* ── Scroll wrapper inside calendar day cells ──────────────────────── */
   .my-shifts-day-scroll {
-    max-height: 200px;
+    max-height: 185px;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 4px;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: #0d9488 transparent;
   }
