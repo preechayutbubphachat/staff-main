@@ -611,27 +611,68 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 </div>
                 <button type="button" class="dash-icon-button" data-my-shift-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
             </div>
-            <div class="my-shift-modal-grid">
-                <div><span>วันที่</span><strong data-modal-date>-</strong></div>
-                <div><span>กะ</span><strong data-modal-shift>-</strong></div>
-                <div><span>เวลา</span><strong data-modal-time>-</strong></div>
-                <div><span>ชั่วโมงรวม</span><strong data-modal-hours>-</strong></div>
-                <div><span>แผนก</span><strong data-modal-department>-</strong></div>
-                <div><span>สถานะ</span><strong data-modal-status>-</strong></div>
-            </div>
-            <div class="my-shift-modal-note">
-                <span>รายละเอียด</span>
-                <p data-modal-description>-</p>
-            </div>
-            <label class="my-shift-note-input" data-modal-note-wrap>
-                <span>หมายเหตุการลงเวร</span>
-                <textarea name="note" rows="3" class="form-control" placeholder="ระบุหมายเหตุเพิ่มเติมถ้ามี"></textarea>
-            </label>
+            <section class="my-shift-modal-section">
+                <div class="my-shift-modal-section-head">
+                    <span>ข้อมูลเวร</span>
+                    <p>ตรวจสอบวันที่ เวลา แผนก และสถานะของเวรนี้ก่อนดำเนินการ</p>
+                </div>
+                <div class="my-shift-modal-grid">
+                    <div><span>วันที่</span><strong data-modal-date>-</strong></div>
+                    <div><span>กะ</span><strong data-modal-shift>-</strong></div>
+                    <div><span>เวลา</span><strong data-modal-time>-</strong></div>
+                    <div><span>ชั่วโมงรวม</span><strong data-modal-hours>-</strong></div>
+                    <div><span>แผนก</span><strong data-modal-department>-</strong></div>
+                    <div><span>สถานะ</span><strong data-modal-status>-</strong></div>
+                </div>
+            </section>
+
+            <section class="my-shift-modal-section">
+                <div class="my-shift-modal-section-head">
+                    <span>หมายเหตุ</span>
+                    <p>ข้อมูลประกอบจากแผนเวรและการลงเวรเดิม</p>
+                </div>
+                <div class="my-shift-modal-note">
+                    <span>รายละเอียด</span>
+                    <p data-modal-description>-</p>
+                </div>
+            </section>
+
+            <section class="my-shift-modal-section my-shift-action-stack" aria-label="การดำเนินการกับเวร">
+                <article class="my-shift-action-card is-confirm" data-modal-confirm-group>
+                    <div>
+                        <span class="my-shift-action-kicker">การยืนยันลงเวร</span>
+                        <h4>ยืนยันลงเวรตามแผน</h4>
+                        <p>ใช้เมื่อคุณต้องการยืนยันเวรนี้ตามแผนที่ได้รับมอบหมาย</p>
+                    </div>
+                    <label class="my-shift-note-input" data-modal-note-wrap>
+                        <span>หมายเหตุการลงเวร</span>
+                        <textarea name="note" rows="3" class="form-control" placeholder="ระบุหมายเหตุเพิ่มเติมถ้ามี"></textarea>
+                    </label>
+                    <button type="submit" class="dash-btn dash-btn-primary my-shift-confirm-submit" data-modal-submit><i class="bi bi-check2-circle"></i> ยืนยันลงเวร</button>
+                </article>
+
+                <article class="my-shift-action-card is-swap" data-modal-swap-group>
+                    <div>
+                        <span class="my-shift-action-kicker">การจัดการเวร</span>
+                        <h4>แลกเวร</h4>
+                        <p>ใช้เมื่อต้องการเสนอแลกเวรกับเจ้าหน้าที่ในแผนก ระบบจะยังไม่สลับเวรจนกว่าจะอนุมัติครบขั้นตอน</p>
+                    </div>
+                    <a class="dash-btn my-shift-swap-start" href="#" data-modal-swap hidden><i class="bi bi-arrow-left-right"></i> แลกเวร</a>
+                    <span class="my-shift-swap-pending" data-modal-swap-status hidden>รอคำขอแลกอยู่</span>
+                </article>
+
+                <article class="my-shift-action-card is-substitute" aria-disabled="true">
+                    <div>
+                        <span class="my-shift-action-kicker">การแทนเวร</span>
+                        <h4>แทนเวร</h4>
+                        <p>ฟังก์ชันนี้เตรียมไว้สำหรับการให้เจ้าหน้าที่คนอื่นแทนเวร และจะเปิดใช้งานในอนาคต</p>
+                    </div>
+                    <button type="button" class="dash-btn my-shift-substitute-soon" disabled><i class="bi bi-clock-history"></i> ยังไม่เปิดใช้งาน</button>
+                </article>
+            </section>
+
             <div class="my-shift-modal-actions">
-                <button type="button" class="dash-btn dash-btn-ghost" data-my-shift-close>ยกเลิก</button>
-                <a class="dash-btn dash-btn-secondary my-shift-swap-start" href="#" data-modal-swap hidden><i class="bi bi-arrow-left-right"></i> แลกเวร</a>
-                <span class="my-shift-swap-pending" data-modal-swap-status hidden>รอคำขอแลกอยู่</span>
-                <button type="submit" class="dash-btn dash-btn-primary" data-modal-submit><i class="bi bi-check2-circle"></i> ยืนยันลงเวร</button>
+                <button type="button" class="dash-btn dash-btn-ghost" data-my-shift-close>ปิดหน้าต่าง</button>
             </div>
         </form>
     </div>
@@ -713,7 +754,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     // ── State ────────────────────────────────────────────────────────────
     let sourceShift = null;           // my shift to swap (from PHP swap_source_id)
     let targetShift = null;           // target shift selected
-    let sourceDetailSnapshot = null;  // payload to reopen source modal on cancel
+    let sourceDetailSnapshot = null;  // source payload is kept while choosing another target
     let confirmModalOpen = false;
 
     // ── DOM refs ─────────────────────────────────────────────────────────
@@ -721,6 +762,8 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const form            = document.querySelector('[data-my-shift-form]');
     const submitBtn       = document.querySelector('[data-modal-submit]');
     const noteWrap        = document.querySelector('[data-modal-note-wrap]');
+    const confirmGroup    = document.querySelector('[data-modal-confirm-group]');
+    const swapGroup       = document.querySelector('[data-modal-swap-group]');
     const swapLink        = document.querySelector('[data-modal-swap]');
     const swapStatus      = document.querySelector('[data-modal-swap-status]');
     const confirmBackdrop = document.getElementById('swapConfirmBackdrop');
@@ -917,6 +960,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         const canCreate = !payload.timeLogId && payload.isMine;
         if (submitBtn) submitBtn.hidden = !canCreate;
         if (noteWrap)  noteWrap.hidden  = !canCreate;
+        if (confirmGroup) confirmGroup.hidden = !canCreate;
         if (swapLink) {
             swapLink.hidden = !payload.canRequestSwap;
             swapLink.href   = payload.swapUrl || '#';
@@ -925,6 +969,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             const hasSwapStatus = payload.isMine && !payload.canRequestSwap && payload.swapBlockedReason === 'รอคำขอแลกอยู่';
             swapStatus.hidden      = !hasSwapStatus;
             swapStatus.textContent = payload.swapBlockedReason || '';
+        }
+        if (swapGroup) {
+            swapGroup.hidden = !payload.isMine || (!payload.canRequestSwap && swapStatus?.hidden !== false);
         }
         modal.hidden = false;
         document.body.classList.add('overflow-hidden');
@@ -968,6 +1015,22 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (!confirmBackdrop) return;
         confirmBackdrop.hidden = true;
         confirmModalOpen = false;
+    }
+
+    function cancelSwapConfirmation() {
+        closeConfirmModal();
+        targetShift = null;
+        if (confirmError) {
+            confirmError.hidden = true;
+            confirmError.textContent = '';
+        }
+        if (confirmSubmit) {
+            confirmSubmit.disabled = false;
+            confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+        }
+        if (modal) modal.hidden = true;
+        if (dayModal) dayModal.hidden = true;
+        document.body.classList.remove('overflow-hidden');
     }
 
     function showToast(message, type = 'success') {
@@ -1049,8 +1112,8 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 display   : btn.dataset.display,
             };
 
-            // Capture source shift info from PHP-rendered swap banner
-            // We store a synthetic snapshot so cancel can reopen detail modal
+            // Capture source shift info from PHP-rendered swap banner.
+            // The source remains active until the user exits swap mode from the banner.
             sourceShift = <?= $swapSourceSummary
                 ? json_encode([
                     'date'        => app_format_thai_date((string) $swapSourceSummary['date'], true),
@@ -1062,7 +1125,6 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 ], JSON_UNESCAPED_UNICODE)
                 : 'null' ?>;
 
-            // Snapshot source detail so cancel-from-confirm can reopen source modal
             sourceDetailSnapshot = sourceShift ? {
                 assignmentId      : parseInt(btn.dataset.sourceId, 10),
                 isMine            : true,
@@ -1087,13 +1149,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         });
     });
 
-    // ── Confirm modal: Cancel → reopen source detail ──────────────────────
+    // ── Confirm modal: cancel only this target selection and stay in swap mode ──
     confirmCancel?.addEventListener('click', () => {
-        closeConfirmModal();
-        // Reopen source shift detail modal if we have snapshot
-        if (sourceDetailSnapshot) {
-            openDetailModal(sourceDetailSnapshot);
-        }
+        cancelSwapConfirmation();
     });
 
     // ── Confirm modal: Submit via fetch ───────────────────────────────────
@@ -1164,8 +1222,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     // Close confirm modal on backdrop click (outside dialog)
     confirmBackdrop?.addEventListener('click', (e) => {
         if (e.target === confirmBackdrop) {
-            closeConfirmModal();
-            if (sourceDetailSnapshot) openDetailModal(sourceDetailSnapshot);
+            cancelSwapConfirmation();
         }
     });
 

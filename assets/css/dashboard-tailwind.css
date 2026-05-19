@@ -472,7 +472,7 @@
   }
 
   .my-shift-modal {
-    @apply max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[1.5rem] bg-white p-5 shadow-glass;
+    @apply max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] bg-white p-5 shadow-glass sm:p-6;
   }
 
   .my-shift-modal-head {
@@ -489,6 +489,22 @@
 
   .my-shift-modal-grid {
     @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  .my-shift-modal-section {
+    @apply mt-4;
+  }
+
+  .my-shift-modal-section-head {
+    @apply mb-2 flex flex-col gap-1;
+  }
+
+  .my-shift-modal-section-head span {
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-hospital-teal;
+  }
+
+  .my-shift-modal-section-head p {
+    @apply m-0 text-sm font-semibold text-hospital-muted;
   }
 
   .my-shift-modal-grid div,
@@ -511,8 +527,64 @@
     @apply mt-3;
   }
 
+  .my-shift-action-stack {
+    @apply grid gap-3;
+  }
+
+  .my-shift-action-card {
+    @apply rounded-2xl border bg-white p-4 shadow-sm transition;
+  }
+
+  .my-shift-action-card h4 {
+    @apply m-0 mt-1 font-prompt text-lg font-bold text-hospital-ink;
+  }
+
+  .my-shift-action-card p {
+    @apply m-0 mt-1 text-sm font-semibold leading-relaxed text-hospital-muted;
+  }
+
+  .my-shift-action-kicker {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em];
+  }
+
+  .my-shift-action-card.is-confirm {
+    @apply border-emerald-200 bg-emerald-50/70;
+  }
+
+  .my-shift-action-card.is-confirm .my-shift-action-kicker {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .my-shift-confirm-submit {
+    @apply mt-3 w-full justify-center sm:w-auto;
+  }
+
+  .my-shift-action-card.is-swap {
+    @apply border-rose-200 bg-rose-50/80;
+  }
+
+  .my-shift-action-card.is-swap .my-shift-action-kicker {
+    @apply bg-rose-100 text-rose-700;
+  }
+
+  .my-shift-action-card.is-substitute {
+    @apply border-slate-200 bg-slate-50 opacity-90;
+  }
+
+  .my-shift-action-card.is-substitute .my-shift-action-kicker {
+    @apply bg-slate-200 text-slate-600;
+  }
+
+  .my-shift-substitute-soon {
+    @apply mt-3 w-full cursor-not-allowed justify-center border border-slate-200 bg-white text-slate-500 sm:w-auto;
+  }
+
+  .my-shift-swap-start {
+    @apply mt-3 w-full justify-center border border-rose-600 bg-rose-600 text-white shadow-lg shadow-rose-900/15 hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 sm:w-auto;
+  }
+
   .my-shift-modal-actions {
-    @apply mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
+    @apply mt-5 flex justify-end border-t border-slate-100 pt-4;
   }
 
   .my-shift-day-modal-backdrop {
