@@ -67,7 +67,7 @@ function shift_swap_fetch_full_rows(PDO $conn, array $rows): array
 $sentRows = shift_swap_fetch_full_rows($conn, $pageData['sent']);
 $incomingRows = shift_swap_fetch_full_rows($conn, $pageData['incoming']);
 $managerRows = shift_swap_fetch_full_rows($conn, $pageData['manager']);
-$historyRows = array_values(array_filter($sentRows, static fn(array $row): bool => !in_array((string) $row['status'], ['pending_target_confirm', 'pending_manager_approval'], true)));
+$historyRows = shift_swap_fetch_full_rows($conn, $pageData['history'] ?? []);
 $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bool => in_array((string) $row['status'], ['pending_target_confirm', 'pending_manager_approval'], true)));
 ?>
 <!doctype html>
@@ -110,7 +110,12 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         </button>
     </header>
 
-    <div class="shift-swap-frame" data-notification-module="shift_swaps">
+    <div class="shift-swap-frame"
+         data-notification-module="shift_swaps"
+         data-notification-page-key="shift_swaps"
+         data-notification-mark-module-url="../ajax/notifications/mark_module_read.php"
+         data-notification-targets-url="../ajax/notifications/module_targets.php"
+         data-notification-csrf="<?= htmlspecialchars(app_csrf_token('notifications_ajax')) ?>">
         <?php if ($flash !== ''): ?>
             <div class="alert alert-<?= htmlspecialchars($flashType) ?> rounded-4 border-0 shadow-sm" role="alert">
                 <?= htmlspecialchars($flash) ?>

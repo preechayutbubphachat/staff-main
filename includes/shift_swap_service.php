@@ -200,6 +200,11 @@ function app_shift_swap_revalidate_pair(PDO $conn, array $requesterAssignment, a
     if ((int) $requesterAssignment['id'] === (int) $targetAssignment['id']) {
         throw new RuntimeException('ไม่สามารถแลก assignment เดียวกันได้');
     }
+    // ป้องกัน duplicate key: ถ้าทั้งคู่อยู่ใน schedule_id เดียวกัน
+    // การ UPDATE staff_id จะชนกับ unique key (schedule_id, staff_id) ทันที
+    if ((int) $requesterAssignment['schedule_id'] === (int) $targetAssignment['schedule_id']) {
+        throw new RuntimeException('ไม่สามารถแลกเวรระหว่างช่วงเวลาเดียวกันได้ ทั้งสองฝ่ายอยู่ใน shift schedule เดียวกัน');
+    }
     if ((int) $requesterAssignment['staff_id'] === (int) $targetAssignment['staff_id']) {
         throw new RuntimeException('ต้องเลือกเจ้าหน้าที่ปลายทางคนละคน');
     }
@@ -348,6 +353,7 @@ function app_shift_swap_get_request(PDO $conn, int $swapRequestId): ?array
             requester.fullname AS requester_name,
             target.fullname AS target_name,
             d.department_name,
+            approver.fullname AS approver_name,
             ra.schedule_id AS requester_schedule_id,
             rs.schedule_date AS requester_date,
             rs.shift_type AS requester_shift_type,
@@ -364,6 +370,7 @@ function app_shift_swap_get_request(PDO $conn, int $swapRequestId): ?array
         INNER JOIN users requester ON requester.id = sr.requester_id
         INNER JOIN users target ON target.id = sr.target_staff_id
         LEFT JOIN departments d ON d.id = sr.department_id
+        LEFT JOIN users approver ON approver.id = sr.manager_approved_by
         INNER JOIN shift_assignments ra ON ra.id = sr.requester_assignment_id
         INNER JOIN shift_schedules rs ON rs.id = ra.schedule_id
         INNER JOIN shift_assignments ta ON ta.id = sr.target_assignment_id
@@ -528,10 +535,40 @@ function app_shift_swap_apply(PDO $conn, int $swapRequestId, int $managerUserId,
             throw new RuntimeException('เจ้าของ assignment เปลี่ยนไประหว่างรออนุมัติ กรุณาสร้างคำขอใหม่');
         }
 
-        $updateA = $conn->prepare('UPDATE shift_assignments SET staff_id = ?, updated_at = NOW() WHERE id = ? AND staff_id = ? AND assignment_status = "assigned"');
-        $updateA->execute([$targetStaffId, (int) $requesterAssignment['id'], $requesterStaffId]);
-        $updateB = $conn->prepare('UPDATE shift_assignments SET staff_id = ?, updated_at = NOW() WHERE id = ? AND staff_id = ? AND assignment_status = "assigned"');
-        $updateB->execute([$requesterStaffId, (int) $targetAssignment['id'], $targetStaffId]);
+        // Lock ทั้งสอง assignment row ก่อน UPDATE เพื่อป้องกัน race condition
+        // ที่อาจทำให้ apply ซ้อนกันหรือมีการแก้ไข assignment ระหว่างกำลังอนุมัติ
+        $lockStmt = $conn->prepare(
+            'SELECT id, staff_id, assignment_status FROM shift_assignments WHERE id IN (?,?) FOR UPDATE'
+        );
+        $lockStmt->execute([(int) $requesterAssignment['id'], (int) $targetAssignment['id']]);
+        $lockedRows = [];
+        foreach ($lockStmt->fetchAll(PDO::FETCH_ASSOC) as $lr) {
+            $lockedRows[(int) $lr['id']] = $lr;
+        }
+        if (
+            !isset($lockedRows[(int) $requesterAssignment['id']], $lockedRows[(int) $targetAssignment['id']])
+            || (int) $lockedRows[(int) $requesterAssignment['id']]['staff_id'] !== $requesterStaffId
+            || (int) $lockedRows[(int) $targetAssignment['id']]['staff_id'] !== $targetStaffId
+            || (string) $lockedRows[(int) $requesterAssignment['id']]['assignment_status'] !== 'assigned'
+            || (string) $lockedRows[(int) $targetAssignment['id']]['assignment_status'] !== 'assigned'
+        ) {
+            throw new RuntimeException('assignment เปลี่ยนแปลงระหว่างกำลังอนุมัติ กรุณาตรวจสอบและลองใหม่');
+        }
+
+        try {
+            $updateA = $conn->prepare("UPDATE shift_assignments SET staff_id = ?, updated_at = NOW() WHERE id = ? AND staff_id = ? AND assignment_status = 'assigned'");
+            $updateA->execute([$targetStaffId, (int) $requesterAssignment['id'], $requesterStaffId]);
+            $updateB = $conn->prepare("UPDATE shift_assignments SET staff_id = ?, updated_at = NOW() WHERE id = ? AND staff_id = ? AND assignment_status = 'assigned'");
+            $updateB->execute([$requesterStaffId, (int) $targetAssignment['id'], $targetStaffId]);
+        } catch (PDOException $pdoEx) {
+            // แปล MySQL duplicate key error ให้เป็นข้อความที่ผู้ใช้เข้าใจได้
+            if (str_contains($pdoEx->getMessage(), '1062') || str_contains($pdoEx->getMessage(), 'Duplicate entry')) {
+                throw new RuntimeException(
+                    'ไม่สามารถสลับเวรได้เนื่องจากข้อมูลเวรซ้ำซ้อน (schedule/staff ชนกัน) กรุณาตรวจสอบข้อมูลและลองใหม่'
+                );
+            }
+            throw $pdoEx;
+        }
         if ($updateA->rowCount() !== 1 || $updateB->rowCount() !== 1) {
             throw new RuntimeException('ไม่สามารถสลับ assignment ได้ครบถ้วน จึงยกเลิกการทำรายการ');
         }
@@ -696,9 +733,32 @@ function app_shift_swap_page_data(PDO $conn, int $userId): array
         $managerRows = $managerStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    $historyStmt = $conn->prepare("
+        SELECT
+            sr.*,
+            requester.fullname AS requester_name,
+            target.fullname AS target_name,
+            d.department_name
+        FROM shift_swap_requests sr
+        INNER JOIN users requester ON requester.id = sr.requester_id
+        INNER JOIN users target ON target.id = sr.target_staff_id
+        LEFT JOIN departments d ON d.id = sr.department_id
+        WHERE sr.status IN ('applied', 'rejected_by_target', 'rejected_by_manager', 'cancelled')
+          AND (
+            sr.requester_id = ?
+            OR sr.target_staff_id = ?
+            OR sr.manager_approved_by = ?
+            OR sr.manager_rejected_by = ?
+          )
+        ORDER BY sr.updated_at DESC, sr.id DESC
+        LIMIT 80
+    ");
+    $historyStmt->execute([$userId, $userId, $userId, $userId]);
+
     return [
         'sent' => $sentStmt->fetchAll(PDO::FETCH_ASSOC) ?: [],
         'incoming' => $incomingStmt->fetchAll(PDO::FETCH_ASSOC) ?: [],
         'manager' => $managerRows,
+        'history' => $historyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [],
     ];
 }
