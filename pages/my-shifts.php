@@ -201,21 +201,87 @@ function my_shift_swap_target_meta(PDO $conn, array $assignment, int $currentUse
     }
 }
 
+function my_shift_type_class(string $shiftType): string
+{
+    return match ($shiftType) {
+        'morning' => 'morning',
+        'evening', 'afternoon' => 'afternoon',
+        'night' => 'night',
+        default => 'other',
+    };
+}
+
+function my_shift_day_detail_payload(string $date, array $assignments, array $shiftTypes): string
+{
+    $groups = [];
+    $departments = [];
+
+    foreach ($assignments as $assignment) {
+        $shiftType = (string) ($assignment['shift_type'] ?? 'custom');
+        $shiftLabel = (string) ($shiftTypes[$shiftType]['label'] ?? $shiftType);
+        $shiftClass = my_shift_type_class($shiftType);
+        $groupKey = $shiftClass . '|' . $shiftType;
+        $statusMeta = $assignment['status_meta'] ?? app_my_shift_status_meta($assignment);
+        $department = (string) ($assignment['department_name'] ?? '-');
+
+        if (!isset($groups[$groupKey])) {
+            $groups[$groupKey] = [
+                'shiftType' => $shiftType,
+                'shiftClass' => $shiftClass,
+                'shiftLabel' => $shiftLabel,
+                'items' => [],
+            ];
+        }
+
+        if ($department !== '') {
+            $departments[$department] = true;
+        }
+
+        $groups[$groupKey]['items'][] = [
+            'assignmentId' => (int) ($assignment['assignment_id'] ?? 0),
+            'staffId' => (int) ($assignment['staff_id'] ?? 0),
+            'staffName' => (string) ($assignment['staff_name'] ?? '-'),
+            'staffPosition' => (string) ($assignment['staff_position'] ?? ''),
+            'department' => $department,
+            'avatarUrl' => (string) ($assignment['staff_profile_image_url'] ?? ''),
+            'initials' => (string) ($assignment['staff_initials'] ?? app_shift_staff_initials((string) ($assignment['staff_name'] ?? ''))),
+            'timeRange' => (string) ($assignment['start_time_label'] ?? '') . '-' . (string) ($assignment['end_time_label'] ?? ''),
+            'statusLabel' => (string) ($statusMeta['label'] ?? ''),
+            'isMine' => !empty($assignment['is_mine']),
+        ];
+    }
+
+    $payload = [
+        'date' => app_format_thai_date($date, true),
+        'dateRaw' => $date,
+        'departments' => array_keys($departments),
+        'groups' => array_values($groups),
+    ];
+
+    return htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+}
+
 function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 {
     global $selectedMonth, $selectedYearBe;
     $statusMeta = $assignment['status_meta'] ?? app_my_shift_status_meta($assignment);
     $isMine = !empty($assignment['is_mine']);
     $swapSourceMeta = $assignment['swap_source_meta'] ?? ['can' => false, 'reason' => ''];
+    $shiftType = (string) ($assignment['shift_type'] ?? 'custom');
     $payload = [
         'assignmentId' => (int) $assignment['assignment_id'],
         'scheduleId' => (int) $assignment['schedule_id'],
         'staffId' => (int) ($assignment['staff_id'] ?? 0),
         'staffName' => (string) ($assignment['staff_name'] ?? ''),
+        'staffPosition' => (string) ($assignment['staff_position'] ?? ''),
+        'staffInitials' => (string) ($assignment['staff_initials'] ?? app_shift_staff_initials((string) ($assignment['staff_name'] ?? ''))),
+        'staffAvatarUrl' => (string) ($assignment['staff_profile_image_url'] ?? ''),
         'isMine' => $isMine,
         'date' => app_format_thai_date((string) $assignment['schedule_date'], true),
         'dateRaw' => (string) $assignment['schedule_date'],
-        'shiftLabel' => (string) ($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']),
+        'shiftType' => $shiftType,
+        'shiftClass' => my_shift_type_class($shiftType),
+        'shiftLabel' => (string) ($shiftTypes[$shiftType]['label'] ?? $shiftType),
         'timeRange' => (string) $assignment['start_time_label'] . '-' . (string) $assignment['end_time_label'],
         'hours' => number_format((float) $assignment['planned_hours'], 2),
         'department' => (string) ($assignment['department_name'] ?? '-'),
@@ -407,7 +473,12 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                     <article class="my-shifts-day <?= $date === $today ? 'is-today' : '' ?> <?= $dayAssignments ? 'has-shift' : '' ?> <?= $dayHasMine ? 'has-my-shift' : '' ?>">
                         <div class="my-shifts-day-head">
                             <strong><?= (int) $day ?></strong>
-                            <?php if ($date === $today): ?><span>วันนี้</span><?php endif; ?>
+                            <div class="my-shifts-day-actions">
+                                <?php if ($date === $today): ?><span>วันนี้</span><?php endif; ?>
+                                <?php if ($dayAssignments): ?>
+                                    <button type="button" class="my-shifts-day-detail" data-my-shift-day-open data-day-shifts='<?= my_shift_day_detail_payload($date, $dayAssignments, $shiftTypes) ?>'>รายละเอียด</button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <?php if (!$dayAssignments): ?>
                             <div class="my-shifts-day-empty">ไม่มีเวร</div>
@@ -417,18 +488,29 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                         <?php foreach ($dayAssignments as $assignment): ?>
                             <?php
                             $statusMeta = $assignment['status_meta'];
+                            $shiftType = (string) ($assignment['shift_type'] ?? 'custom');
+                            $shiftLabel = (string) ($shiftTypes[$shiftType]['label'] ?? $shiftType);
+                            $shiftClass = my_shift_type_class($shiftType);
+                            $tooltipStaff = (string) ($assignment['staff_name'] ?? '-');
+                            $tooltipDepartment = (string) ($assignment['department_name'] ?? '-');
                             $swapTargetMeta = $assignment['swap_target_meta'] ?? ['can' => false, 'reason' => ''];
                             $swapClass = $swapSelectionMode
                                 ? (!empty($swapTargetMeta['can']) ? 'is-swap-eligible' : 'is-swap-unavailable')
                                 : '';
                             ?>
-                            <button type="button" class="my-shift-pill is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?> <?= htmlspecialchars($swapClass) ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
-                                <span><?= htmlspecialchars($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']) ?></span>
+                            <button type="button" class="my-shift-pill is-shift-<?= htmlspecialchars($shiftClass) ?> is-<?= htmlspecialchars($statusMeta['class']) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?> <?= htmlspecialchars($swapClass) ?>" data-assignment-id="<?= (int) $assignment['assignment_id'] ?>" data-my-shift-open data-shift='<?= my_shift_modal_payload($assignment, $shiftTypes) ?>'>
+                                <span><?= htmlspecialchars($shiftLabel) ?></span>
                                 <?php if ($view === 'department'): ?>
                                     <b><?= !empty($assignment['is_mine']) ? 'ของฉัน' : htmlspecialchars((string) ($assignment['staff_name'] ?? '-')) ?></b>
                                 <?php endif; ?>
                                 <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
                                 <em><?= htmlspecialchars($statusMeta['label']) ?></em>
+                                <span class="my-shift-tooltip" role="tooltip">
+                                    <strong><?= htmlspecialchars($shiftLabel) ?></strong>
+                                    <small><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></small>
+                                    <small><?= htmlspecialchars($tooltipStaff) ?> &middot; <?= htmlspecialchars($tooltipDepartment) ?></small>
+                                    <small><?= htmlspecialchars((string) ($statusMeta['label'] ?? '')) ?></small>
+                                </span>
                             </button>
                             <?php if ($swapSelectionMode): ?>
                                 <?php if (!empty($swapTargetMeta['can'])): ?>
@@ -494,8 +576,11 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                     <span>การจัดการ</span>
                 </div>
                 <?php foreach ($assignments as $assignment): ?>
-                    <?php $statusMeta = $assignment['status_meta']; ?>
-                    <article class="my-shifts-list-row <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?>">
+                    <?php
+                    $statusMeta = $assignment['status_meta'];
+                    $shiftClass = my_shift_type_class((string) ($assignment['shift_type'] ?? 'custom'));
+                    ?>
+                    <article class="my-shifts-list-row is-shift-<?= htmlspecialchars($shiftClass) ?> <?= !empty($assignment['is_mine']) ? 'is-mine' : 'is-other' ?>">
                         <div data-label="วันที่"><strong><?= htmlspecialchars(app_format_thai_date((string) $assignment['schedule_date'])) ?></strong></div>
                         <div data-label="กะ"><?= htmlspecialchars($shiftTypes[(string) $assignment['shift_type']]['label'] ?? $assignment['shift_type']) ?></div>
                         <div data-label="เวลา"><?= htmlspecialchars($assignment['start_time_label']) ?>-<?= htmlspecialchars($assignment['end_time_label']) ?></div>
@@ -558,6 +643,23 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 </div>
 
 <!-- ── Confirm Swap Modal ──────────────────────────────────────────────── -->
+<div class="my-shift-day-modal-backdrop" data-my-shift-day-modal hidden>
+    <div class="my-shift-day-modal" role="dialog" aria-modal="true" aria-labelledby="myShiftDayModalTitle">
+        <div class="my-shift-modal-head">
+            <div>
+                <p>Daily Shift Detail</p>
+                <h3 id="myShiftDayModalTitle">ตารางเวรประจำวัน</h3>
+                <span class="my-shift-day-modal-date" data-day-modal-date>-</span>
+            </div>
+            <button type="button" class="dash-icon-button" data-my-shift-day-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="my-shift-day-modal-meta">
+            <span><i class="bi bi-building"></i> <strong data-day-modal-departments>-</strong></span>
+        </div>
+        <div class="my-shift-day-modal-body" data-day-modal-body></div>
+    </div>
+</div>
+
 <div class="swap-confirm-backdrop" id="swapConfirmBackdrop" hidden>
     <div class="swap-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="swapConfirmTitle">
         <div class="swap-confirm-head">
@@ -593,4 +695,430 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             <i class="bi bi-exclamation-triangle-fill me-1"></i>
             การยืนยันนี้เป็นการส่งคำขอแลกเวรเท่านั้น เวรจะยังไม่ถูกสลับจนกว่าเจ้าหน้าที่ปลายทางและผู้มีสิทธิ์อนุมัติจะดำเนินการครบตามขั้นตอน
         </div>
-        <div id="swapConfirmError" class="mt-3 rounded-xl border bo
+        <div id="swapConfirmError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" hidden></div>
+        <div class="swap-confirm-actions">
+            <button type="button" class="dash-btn dash-btn-ghost" id="swapConfirmCancel">
+                <i class="bi bi-x-circle"></i> ยกเลิก
+            </button>
+            <button type="button" class="dash-btn dash-btn-primary" id="swapConfirmSubmit">
+                <i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร
+            </button>
+        </div>
+    </div>
+</div>
+
+<?php render_staff_profile_modal(); ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../assets/js/notifications.js"></script>
+<?php render_staff_profile_modal_script(); ?>
+<script>
+(() => {
+    // ── State ────────────────────────────────────────────────────────────
+    let sourceShift = null;           // my shift to swap (from PHP swap_source_id)
+    let targetShift = null;           // target shift selected
+    let sourceDetailSnapshot = null;  // payload to reopen source modal on cancel
+    let confirmModalOpen = false;
+
+    // ── DOM refs ─────────────────────────────────────────────────────────
+    const modal           = document.querySelector('[data-my-shift-modal]');
+    const form            = document.querySelector('[data-my-shift-form]');
+    const submitBtn       = document.querySelector('[data-modal-submit]');
+    const noteWrap        = document.querySelector('[data-modal-note-wrap]');
+    const swapLink        = document.querySelector('[data-modal-swap]');
+    const swapStatus      = document.querySelector('[data-modal-swap-status]');
+    const confirmBackdrop = document.getElementById('swapConfirmBackdrop');
+    const confirmCancel   = document.getElementById('swapConfirmCancel');
+    const confirmSubmit   = document.getElementById('swapConfirmSubmit');
+    const confirmError    = document.getElementById('swapConfirmError');
+    const dayModal        = document.querySelector('[data-my-shift-day-modal]');
+    const dayModalDate    = document.querySelector('[data-day-modal-date]');
+    const dayModalDepts   = document.querySelector('[data-day-modal-departments]');
+    const dayModalBody    = document.querySelector('[data-day-modal-body]');
+
+    const openAssignmentId = <?= (int) $openAssignmentId ?>;
+
+    const fields = {
+        assignmentId : document.querySelector('[data-modal-assignment-id]'),
+        title        : document.querySelector('[data-modal-title]'),
+        date         : document.querySelector('[data-modal-date]'),
+        shift        : document.querySelector('[data-modal-shift]'),
+        time         : document.querySelector('[data-modal-time]'),
+        hours        : document.querySelector('[data-modal-hours]'),
+        department   : document.querySelector('[data-modal-department]'),
+        status       : document.querySelector('[data-modal-status]'),
+        description  : document.querySelector('[data-modal-description]')
+    };
+
+    const confirmFields = {
+        srcDate   : document.querySelector('[data-confirm-src-date]'),
+        srcShift  : document.querySelector('[data-confirm-src-shift]'),
+        srcTime   : document.querySelector('[data-confirm-src-time]'),
+        srcHours  : document.querySelector('[data-confirm-src-hours]'),
+        srcDept   : document.querySelector('[data-confirm-src-dept]'),
+        srcStatus : document.querySelector('[data-confirm-src-status]'),
+        tgtStaff  : document.querySelector('[data-confirm-tgt-staff]'),
+        tgtDate   : document.querySelector('[data-confirm-tgt-date]'),
+        tgtShift  : document.querySelector('[data-confirm-tgt-shift]'),
+        tgtTime   : document.querySelector('[data-confirm-tgt-time]'),
+        tgtHours  : document.querySelector('[data-confirm-tgt-hours]'),
+        tgtDept   : document.querySelector('[data-confirm-tgt-dept]'),
+        tgtStatus : document.querySelector('[data-confirm-tgt-status]'),
+    };
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function staffAvatarHtml(staff) {
+        const name = staff.staffName || 'เจ้าหน้าที่';
+        const initials = staff.initials || 'U';
+        if (staff.avatarUrl) {
+            return `<span class="my-shift-day-avatar" data-initials="${escapeHtml(initials)}"><img src="${escapeHtml(staff.avatarUrl)}" alt="รูปโปรไฟล์ ${escapeHtml(name)}" onerror="this.parentElement.textContent=this.parentElement.dataset.initials||'U';"></span>`;
+        }
+        return `<span class="my-shift-day-avatar">${escapeHtml(initials)}</span>`;
+    }
+
+    function openDayModal(payload) {
+        if (!dayModal || !dayModalBody) return;
+        if (dayModalDate) dayModalDate.textContent = payload.date || '-';
+        if (dayModalDepts) {
+            const departments = Array.isArray(payload.departments) && payload.departments.length
+                ? payload.departments.join(' / ')
+                : '-';
+            dayModalDepts.textContent = departments;
+        }
+
+        const groups = Array.isArray(payload.groups) ? payload.groups : [];
+        if (!groups.length) {
+            dayModalBody.innerHTML = '<div class="my-shift-day-empty-state">ไม่มีเวรในวันนี้</div>';
+        } else {
+            dayModalBody.innerHTML = groups.map((group) => {
+                const items = Array.isArray(group.items) ? group.items : [];
+                return `
+                    <section class="my-shift-day-section is-shift-${escapeHtml(group.shiftClass || 'other')}">
+                        <div class="my-shift-day-section-head">
+                            <strong>${escapeHtml(group.shiftLabel || '-')}</strong>
+                            <span>${items.length} คน</span>
+                        </div>
+                        <div class="my-shift-day-staff-list">
+                            ${items.map((staff) => `
+                                <article class="my-shift-day-staff ${staff.isMine ? 'is-mine' : ''}">
+                                    ${staffAvatarHtml(staff)}
+                                    <div class="my-shift-day-staff-main">
+                                        <strong>${escapeHtml(staff.staffName || '-')}</strong>
+                                        <span>${escapeHtml(staff.staffPosition || 'ไม่ระบุตำแหน่ง')}</span>
+                                    </div>
+                                    <div class="my-shift-day-staff-meta">
+                                        <span>${escapeHtml(staff.department || '-')}</span>
+                                        <small>${escapeHtml(staff.timeRange || '-')} · ${escapeHtml(staff.statusLabel || '-')}</small>
+                                    </div>
+                                </article>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            }).join('');
+        }
+        dayModal.hidden = false;
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeDayModal() {
+        if (!dayModal) return;
+        dayModal.hidden = true;
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function openDetailModal(payload) {
+        if (!modal) return;
+        fields.assignmentId.value = payload.assignmentId || '';
+        fields.title.textContent = payload.timeLogId
+            ? 'รายละเอียดเวรที่ลงแล้ว'
+            : (payload.isMine ? 'ลงเวรตามแผน' : 'รายละเอียดเวรเจ้าหน้าที่');
+        fields.date.textContent       = payload.date || '-';
+        fields.shift.textContent      = payload.shiftLabel || '-';
+        fields.time.textContent       = payload.timeRange || '-';
+        fields.hours.textContent      = `${payload.hours || '0.00'} ชม.`;
+        fields.department.textContent = payload.department || '-';
+        fields.status.textContent     = payload.statusLabel || '-';
+
+        const details = [
+            payload.staffName   ? `เจ้าหน้าที่: ${payload.staffName}` : '',
+            payload.roleNote    ? `หน้าที่: ${payload.roleNote}` : '',
+            payload.scheduleNote ? `หมายเหตุแผนเวร: ${payload.scheduleNote}` : '',
+            payload.timeLogId   ? `time_logs.id: ${payload.timeLogId}` : '',
+            payload.source      ? `source: ${payload.source}` : '',
+            payload.note        ? `หมายเหตุลงเวร: ${payload.note}` : ''
+        ].filter(Boolean);
+        fields.description.textContent = details.length ? details.join(' | ') : 'ไม่มีรายละเอียดเพิ่มเติม';
+
+        const canCreate = !payload.timeLogId && payload.isMine;
+        if (submitBtn) submitBtn.hidden = !canCreate;
+        if (noteWrap)  noteWrap.hidden  = !canCreate;
+        if (swapLink) {
+            swapLink.hidden = !payload.canRequestSwap;
+            swapLink.href   = payload.swapUrl || '#';
+        }
+        if (swapStatus) {
+            const hasSwapStatus = payload.isMine && !payload.canRequestSwap && payload.swapBlockedReason === 'รอคำขอแลกอยู่';
+            swapStatus.hidden      = !hasSwapStatus;
+            swapStatus.textContent = payload.swapBlockedReason || '';
+        }
+        modal.hidden = false;
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeDetailModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function openConfirmModal(src, tgt) {
+        if (!confirmBackdrop) return;
+        // Fill source side
+        if (confirmFields.srcDate)   confirmFields.srcDate.textContent   = src.date || '-';
+        if (confirmFields.srcShift)  confirmFields.srcShift.textContent  = src.shiftLabel || '-';
+        if (confirmFields.srcTime)   confirmFields.srcTime.textContent   = src.timeRange || '-';
+        if (confirmFields.srcHours)  confirmFields.srcHours.textContent  = `${src.hours || '0.00'} ชม.`;
+        if (confirmFields.srcDept)   confirmFields.srcDept.textContent   = src.department || '-';
+        if (confirmFields.srcStatus) confirmFields.srcStatus.textContent = src.statusLabel || '-';
+        // Fill target side
+        if (confirmFields.tgtStaff)  confirmFields.tgtStaff.textContent  = tgt.staffName || '-';
+        if (confirmFields.tgtDate)   confirmFields.tgtDate.textContent   = tgt.date || '-';
+        if (confirmFields.tgtShift)  confirmFields.tgtShift.textContent  = tgt.shiftLabel || '-';
+        if (confirmFields.tgtTime)   confirmFields.tgtTime.textContent   = tgt.timeRange || '-';
+        if (confirmFields.tgtHours)  confirmFields.tgtHours.textContent  = `${tgt.hours || '0.00'} ชม.`;
+        if (confirmFields.tgtDept)   confirmFields.tgtDept.textContent   = tgt.department || '-';
+        if (confirmFields.tgtStatus) confirmFields.tgtStatus.textContent = tgt.statusLabel || '-';
+
+        if (confirmError) confirmError.hidden = true;
+        if (confirmSubmit) {
+            confirmSubmit.disabled = false;
+            confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+        }
+        confirmBackdrop.hidden = false;
+        confirmModalOpen = true;
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeConfirmModal() {
+        if (!confirmBackdrop) return;
+        confirmBackdrop.hidden = true;
+        confirmModalOpen = false;
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        const colorClass = type === 'success'
+            ? 'bg-emerald-600 text-white'
+            : 'bg-rose-600 text-white';
+        toast.className = `fixed bottom-6 right-6 z-[100] rounded-2xl px-5 py-4 text-sm font-bold shadow-glass ${colorClass}`;
+        toast.style.transition = 'opacity 0.4s';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+        setTimeout(() => { toast.remove(); }, 3500);
+    }
+
+    // ── Daily modal open/close ────────────────────────────────────────────
+    document.querySelectorAll('[data-my-shift-day-open]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const payload = JSON.parse(button.dataset.dayShifts || '{}');
+            openDayModal(payload);
+        });
+    });
+
+    document.querySelectorAll('[data-my-shift-day-close]').forEach((button) => {
+        button.addEventListener('click', closeDayModal);
+    });
+
+    dayModal?.addEventListener('click', (event) => {
+        if (event.target === dayModal) closeDayModal();
+    });
+
+    // ── Detail modal open/close ───────────────────────────────────────────
+    document.querySelectorAll('[data-my-shift-open]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const payload = JSON.parse(button.dataset.shift || '{}');
+            openDetailModal(payload);
+        });
+    });
+
+    if (openAssignmentId > 0) {
+        document.querySelector(`[data-my-shift-open][data-assignment-id="${openAssignmentId}"]`)?.click();
+    }
+
+    document.querySelectorAll('[data-my-shift-close]').forEach((button) => {
+        button.addEventListener('click', closeDetailModal);
+    });
+
+    // Close detail modal on backdrop click
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeDetailModal();
+    });
+
+    // ── Time log form submit ──────────────────────────────────────────────
+    form?.addEventListener('submit', () => {
+        if (!submitBtn) return;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังบันทึก...';
+    });
+
+    // ── "ขอแลกเวร" button — open confirm modal instead of submitting ──────
+    document.querySelectorAll('[data-swap-request]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const tgt = JSON.parse(btn.dataset.target || '{}');
+            targetShift = {
+                ...tgt,
+                csrf      : btn.dataset.csrf,
+                sourceId  : btn.dataset.sourceId,
+                month     : btn.dataset.month,
+                year      : btn.dataset.year,
+                display   : btn.dataset.display,
+            };
+
+            // Capture source shift info from PHP-rendered swap banner
+            // We store a synthetic snapshot so cancel can reopen detail modal
+            sourceShift = <?= $swapSourceSummary
+                ? json_encode([
+                    'date'        => app_format_thai_date((string) $swapSourceSummary['date'], true),
+                    'shiftLabel'  => (string) $swapSourceSummary['shift_label'],
+                    'timeRange'   => (string) $swapSourceSummary['time'],
+                    'hours'       => number_format((float) $swapSourceSummary['hours'], 2),
+                    'department'  => (string) $swapSourceSummary['department_name'],
+                    'statusLabel' => 'กำหนดเวร',
+                ], JSON_UNESCAPED_UNICODE)
+                : 'null' ?>;
+
+            // Snapshot source detail so cancel-from-confirm can reopen source modal
+            sourceDetailSnapshot = sourceShift ? {
+                assignmentId      : parseInt(btn.dataset.sourceId, 10),
+                isMine            : true,
+                timeLogId         : 0,
+                canRequestSwap    : false,
+                swapBlockedReason : '',
+                swapUrl           : '#',
+                staffName         : '',
+                roleNote          : '',
+                scheduleNote      : '',
+                note              : '',
+                source            : '',
+                date              : sourceShift.date        || '-',
+                shiftLabel        : sourceShift.shiftLabel  || '-',
+                timeRange         : sourceShift.timeRange   || '-',
+                hours             : sourceShift.hours       || '0.00',
+                department        : sourceShift.department  || '-',
+                statusLabel       : sourceShift.statusLabel || '-',
+            } : null;
+
+            openConfirmModal(sourceShift ?? {}, targetShift);
+        });
+    });
+
+    // ── Confirm modal: Cancel → reopen source detail ──────────────────────
+    confirmCancel?.addEventListener('click', () => {
+        closeConfirmModal();
+        // Reopen source shift detail modal if we have snapshot
+        if (sourceDetailSnapshot) {
+            openDetailModal(sourceDetailSnapshot);
+        }
+    });
+
+    // ── Confirm modal: Submit via fetch ───────────────────────────────────
+    confirmSubmit?.addEventListener('click', async () => {
+        if (!targetShift) return;
+        if (confirmSubmit.disabled) return;
+
+        confirmSubmit.disabled = true;
+        confirmSubmit.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังส่งคำขอ...';
+        if (confirmError) confirmError.hidden = true;
+
+        const body = new URLSearchParams({
+            _csrf                   : targetShift.csrf,
+            requester_assignment_id : targetShift.sourceId,
+            target_assignment_id    : targetShift.assignmentId,
+            reason                  : 'ขอแลกเวรจากหน้าเวรของฉัน',
+            return_to               : 'my-shifts',
+            month                   : targetShift.month,
+            year                    : targetShift.year,
+            display                 : targetShift.display,
+        });
+
+        try {
+            const res = await fetch('../actions/create-shift-swap-request.php', {
+                method  : 'POST',
+                headers : { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+                body    : body.toString(),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.ok) {
+                // Capture redirect params BEFORE clearing state
+                const _month   = targetShift.month;
+                const _year    = targetShift.year;
+                const _display = targetShift.display || 'calendar';
+
+                closeConfirmModal();
+                closeDetailModal();
+                sourceShift = null;
+                targetShift = null;
+                sourceDetailSnapshot = null;
+                showToast('ส่งคำขอแลกเวรสำเร็จแล้ว รอเจ้าหน้าที่ปลายทางยืนยัน', 'success');
+                // Navigate to view=my (strips swap_source_id) after toast is visible
+                const successUrl = 'my-shifts.php?' + new URLSearchParams({
+                    month: _month, year: _year, view: 'my', display: _display,
+                }).toString();
+                setTimeout(() => { window.location.href = successUrl; }, 1800);
+            } else {
+                const errMsg = data.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+                if (confirmError) {
+                    confirmError.textContent = errMsg;
+                    confirmError.hidden = false;
+                }
+                confirmSubmit.disabled = false;
+                confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+            }
+        } catch (err) {
+            if (confirmError) {
+                confirmError.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่';
+                confirmError.hidden = false;
+            }
+            confirmSubmit.disabled = false;
+            confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+        }
+    });
+
+    // Close confirm modal on backdrop click (outside dialog)
+    confirmBackdrop?.addEventListener('click', (e) => {
+        if (e.target === confirmBackdrop) {
+            closeConfirmModal();
+            if (sourceDetailSnapshot) openDetailModal(sourceDetailSnapshot);
+        }
+    });
+
+})();
+
+// Auto-submit on year input change (debounced 700 ms)
+var _myShiftsYearTimer;
+(function () {
+    var yearInput = document.querySelector('.my-shifts-filter-form [name="year"]');
+    if (!yearInput) return;
+    yearInput.addEventListener('input', function () {
+        clearTimeout(_myShiftsYearTimer);
+        _myShiftsYearTimer = setTimeout(function () {
+            document.querySelector('.my-shifts-filter-form').submit();
+        }, 700);
+    });
+}());
+</script>
+</body>
+</html>

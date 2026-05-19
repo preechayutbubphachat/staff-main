@@ -166,6 +166,10 @@
     @apply mb-3 flex items-center justify-between;
   }
 
+  .my-shifts-day-actions {
+    @apply flex flex-wrap items-center justify-end gap-1.5;
+  }
+
   .my-shifts-day-head strong {
     @apply flex h-9 w-9 items-center justify-center rounded-xl bg-white text-base font-bold text-hospital-ink shadow-sm;
   }
@@ -174,12 +178,16 @@
     @apply rounded-full bg-hospital-teal px-2 py-1 text-[0.68rem] font-bold text-white;
   }
 
+  .my-shifts-day-detail {
+    @apply inline-flex min-h-8 items-center rounded-full border border-hospital-teal/25 bg-white px-2.5 text-[0.68rem] font-bold text-hospital-teal shadow-sm transition hover:border-hospital-teal hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
+  }
+
   .my-shifts-day-empty {
     @apply rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs font-semibold text-hospital-muted;
   }
 
   .my-shift-pill {
-    @apply mb-2 flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
+    @apply relative mb-2 flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-xl border bg-white p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
   }
 
   .my-shift-pill span {
@@ -212,6 +220,59 @@
 
   .my-shift-pill.is-other b {
     @apply bg-slate-100 text-slate-600;
+  }
+
+  .my-shift-pill.is-shift-morning,
+  .my-shifts-list-row.is-shift-morning {
+    @apply border-sky-200 bg-sky-50/90;
+  }
+
+  .my-shift-pill.is-shift-afternoon,
+  .my-shifts-list-row.is-shift-afternoon {
+    @apply border-amber-200 bg-amber-50/90;
+  }
+
+  .my-shift-pill.is-shift-night,
+  .my-shifts-list-row.is-shift-night {
+    @apply border-indigo-200 bg-indigo-50/90;
+  }
+
+  .my-shift-pill.is-shift-other,
+  .my-shifts-list-row.is-shift-other {
+    @apply border-slate-200 bg-slate-50/90;
+  }
+
+  .my-shift-pill.is-mine.is-shift-morning {
+    @apply border-sky-300 bg-sky-50 ring-sky-200;
+  }
+
+  .my-shift-pill.is-mine.is-shift-afternoon {
+    @apply border-amber-300 bg-amber-50 ring-amber-200;
+  }
+
+  .my-shift-pill.is-mine.is-shift-night {
+    @apply border-indigo-300 bg-indigo-50 ring-indigo-200;
+  }
+
+  .my-shift-pill.is-mine.is-shift-other {
+    @apply border-hospital-teal bg-teal-50 ring-hospital-teal/20;
+  }
+
+  .my-shift-tooltip {
+    @apply pointer-events-none absolute left-3 top-full z-20 mt-2 hidden w-56 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-glass;
+  }
+
+  .my-shift-tooltip strong {
+    @apply block text-sm font-bold text-hospital-ink;
+  }
+
+  .my-shift-tooltip small {
+    @apply mt-1 block text-xs font-semibold text-hospital-muted;
+  }
+
+  .my-shift-pill:hover .my-shift-tooltip,
+  .my-shift-pill:focus-visible .my-shift-tooltip {
+    @apply block;
   }
 
   .my-shift-overflow {
@@ -293,6 +354,22 @@
     @apply border-rose-200 bg-rose-50 text-rose-700;
   }
 
+  .my-shift-pill.is-shift-morning {
+    @apply border-sky-200 bg-sky-50/90;
+  }
+
+  .my-shift-pill.is-shift-afternoon {
+    @apply border-amber-200 bg-amber-50/90;
+  }
+
+  .my-shift-pill.is-shift-night {
+    @apply border-indigo-200 bg-indigo-50/90;
+  }
+
+  .my-shift-pill.is-shift-other {
+    @apply border-slate-200 bg-slate-50/90;
+  }
+
   .my-shifts-list {
     @apply overflow-hidden rounded-2xl border border-white bg-white shadow-soft;
   }
@@ -316,6 +393,22 @@
 
   .my-shifts-list-row.is-other {
     @apply bg-white text-hospital-muted;
+  }
+
+  .my-shifts-list-row.is-shift-morning {
+    @apply bg-sky-50/70;
+  }
+
+  .my-shifts-list-row.is-shift-afternoon {
+    @apply bg-amber-50/70;
+  }
+
+  .my-shifts-list-row.is-shift-night {
+    @apply bg-indigo-50/70;
+  }
+
+  .my-shifts-list-row.is-shift-other {
+    @apply bg-slate-50/70;
   }
 
   .my-shifts-list-row > div {
@@ -377,6 +470,101 @@
 
   .my-shift-modal-actions {
     @apply mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
+  }
+
+  .my-shift-day-modal-backdrop {
+    @apply fixed inset-0 z-[82] flex items-center justify-center bg-hospital-ink/55 p-4 backdrop-blur-sm;
+  }
+
+  .my-shift-day-modal {
+    @apply max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[1.5rem] bg-white p-5 shadow-glass;
+  }
+
+  .my-shift-day-modal-date {
+    @apply mt-1 block text-sm font-bold text-hospital-muted;
+  }
+
+  .my-shift-day-modal-meta {
+    @apply mb-4 flex flex-wrap gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-sm font-bold text-hospital-teal;
+  }
+
+  .my-shift-day-modal-body {
+    @apply grid gap-4;
+  }
+
+  .my-shift-day-section {
+    @apply overflow-hidden rounded-2xl border bg-white;
+  }
+
+  .my-shift-day-section.is-shift-morning {
+    @apply border-sky-200 bg-sky-50/40;
+  }
+
+  .my-shift-day-section.is-shift-afternoon {
+    @apply border-amber-200 bg-amber-50/40;
+  }
+
+  .my-shift-day-section.is-shift-night {
+    @apply border-indigo-200 bg-indigo-50/40;
+  }
+
+  .my-shift-day-section.is-shift-other {
+    @apply border-slate-200 bg-slate-50/70;
+  }
+
+  .my-shift-day-section-head {
+    @apply flex items-center justify-between gap-3 border-b border-white/80 px-4 py-3;
+  }
+
+  .my-shift-day-section-head strong {
+    @apply font-prompt text-lg font-bold text-hospital-ink;
+  }
+
+  .my-shift-day-section-head span {
+    @apply rounded-full bg-white px-3 py-1 text-xs font-bold text-hospital-muted shadow-sm;
+  }
+
+  .my-shift-day-staff-list {
+    @apply grid gap-2 p-3;
+  }
+
+  .my-shift-day-staff {
+    @apply grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 rounded-xl border border-white bg-white/95 p-3 shadow-sm sm:grid-cols-[2.75rem_minmax(0,1fr)_minmax(9rem,0.8fr)];
+  }
+
+  .my-shift-day-staff.is-mine {
+    @apply border-hospital-teal/25 bg-teal-50/80;
+  }
+
+  .my-shift-day-avatar {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-hospital-mist text-sm font-bold text-hospital-teal ring-2 ring-white;
+  }
+
+  .my-shift-day-avatar img {
+    @apply h-full w-full object-cover;
+  }
+
+  .my-shift-day-staff-main,
+  .my-shift-day-staff-meta {
+    @apply min-w-0;
+  }
+
+  .my-shift-day-staff-main strong {
+    @apply block truncate text-sm font-bold text-hospital-ink;
+  }
+
+  .my-shift-day-staff-main span,
+  .my-shift-day-staff-meta span,
+  .my-shift-day-staff-meta small {
+    @apply block truncate text-xs font-semibold text-hospital-muted;
+  }
+
+  .my-shift-day-staff-meta {
+    @apply sm:text-right;
+  }
+
+  .my-shift-day-empty-state {
+    @apply rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-hospital-muted;
   }
 
   /* ── Scroll wrapper inside calendar day cells ──────────────────────── */

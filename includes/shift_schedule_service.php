@@ -859,6 +859,9 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
     }
 
     $sourceSelect = app_column_exists($conn, 'time_logs', 'source') ? 'tl.source AS time_log_source,' : "NULL AS time_log_source,";
+    $profileImageSelect = app_column_exists($conn, 'users', 'profile_image_path')
+        ? 'u.profile_image_path AS staff_profile_image_path'
+        : 'NULL AS staff_profile_image_path';
 
     // --- Part 1: published shift_assignments ---
     $stmt = $conn->prepare("
@@ -877,6 +880,9 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
             s.status AS schedule_status,
             s.note AS schedule_note,
             d.department_name,
+            u.fullname AS staff_name,
+            u.position_name AS staff_position,
+            {$profileImageSelect},
             tl.id AS time_log_id,
             tl.status AS time_log_status,
             tl.work_hours AS time_log_total_hours,
@@ -888,6 +894,7 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
             tl.time_out AS time_log_time_out
         FROM shift_assignments a
         INNER JOIN shift_schedules s ON s.id = a.schedule_id
+        INNER JOIN users u ON u.id = a.staff_id
         LEFT JOIN departments d ON d.id = s.department_id
         LEFT JOIN time_logs tl ON tl.schedule_assignment_id = a.id
         WHERE a.staff_id = ?
@@ -908,6 +915,9 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
             continue;
         }
         $row['staff_name'] = $row['staff_name'] ?? (string) ($_SESSION['fullname'] ?? '');
+        $row['staff_position'] = (string) ($row['staff_position'] ?? '');
+        $row['staff_initials'] = app_shift_staff_initials((string) ($row['staff_name'] ?? ''));
+        $row['staff_profile_image_url'] = app_resolve_user_image_url($row['staff_profile_image_path'] ?? '');
         $row['is_mine'] = true;
         $row['status_meta'] = app_my_shift_status_meta($row);
         $row['start_time_label'] = substr((string) $row['start_time'], 0, 5);
@@ -924,6 +934,9 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
         ? "(tl.schedule_assignment_id IS NULL OR tl.schedule_assignment_id = 0)"
         : "1 = 1";
     $tlSourceSelect = app_column_exists($conn, 'time_logs', 'source') ? 'tl.source AS time_log_source,' : "NULL AS time_log_source,";
+    $tlProfileImageSelect = app_column_exists($conn, 'users', 'profile_image_path')
+        ? 'u.profile_image_path AS staff_profile_image_path'
+        : 'NULL AS staff_profile_image_path';
     $tlStmt = $conn->prepare("
         SELECT
             tl.id,
@@ -938,8 +951,12 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
             tl.checked_by,
             tl.checked_at,
             {$tlSourceSelect}
-            d.department_name
+            d.department_name,
+            u.fullname AS staff_name,
+            u.position_name AS staff_position,
+            {$tlProfileImageSelect}
         FROM time_logs tl
+        INNER JOIN users u ON u.id = tl.user_id
         LEFT JOIN departments d ON d.id = tl.department_id
         WHERE tl.user_id = ?
           AND {$standaloneWhere}
@@ -986,7 +1003,10 @@ function app_get_my_shift_assignments(PDO $conn, int $userId, int $month, int $y
             'time_log_checked_at'  => $tlRow['checked_at'] ?? null,
             'time_log_time_in'     => $timeIn,
             'time_log_time_out'    => $timeOut,
-            'staff_name'           => (string) ($_SESSION['fullname'] ?? ''),
+            'staff_name'           => (string) ($tlRow['staff_name'] ?? ($_SESSION['fullname'] ?? '')),
+            'staff_position'       => (string) ($tlRow['staff_position'] ?? ''),
+            'staff_initials'       => app_shift_staff_initials((string) ($tlRow['staff_name'] ?? ($_SESSION['fullname'] ?? ''))),
+            'staff_profile_image_url' => app_resolve_user_image_url($tlRow['staff_profile_image_path'] ?? ''),
             'is_mine'              => true,
         ];
         $synthetic['status_meta']    = app_my_shift_status_meta($synthetic);
@@ -1024,6 +1044,9 @@ function app_get_department_shift_assignments(PDO $conn, int $currentUserId, int
     }
 
     $sourceSelect = app_column_exists($conn, 'time_logs', 'source') ? 'tl.source AS time_log_source,' : "NULL AS time_log_source,";
+    $profileImageSelect = app_column_exists($conn, 'users', 'profile_image_path')
+        ? 'u.profile_image_path AS staff_profile_image_path'
+        : 'NULL AS staff_profile_image_path';
     $stmt = $conn->prepare("
         SELECT
             a.id AS assignment_id,
@@ -1041,6 +1064,8 @@ function app_get_department_shift_assignments(PDO $conn, int $currentUserId, int
             s.note AS schedule_note,
             d.department_name,
             u.fullname AS staff_name,
+            u.position_name AS staff_position,
+            {$profileImageSelect},
             tl.id AS time_log_id,
             tl.status AS time_log_status,
             tl.work_hours AS time_log_total_hours,
@@ -1073,6 +1098,9 @@ function app_get_department_shift_assignments(PDO $conn, int $currentUserId, int
             continue;
         }
         $row['is_mine'] = (int) $row['staff_id'] === $currentUserId;
+        $row['staff_position'] = (string) ($row['staff_position'] ?? '');
+        $row['staff_initials'] = app_shift_staff_initials((string) ($row['staff_name'] ?? ''));
+        $row['staff_profile_image_url'] = app_resolve_user_image_url($row['staff_profile_image_path'] ?? '');
         $row['status_meta'] = app_my_shift_status_meta($row);
         $row['start_time_label'] = substr((string) $row['start_time'], 0, 5);
         $row['end_time_label'] = substr((string) $row['end_time'], 0, 5);
