@@ -23,6 +23,7 @@ function app_default_permissions(string $role): array
             'can_export_reports' => 1,
             'can_approve_logs' => 1,
             'can_manage_time_logs' => 1,
+            'can_manage_shift_schedules' => 1,
             'can_edit_locked_time_logs' => 1,
             'can_manage_user_permissions' => 1,
             'can_manage_database' => 1,
@@ -33,6 +34,7 @@ function app_default_permissions(string $role): array
             'can_export_reports' => 1,
             'can_approve_logs' => 1,
             'can_manage_time_logs' => 0,
+            'can_manage_shift_schedules' => 1,
             'can_edit_locked_time_logs' => 0,
             'can_manage_user_permissions' => 0,
             'can_manage_database' => 0,
@@ -43,6 +45,7 @@ function app_default_permissions(string $role): array
             'can_export_reports' => 1,
             'can_approve_logs' => 0,
             'can_manage_time_logs' => 0,
+            'can_manage_shift_schedules' => 0,
             'can_edit_locked_time_logs' => 0,
             'can_manage_user_permissions' => 0,
             'can_manage_database' => 0,
@@ -53,6 +56,7 @@ function app_default_permissions(string $role): array
             'can_export_reports' => 0,
             'can_approve_logs' => 0,
             'can_manage_time_logs' => 0,
+            'can_manage_shift_schedules' => 0,
             'can_edit_locked_time_logs' => 0,
             'can_manage_user_permissions' => 0,
             'can_manage_database' => 0,
@@ -158,6 +162,11 @@ function app_can(string $permission): bool
 {
     $permissions = $_SESSION['permissions'] ?? [];
     return !empty($permissions[$permission]);
+}
+
+function app_can_manage_shift_schedules(): bool
+{
+    return app_current_role() === 'admin' || app_can('can_manage_shift_schedules');
 }
 
 function app_redirect_after_login(): void

@@ -14,12 +14,6 @@ function app_shift_schedule_types(): array
     ];
 }
 
-function app_can_manage_shift_schedules(): bool
-{
-    $role = app_current_role();
-    return $role === 'admin' || $role === 'checker' || app_can('can_approve_logs') || app_can('can_manage_time_logs');
-}
-
 function app_shift_access_scope(PDO $conn): array
 {
     $departments = app_fetch_departments($conn);

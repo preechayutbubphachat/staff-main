@@ -46,7 +46,7 @@ function app_nav_items(): array
             'href' => 'shift_schedules.php',
             'label' => 'จัดตารางเวรรายเดือน',
             'icon' => 'bi-calendar2-plus',
-            'show' => app_current_role() === 'admin' || app_current_role() === 'checker' || app_can('can_approve_logs') || app_can('can_manage_time_logs'),
+            'show' => app_can_manage_shift_schedules(),
         ],
         [
             'href' => 'my_reports.php',
