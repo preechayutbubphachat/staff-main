@@ -43,7 +43,24 @@ $selectedYear = max(2000, min(2100, $selectedYear));
 $selectedYearBe = $selectedYear + 543;
 $csrfToken = app_csrf_token('shift_schedules');
 
+function app_shift_is_ajax_request(): bool
+{
+    $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+
+    return $requestedWith === 'xmlhttprequest' || strpos($accept, 'application/json') !== false;
+}
+
+function app_shift_json_response(array $payload, int $statusCode = 200): void
+{
+    http_response_code($statusCode);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $isAjaxRequest = app_shift_is_ajax_request();
     try {
         if (!app_verify_csrf_token($_POST['_csrf'] ?? null, 'shift_schedules')) {
             throw new RuntimeException('โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
@@ -73,11 +90,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = $result['message'];
             $messageType = 'success';
         } elseif ($action === 'cancel_assignment') {
-            app_cancel_shift_assignment($conn, (int) ($_POST['assignment_id'] ?? 0), $currentUserId);
-            $message = 'ยกเลิกเจ้าหน้าที่จากเวรเรียบร้อย';
+            $result = app_cancel_shift_assignment($conn, (int) ($_POST['assignment_id'] ?? 0), $currentUserId);
+            if ($isAjaxRequest) {
+                app_shift_json_response(['success' => true] + $result);
+            }
+            $message = (string) ($result['message'] ?? 'ยกเลิกเจ้าหน้าที่จากเวรเรียบร้อย');
+            $messageType = 'success';
+        } elseif ($action === 'delete_draft') {
+            $result = app_delete_shift_schedule_draft($conn, (int) ($_POST['schedule_id'] ?? 0), $currentUserId);
+            if ($isAjaxRequest) {
+                app_shift_json_response($result);
+            }
+            $message = (string) ($result['message'] ?? 'ลบดราฟเรียบร้อยแล้ว');
             $messageType = 'success';
         }
     } catch (Throwable $e) {
+        if ($isAjaxRequest ?? false) {
+            app_shift_json_response([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 400);
+        }
         $message = $e->getMessage();
         $messageType = 'danger';
     }
@@ -272,26 +305,39 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
                         <div class="shift-empty">ยังไม่มีเวร</div>
                     <?php endif; ?>
                     <?php foreach ($daySchedules as $schedule): ?>
-                        <div class="shift-slot">
+                        <div class="shift-slot" data-shift-slot data-schedule-id="<?= (int) $schedule['id'] ?>" data-status="<?= htmlspecialchars($schedule['status']) ?>">
                             <div class="shift-slot-head">
-                                <span><?= htmlspecialchars($shiftTypes[$schedule['shift_type']]['label'] ?? $schedule['shift_type']) ?></span>
+                                <span class="shift-slot-title"><?= htmlspecialchars($shiftTypes[$schedule['shift_type']]['label'] ?? $schedule['shift_type']) ?></span>
                                 <span class="shift-status is-<?= htmlspecialchars($schedule['status']) ?>"><?= htmlspecialchars($schedule['status']) ?></span>
+                                <?php if (($schedule['status'] ?? '') === 'draft'): ?>
+                                    <form method="post" class="shift-draft-delete-form" data-draft-delete-form>
+                                        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                        <input type="hidden" name="action" value="delete_draft">
+                                        <input type="hidden" name="schedule_id" value="<?= (int) $schedule['id'] ?>">
+                                        <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
+                                        <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
+                                        <input type="hidden" name="year_be" value="<?= (int) $selectedYearBe ?>">
+                                        <button type="submit" class="shift-draft-delete-button" title="ลบดราฟนี้" aria-label="ลบดราฟนี้"><i class="bi bi-x-lg"></i></button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                             <div class="shift-time"><?= htmlspecialchars($schedule['start_time']) ?>-<?= htmlspecialchars($schedule['end_time']) ?> · <?= number_format((float) $schedule['planned_hours'], 2) ?> ชม.</div>
                             <div class="shift-staff-list">
                                 <?php foreach ($schedule['assignments'] as $assignment): ?>
-                                    <span class="shift-staff-badge">
+                                    <span class="shift-staff-badge" data-assignment-id="<?= (int) $assignment['id'] ?>">
                                         <?= app_shift_render_staff_avatar($assignment['staff_profile_image_url'] ?? null, (string) ($assignment['staff_name'] ?? ''), (string) ($assignment['staff_initials'] ?? ''), 'shift-staff-avatar shift-staff-avatar-mini') ?>
                                         <span class="shift-staff-badge-name"><?= htmlspecialchars($assignment['staff_name']) ?></span>
-                                        <form method="post" class="shift-inline-form" onsubmit="return confirm('ยกเลิกเจ้าหน้าที่คนนี้จากเวร?');">
-                                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                            <input type="hidden" name="action" value="cancel_assignment">
-                                            <input type="hidden" name="assignment_id" value="<?= (int) $assignment['id'] ?>">
-                                            <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
-                                            <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
-                                            <input type="hidden" name="year_be" value="<?= (int) $selectedYearBe ?>">
-                                            <button type="submit" title="Remove <?= htmlspecialchars($assignment['staff_name']) ?> from shift" aria-label="Remove <?= htmlspecialchars($assignment['staff_name']) ?> from shift"><i class="bi bi-x"></i></button>
-                                        </form>
+                                        <?php if (($schedule['status'] ?? '') === 'draft'): ?>
+                                            <form method="post" class="shift-inline-form" data-assignment-delete-form>
+                                                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                <input type="hidden" name="action" value="cancel_assignment">
+                                                <input type="hidden" name="assignment_id" value="<?= (int) $assignment['id'] ?>">
+                                                <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
+                                                <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
+                                                <input type="hidden" name="year_be" value="<?= (int) $selectedYearBe ?>">
+                                                <button type="submit" title="ลบ <?= htmlspecialchars($assignment['staff_name']) ?> ออกจากดราฟ" aria-label="ลบ <?= htmlspecialchars($assignment['staff_name']) ?> ออกจากดราฟ"><i class="bi bi-x"></i></button>
+                                            </form>
+                                        <?php endif; ?>
                                     </span>
                                 <?php endforeach; ?>
                             </div>
@@ -496,6 +542,56 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         });
     });
     applyShiftTime();
+})();
+
+(() => {
+    const postScheduleAction = async (form) => {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: new FormData(form),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.error || 'ไม่สามารถดำเนินการได้ กรุณาลองใหม่');
+        }
+        return payload;
+    };
+
+    document.querySelectorAll('[data-assignment-delete-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!confirm('ยกเลิกเจ้าหน้าที่คนนี้จากเวร?')) return;
+            const button = form.querySelector('button[type="submit"]');
+            button?.setAttribute('disabled', 'disabled');
+            try {
+                await postScheduleAction(form);
+                window.location.reload();
+            } catch (error) {
+                alert(error.message || 'ไม่สามารถลบเจ้าหน้าที่จากดราฟได้');
+                button?.removeAttribute('disabled');
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-draft-delete-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!confirm('ต้องการลบดราฟเวรนี้ทั้งหมดหรือไม่? รายชื่อเจ้าหน้าที่ในดราฟนี้จะถูกลบทั้งหมด')) return;
+            const button = form.querySelector('button[type="submit"]');
+            button?.setAttribute('disabled', 'disabled');
+            try {
+                await postScheduleAction(form);
+                window.location.reload();
+            } catch (error) {
+                alert(error.message || 'ไม่สามารถลบดราฟนี้ได้');
+                button?.removeAttribute('disabled');
+            }
+        });
+    });
 })();
 
 // Auto-submit filter on change

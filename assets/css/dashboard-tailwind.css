@@ -574,11 +574,15 @@
   }
 
   .shift-slot {
-    @apply mb-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5;
+    @apply relative mb-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5;
   }
 
   .shift-slot-head {
-    @apply flex items-center justify-between gap-2 text-sm font-bold text-hospital-ink;
+    @apply flex items-start gap-2 pr-6 text-sm font-bold text-hospital-ink;
+  }
+
+  .shift-slot-title {
+    @apply min-w-0 flex-1 truncate;
   }
 
   .shift-time {
@@ -639,6 +643,14 @@
 
   .shift-inline-form button {
     @apply ml-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-hospital-muted hover:bg-rose-100 hover:text-rose-700;
+  }
+
+  .shift-draft-delete-form {
+    @apply absolute right-1.5 top-1.5 m-0;
+  }
+
+  .shift-draft-delete-button {
+    @apply flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-transparent bg-white/70 text-[0.62rem] text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-200;
   }
 
   .shift-modal-backdrop {

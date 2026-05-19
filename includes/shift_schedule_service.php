@@ -544,27 +544,160 @@ function app_publish_monthly_schedule(PDO $conn, int $departmentId, int $month, 
     }
 }
 
-function app_cancel_shift_assignment(PDO $conn, int $assignmentId, int $currentUserId): void
+function app_cancel_shift_assignment(PDO $conn, int $assignmentId, int $currentUserId): array
 {
-    $stmt = $conn->prepare("
-        SELECT a.*, s.department_id
-        FROM shift_assignments a
-        INNER JOIN shift_schedules s ON s.id = a.schedule_id
-        WHERE a.id = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$assignmentId]);
-    $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$assignment) {
+    if ($assignmentId <= 0) {
         throw new RuntimeException('ไม่พบรายการเจ้าหน้าที่ในเวร');
     }
 
-    app_shift_assert_department_access($conn, (int) $assignment['department_id']);
-    $updateStmt = $conn->prepare("UPDATE shift_assignments SET assignment_status = 'cancelled', updated_at = NOW() WHERE id = ?");
-    $updateStmt->execute([$assignmentId]);
-    app_shift_insert_audit($conn, 'shift_assignments', $assignmentId, 'cancel_assignment', $assignment, [
-        'assignment_status' => 'cancelled',
-    ], $currentUserId, 'ยกเลิกเจ้าหน้าที่จากแผนเวร');
+    $conn->beginTransaction();
+    try {
+        $stmt = $conn->prepare("
+            SELECT
+                a.*,
+                s.department_id,
+                s.status AS schedule_status
+            FROM shift_assignments a
+            INNER JOIN shift_schedules s ON s.id = a.schedule_id
+            WHERE a.id = ?
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $stmt->execute([$assignmentId]);
+        $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$assignment) {
+            throw new RuntimeException('ไม่พบรายการเจ้าหน้าที่ในเวร');
+        }
+
+        app_shift_assert_department_access($conn, (int) $assignment['department_id']);
+        $scheduleId = (int) $assignment['schedule_id'];
+        $scheduleStatus = (string) ($assignment['schedule_status'] ?? '');
+        if ($scheduleStatus !== 'draft') {
+            throw new RuntimeException('ไม่สามารถลบเจ้าหน้าที่จากเวรที่เผยแพร่แล้วได้');
+        }
+
+        if ((string) $assignment['assignment_status'] !== 'cancelled') {
+            $updateStmt = $conn->prepare("UPDATE shift_assignments SET assignment_status = 'cancelled', updated_at = NOW() WHERE id = ?");
+            $updateStmt->execute([$assignmentId]);
+            app_shift_insert_audit($conn, 'shift_assignments', $assignmentId, 'cancel_assignment', $assignment, [
+                'assignment_status' => 'cancelled',
+            ], $currentUserId, 'ยกเลิกเจ้าหน้าที่จากแผนเวร draft');
+        }
+
+        $countStmt = $conn->prepare("
+            SELECT COUNT(*) FROM shift_assignments
+            WHERE schedule_id = ?
+              AND assignment_status <> 'cancelled'
+        ");
+        $countStmt->execute([$scheduleId]);
+        $remainingAssignments = (int) $countStmt->fetchColumn();
+        $draftDeleted = false;
+
+        if ($remainingAssignments === 0) {
+            $scheduleStmt = $conn->prepare("SELECT * FROM shift_schedules WHERE id = ? AND status = 'draft' LIMIT 1 FOR UPDATE");
+            $scheduleStmt->execute([$scheduleId]);
+            $schedule = $scheduleStmt->fetch(PDO::FETCH_ASSOC);
+            if ($schedule) {
+                $cancelScheduleStmt = $conn->prepare("UPDATE shift_schedules SET status = 'cancelled', updated_at = NOW() WHERE id = ? AND status = 'draft'");
+                $cancelScheduleStmt->execute([$scheduleId]);
+                $draftDeleted = $cancelScheduleStmt->rowCount() > 0;
+                if ($draftDeleted) {
+                    app_shift_insert_audit($conn, 'shift_schedules', $scheduleId, 'cancel_empty_draft_schedule', $schedule, [
+                        'status' => 'cancelled',
+                        'remaining_assignments' => 0,
+                    ], $currentUserId, 'ยกเลิก draft อัตโนมัติเมื่อไม่มีเจ้าหน้าที่เหลือ');
+                }
+            }
+        }
+
+        $conn->commit();
+
+        return [
+            'assignment_removed' => true,
+            'draft_deleted' => $draftDeleted,
+            'schedule_id' => $scheduleId,
+            'remaining_assignments' => $remainingAssignments,
+            'message' => $draftDeleted ? 'ลบเจ้าหน้าที่คนสุดท้ายและลบดราฟเรียบร้อยแล้ว' : 'ลบเจ้าหน้าที่ออกจากดราฟเรียบร้อยแล้ว',
+        ];
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function app_delete_shift_schedule_draft(PDO $conn, int $scheduleId, int $currentUserId): array
+{
+    if ($scheduleId <= 0) {
+        throw new RuntimeException('ไม่พบดราฟที่ต้องการลบ');
+    }
+
+    $conn->beginTransaction();
+    try {
+        $stmt = $conn->prepare("
+            SELECT *
+            FROM shift_schedules
+            WHERE id = ?
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $stmt->execute([$scheduleId]);
+        $schedule = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$schedule) {
+            throw new RuntimeException('ไม่พบดราฟที่ต้องการลบ');
+        }
+
+        app_shift_assert_department_access($conn, (int) $schedule['department_id']);
+        if ((string) $schedule['status'] !== 'draft') {
+            throw new RuntimeException('ไม่สามารถลบเวรที่เผยแพร่แล้วได้');
+        }
+
+        $assignmentStmt = $conn->prepare("SELECT * FROM shift_assignments WHERE schedule_id = ? FOR UPDATE");
+        $assignmentStmt->execute([$scheduleId]);
+        $assignments = $assignmentStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $cancelAssignmentsStmt = $conn->prepare("
+            UPDATE shift_assignments
+            SET assignment_status = 'cancelled', updated_at = NOW()
+            WHERE schedule_id = ?
+              AND assignment_status <> 'cancelled'
+        ");
+        $cancelAssignmentsStmt->execute([$scheduleId]);
+
+        $cancelScheduleStmt = $conn->prepare("UPDATE shift_schedules SET status = 'cancelled', updated_at = NOW() WHERE id = ? AND status = 'draft'");
+        $cancelScheduleStmt->execute([$scheduleId]);
+        if ($cancelScheduleStmt->rowCount() <= 0) {
+            throw new RuntimeException('ไม่สามารถลบดราฟนี้ได้');
+        }
+
+        foreach ($assignments as $assignment) {
+            if ((string) ($assignment['assignment_status'] ?? '') === 'cancelled') {
+                continue;
+            }
+            app_shift_insert_audit($conn, 'shift_assignments', (int) $assignment['id'], 'cancel_assignment', $assignment, [
+                'assignment_status' => 'cancelled',
+            ], $currentUserId, 'ลบเจ้าหน้าที่จากดราฟทั้งก้อน');
+        }
+        app_shift_insert_audit($conn, 'shift_schedules', $scheduleId, 'cancel_draft_schedule', $schedule, [
+            'status' => 'cancelled',
+            'cancelled_assignments' => $cancelAssignmentsStmt->rowCount(),
+        ], $currentUserId, 'ลบดราฟเวรทั้งก้อน');
+
+        $conn->commit();
+
+        return [
+            'success' => true,
+            'draft_deleted' => true,
+            'schedule_id' => $scheduleId,
+            'message' => 'ลบดราฟเรียบร้อยแล้ว',
+        ];
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        throw $e;
+    }
 }
 
 function app_shift_schedule_stats(array $schedules): array
