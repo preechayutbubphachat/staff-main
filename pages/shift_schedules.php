@@ -229,9 +229,12 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 
     <div class="shift-schedule-frame">
         <?php if ($message !== ''): ?>
-            <div class="alert alert-<?= htmlspecialchars($messageType) ?> rounded-4 border-0 shadow-sm" role="alert">
-                <?= htmlspecialchars($message) ?>
-            </div>
+            <div
+                data-shift-initial-toast
+                data-toast-type="<?= htmlspecialchars($messageType) ?>"
+                data-toast-message="<?= htmlspecialchars($message) ?>"
+                hidden
+            ></div>
         <?php endif; ?>
 
         <section class="shift-schedule-hero">
@@ -443,6 +446,7 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 </div>
 
 <?php render_staff_profile_modal(); ?>
+<div class="shift-toast-region" data-shift-toast-region aria-live="polite" aria-atomic="true"></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/notifications.js"></script>
 <?php render_staff_profile_modal_script(); ?>
@@ -556,6 +560,48 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 })();
 
 (() => {
+    const toastRegion = document.querySelector('[data-shift-toast-region]');
+    const toastTimers = new WeakMap();
+
+    const escapeToastHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+
+    const showShiftToast = (message, type = 'success') => {
+        if (!toastRegion || !message) return;
+        const normalizedType = type === 'danger' || type === 'error' ? 'danger' : 'success';
+        const toast = document.createElement('div');
+        toast.className = `shift-toast is-${normalizedType}`;
+        toast.setAttribute('role', normalizedType === 'danger' ? 'alert' : 'status');
+        toast.innerHTML = `
+            <span class="shift-toast-icon" aria-hidden="true">
+                <i class="bi ${normalizedType === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-check2-circle'}"></i>
+            </span>
+            <span class="shift-toast-message">${escapeToastHtml(message)}</span>
+            <button type="button" class="shift-toast-close" aria-label="ปิดการแจ้งเตือน">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        `;
+        const closeToast = () => {
+            const timer = toastTimers.get(toast);
+            if (timer) window.clearTimeout(timer);
+            toast.classList.add('is-hiding');
+            window.setTimeout(() => toast.remove(), 180);
+        };
+        toast.querySelector('.shift-toast-close')?.addEventListener('click', closeToast);
+        toastRegion.appendChild(toast);
+        toastTimers.set(toast, window.setTimeout(closeToast, 5000));
+    };
+
+    document.querySelectorAll('[data-shift-initial-toast]').forEach((node) => {
+        showShiftToast(node.dataset.toastMessage || '', node.dataset.toastType || 'success');
+        node.remove();
+    });
+
     const postScheduleAction = async (form) => {
         const response = await fetch(window.location.href, {
             method: 'POST',
@@ -572,36 +618,28 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         return payload;
     };
 
-    document.querySelectorAll('[data-assignment-delete-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (!confirm('ยกเลิกเจ้าหน้าที่คนนี้จากเวร?')) return;
-            const button = form.querySelector('button[type="submit"]');
-            button?.setAttribute('disabled', 'disabled');
-            try {
-                await postScheduleAction(form);
-                window.location.reload();
-            } catch (error) {
-                alert(error.message || 'ไม่สามารถลบเจ้าหน้าที่จากดราฟได้');
-                button?.removeAttribute('disabled');
-            }
-        });
-    });
+    document.addEventListener('submit', async (event) => {
+        const assignmentForm = event.target.closest('[data-assignment-delete-form]');
+        const draftForm = event.target.closest('[data-draft-delete-form]');
+        const form = assignmentForm || draftForm;
+        if (!form) return;
 
-    document.querySelectorAll('[data-draft-delete-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (!confirm('ต้องการลบดราฟเวรนี้ทั้งหมดหรือไม่? รายชื่อเจ้าหน้าที่ในดราฟนี้จะถูกลบทั้งหมด')) return;
-            const button = form.querySelector('button[type="submit"]');
-            button?.setAttribute('disabled', 'disabled');
-            try {
-                await postScheduleAction(form);
-                window.location.reload();
-            } catch (error) {
-                alert(error.message || 'ไม่สามารถลบดราฟนี้ได้');
-                button?.removeAttribute('disabled');
-            }
-        });
+        event.preventDefault();
+        const confirmMessage = assignmentForm
+            ? 'ยกเลิกเจ้าหน้าที่คนนี้จากเวร?'
+            : 'ต้องการลบดราฟเวรนี้ทั้งหมดหรือไม่? รายชื่อเจ้าหน้าที่ในดราฟนี้จะถูกลบทั้งหมด';
+        if (!confirm(confirmMessage)) return;
+
+        const button = form.querySelector('button[type="submit"]');
+        button?.setAttribute('disabled', 'disabled');
+        try {
+            const payload = await postScheduleAction(form);
+            showShiftToast(payload.message || (assignmentForm ? 'ลบเจ้าหน้าที่ออกจากดราฟเรียบร้อยแล้ว' : 'ลบดราฟเรียบร้อยแล้ว'), 'success');
+            window.location.reload();
+        } catch (error) {
+            showShiftToast(error.message || (assignmentForm ? 'ไม่สามารถลบเจ้าหน้าที่จากดราฟได้' : 'ไม่สามารถลบดราฟนี้ได้'), 'danger');
+            button?.removeAttribute('disabled');
+        }
     });
 })();
 

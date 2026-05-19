@@ -653,6 +653,46 @@
     @apply flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-transparent bg-white/70 text-[0.62rem] text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-200;
   }
 
+  .shift-toast-region {
+    @apply fixed bottom-5 right-5 z-[90] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 pointer-events-none;
+  }
+
+  .shift-toast {
+    @apply pointer-events-auto flex items-start gap-3 rounded-2xl border bg-white/95 px-4 py-3 text-sm font-semibold shadow-glass backdrop-blur-xl transition duration-200;
+  }
+
+  .shift-toast.is-success {
+    @apply border-teal-100 bg-teal-50/95 text-hospital-ink;
+  }
+
+  .shift-toast.is-danger {
+    @apply border-rose-100 bg-rose-50/95 text-rose-900;
+  }
+
+  .shift-toast.is-hiding {
+    @apply translate-y-2 opacity-0;
+  }
+
+  .shift-toast-icon {
+    @apply mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full;
+  }
+
+  .shift-toast.is-success .shift-toast-icon {
+    @apply bg-teal-100 text-hospital-teal;
+  }
+
+  .shift-toast.is-danger .shift-toast-icon {
+    @apply bg-rose-100 text-rose-700;
+  }
+
+  .shift-toast-message {
+    @apply min-w-0 flex-1 leading-6;
+  }
+
+  .shift-toast-close {
+    @apply -mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs text-slate-500 transition hover:bg-white hover:text-hospital-ink focus:outline-none focus:ring-2 focus:ring-hospital-teal/30;
+  }
+
   .shift-modal-backdrop {
     @apply fixed inset-0 z-[80] flex items-center justify-center bg-hospital-ink/55 p-4 backdrop-blur-sm;
   }
