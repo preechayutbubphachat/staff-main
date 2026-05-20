@@ -408,7 +408,7 @@ function app_shift_day_detail_payload(string $date, string $departmentName, arra
                     <i class="bi bi-arrow-clockwise"></i> รีเฟรช
                 </button>
             </form>
-            <form method="post" onsubmit="return confirm(<?= htmlspecialchars(json_encode($publishSummary, JSON_UNESCAPED_UNICODE)) ?>);">
+            <form method="post" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังเผยแพร่ตารางเวรประจำเดือน" onsubmit="return confirm(<?= htmlspecialchars(json_encode($publishSummary, JSON_UNESCAPED_UNICODE)) ?>);">
                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                 <input type="hidden" name="action" value="publish_month">
                 <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
@@ -496,7 +496,7 @@ function app_shift_day_detail_payload(string $date, string $departmentName, arra
 
 <div class="shift-modal-backdrop" data-shift-modal hidden>
     <div class="shift-modal" role="dialog" aria-modal="true" aria-labelledby="shiftModalTitle">
-        <form method="post" class="shift-modal-form">
+        <form method="post" class="shift-modal-form" data-loading-submit data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึก draft ตารางเวร">
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="action" value="save_draft">
             <input type="hidden" name="department_id" value="<?= (int) $selectedDepartmentId ?>">
@@ -867,6 +867,7 @@ function app_shift_day_detail_payload(string $date, string $departmentName, arra
     const loadingDetail = document.querySelector('[data-shift-loading-detail]');
     const toastTimers = new WeakMap();
     let actionInProgress = false;
+    let globalLoadingController = null;
 
     const escapeToastHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -903,6 +904,21 @@ function app_shift_day_detail_payload(string $date, string $departmentName, arra
     };
 
     const setShiftLoading = (visible, title = 'โปรดรอสักครู่...', detail = 'กำลังบันทึกและอัปเดตตารางเวร') => {
+        if (window.GlobalLoading?.showPageLoading && window.GlobalLoading?.hidePageLoading) {
+            if (visible) {
+                if (globalLoadingController) {
+                    window.GlobalLoading.hidePageLoading();
+                    globalLoadingController = null;
+                }
+                globalLoadingController = window.GlobalLoading.showPageLoading(title, detail, { timeoutMs: 60000 });
+                return;
+            }
+            if (globalLoadingController) {
+                globalLoadingController.hide();
+                globalLoadingController = null;
+            }
+            return;
+        }
         if (!loadingOverlay) return;
         if (loadingTitle) loadingTitle.textContent = title;
         if (loadingDetail) loadingDetail.textContent = detail;

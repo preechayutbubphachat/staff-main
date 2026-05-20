@@ -149,7 +149,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
             <?php if (!$selectedAssignment || (int) ($selectedAssignment['staff_id'] ?? 0) !== $currentUserId): ?>
                 <div class="shift-swap-empty">กรุณาเลือกเวรของคุณจากหน้า “เวรของฉัน” เพื่อเริ่มคำขอแลกเวร</div>
             <?php else: ?>
-                <form method="post" action="../actions/create-shift-swap-request.php" class="shift-swap-form">
+                <form method="post" action="../actions/create-shift-swap-request.php" class="shift-swap-form" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังส่งคำขอแลกเวร" data-loading-busy-text="กำลังส่ง...">
                     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input type="hidden" name="requester_assignment_id" value="<?= (int) $selectedAssignmentId ?>">
                     <div class="shift-swap-selected">
@@ -203,7 +203,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <p><strong>แลกกับ:</strong> <?= htmlspecialchars($row['target_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></p>
                         <p class="shift-swap-muted"><?= htmlspecialchars((string) ($row['reason'] ?? '')) ?></p>
                         <?php if ((string) $row['status'] === 'pending_target_confirm'): ?>
-                            <form method="post" action="../actions/cancel-shift-swap.php" onsubmit="return confirm('ยกเลิกคำขอแลกเวรนี้?');">
+                            <form method="post" action="../actions/cancel-shift-swap.php" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังยกเลิกคำขอแลกเวร" data-loading-busy-text="กำลังยกเลิก..." onsubmit="return confirm('ยกเลิกคำขอแลกเวรนี้?');">
                                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                                 <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
                                 <button type="submit" class="dash-btn dash-btn-ghost"><i class="bi bi-x-circle"></i> ยกเลิกคำขอ</button>
@@ -234,7 +234,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <p><strong>ผู้ขอ:</strong> <?= htmlspecialchars($row['requester_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'requester')) ?></p>
                         <p><strong>เวรของคุณ:</strong> <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></p>
                         <p class="shift-swap-muted"><?= htmlspecialchars((string) ($row['reason'] ?? '')) ?></p>
-                        <form method="post" action="../actions/respond-shift-swap.php" class="shift-swap-inline-decision">
+                        <form method="post" action="../actions/respond-shift-swap.php" class="shift-swap-inline-decision" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลการยืนยันคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุถึงผู้ขอหรือหัวหน้า"></textarea>
@@ -275,7 +275,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <?php if (!empty($row['target_response_note'])): ?>
                             <p class="shift-swap-muted">หมายเหตุอีกฝ่าย: <?= htmlspecialchars((string) $row['target_response_note']) ?></p>
                         <?php endif; ?>
-                        <form method="post" action="../actions/manager-shift-swap.php" class="shift-swap-inline-decision">
+                        <form method="post" action="../actions/manager-shift-swap.php" class="shift-swap-inline-decision" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลอนุมัติคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุหัวหน้า"></textarea>

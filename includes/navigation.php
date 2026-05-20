@@ -567,7 +567,7 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
                         <span class="dash-sidebar-user-role"><?= htmlspecialchars($roleLabel) ?></span>
                     </span>
                 </div>
-                <a href="../auth/logout.php" class="dash-sidebar-logout">
+                <a href="../auth/logout.php" class="dash-sidebar-logout" data-global-loading-nav data-loading-message="กำลังออกจากระบบ..." data-loading-sub-message="ระบบกำลังปิด session ของคุณ">
                     <i class="bi bi-box-arrow-right"></i>
                     ออกจากระบบ
                 </a>
@@ -597,12 +597,17 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
                 <?php render_dashboard_sidebar_links($currentPage); ?>
             </nav>
 
-            <a href="../auth/logout.php" class="dash-sidebar-logout is-mobile">
+            <a href="../auth/logout.php" class="dash-sidebar-logout is-mobile" data-global-loading-nav data-loading-message="กำลังออกจากระบบ..." data-loading-sub-message="ระบบกำลังปิด session ของคุณ">
                 <i class="bi bi-box-arrow-right"></i>
                 ออกจากระบบ
             </a>
         </div>
     </aside>
+    <link rel="stylesheet" href="../assets/css/loading-overlay.css">
+    <script src="../assets/js/global-loading.js"></script>
+    <script>
+        window.GlobalLoading && window.GlobalLoading.init();
+    </script>
     <?php
 }
 

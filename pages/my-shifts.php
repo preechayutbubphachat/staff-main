@@ -597,7 +597,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 
 <div class="my-shift-modal-backdrop" data-my-shift-modal hidden>
     <div class="my-shift-modal" role="dialog" aria-modal="true" aria-labelledby="myShiftModalTitle">
-        <form method="post" action="../actions/create-time-log-from-assignment.php" data-my-shift-form>
+        <form method="post" action="../actions/create-time-log-from-assignment.php" data-my-shift-form data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังยืนยันการลงเวรของคุณ" data-loading-busy-text="กำลังบันทึก...">
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="assignment_id" value="" data-modal-assignment-id>
             <input type="hidden" name="month" value="<?= (int) $selectedMonth ?>">
@@ -1159,6 +1159,10 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (!targetShift) return;
         if (confirmSubmit.disabled) return;
 
+        const loadingApi = window.GlobalLoading || null;
+        const loadingController = loadingApi?.showPageLoading
+            ? loadingApi.showPageLoading('โปรดรอสักครู่...', 'กำลังส่งคำขอแลกเวร', { trigger: confirmSubmit, busyText: 'กำลังส่งคำขอ...' })
+            : null;
         confirmSubmit.disabled = true;
         confirmSubmit.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังส่งคำขอ...';
         if (confirmError) confirmError.hidden = true;
@@ -1195,6 +1199,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 targetShift = null;
                 sourceDetailSnapshot = null;
                 showToast('ส่งคำขอแลกเวรสำเร็จแล้ว รอเจ้าหน้าที่ปลายทางยืนยัน', 'success');
+                loadingController?.hide();
                 // Navigate to view=my (strips swap_source_id) after toast is visible
                 const successUrl = 'my-shifts.php?' + new URLSearchParams({
                     month: _month, year: _year, view: 'my', display: _display,
@@ -1208,6 +1213,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 }
                 confirmSubmit.disabled = false;
                 confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+                loadingController?.hide();
             }
         } catch (err) {
             if (confirmError) {
@@ -1216,6 +1222,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             }
             confirmSubmit.disabled = false;
             confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
+            loadingController?.hide();
         }
     });
 
