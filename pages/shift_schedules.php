@@ -224,6 +224,92 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
 
     return $html;
 }
+
+function app_shift_detail_shift_class(string $shiftType): string
+{
+    return match ($shiftType) {
+        'morning' => 'morning',
+        'afternoon', 'evening' => 'afternoon',
+        'night' => 'night',
+        default => 'other',
+    };
+}
+
+function app_shift_detail_status_label(string $status): string
+{
+    return match ($status) {
+        'published' => 'PUBLISHED',
+        'draft' => 'DRAFT',
+        default => strtoupper($status !== '' ? $status : 'UNKNOWN'),
+    };
+}
+
+function app_shift_day_detail_payload(string $date, string $departmentName, array $daySchedules, array $shiftTypes): string
+{
+    $schedules = [];
+    $uniqueStaffIds = [];
+    $draftCount = 0;
+    $publishedCount = 0;
+
+    foreach ($daySchedules as $schedule) {
+        $status = (string) ($schedule['status'] ?? '');
+        if ($status === 'draft') {
+            $draftCount++;
+        } elseif ($status === 'published') {
+            $publishedCount++;
+        }
+
+        $shiftType = (string) ($schedule['shift_type'] ?? 'other');
+        $assignments = [];
+        foreach (($schedule['assignments'] ?? []) as $assignment) {
+            $staffId = (int) ($assignment['staff_id'] ?? 0);
+            if ($staffId > 0) {
+                $uniqueStaffIds[$staffId] = true;
+            }
+
+            $staffName = (string) ($assignment['staff_name'] ?? '');
+            $assignments[] = [
+                'assignmentId' => (int) ($assignment['id'] ?? 0),
+                'staffId' => $staffId,
+                'name' => $staffName !== '' ? $staffName : '-',
+                'position' => (string) ($assignment['staff_position'] ?? ''),
+                'department' => (string) ($schedule['department_name'] ?? $departmentName),
+                'avatarUrl' => $assignment['staff_profile_image_url'] ?? null,
+                'initials' => (string) ($assignment['staff_initials'] ?? mb_substr($staffName !== '' ? $staffName : 'U', 0, 1, 'UTF-8')),
+            ];
+        }
+
+        $schedules[] = [
+            'scheduleId' => (int) ($schedule['id'] ?? 0),
+            'shiftType' => $shiftType,
+            'shiftClass' => app_shift_detail_shift_class($shiftType),
+            'shiftLabel' => (string) ($shiftTypes[$shiftType]['label'] ?? $shiftType),
+            'startTime' => (string) ($schedule['start_time'] ?? ''),
+            'endTime' => (string) ($schedule['end_time'] ?? ''),
+            'plannedHours' => (float) ($schedule['planned_hours'] ?? 0),
+            'status' => $status,
+            'statusLabel' => app_shift_detail_status_label($status),
+            'department' => (string) ($schedule['department_name'] ?? $departmentName),
+            'staffCount' => count($assignments),
+            'staff' => $assignments,
+        ];
+    }
+
+    $payload = [
+        'date' => $date,
+        'dateLabel' => app_format_thai_date($date, true),
+        'department' => $departmentName,
+        'summary' => [
+            'scheduleCount' => count($schedules),
+            'staffCount' => count($uniqueStaffIds),
+            'draftCount' => $draftCount,
+            'publishedCount' => $publishedCount,
+        ],
+        'schedules' => $schedules,
+    ];
+
+    return htmlspecialchars(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
+}
 ?>
 <!doctype html>
 <html lang="th">
@@ -349,9 +435,16 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
                 <article class="shift-day-cell">
                     <div class="shift-day-head">
                         <strong><?= (int) $day ?></strong>
-                        <button type="button" class="shift-add-button" data-shift-open data-date="<?= htmlspecialchars($date) ?>" aria-label="เพิ่มเวรวันที่ <?= (int) $day ?>">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
+                        <div class="shift-day-actions">
+                            <?php if ($daySchedules): ?>
+                                <button type="button" class="shift-day-detail-button" data-shift-day-detail-open data-day-detail='<?= app_shift_day_detail_payload($date, $selectedDepartmentName, $daySchedules, $shiftTypes) ?>' aria-label="ดูรายละเอียดเวรวันที่ <?= (int) $day ?>">
+                                    รายละเอียด
+                                </button>
+                            <?php endif; ?>
+                            <button type="button" class="shift-add-button" data-shift-open data-date="<?= htmlspecialchars($date) ?>" aria-label="เพิ่มเวรวันที่ <?= (int) $day ?>">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
                     </div>
                     <?php if (!$daySchedules): ?>
                         <div class="shift-empty">ยังไม่มีเวร</div>
@@ -483,6 +576,29 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
     </div>
 </div>
 
+<div class="my-shift-day-modal-backdrop shift-day-detail-modal-backdrop" data-shift-day-detail-modal hidden>
+    <div class="my-shift-day-modal shift-day-detail-modal" role="dialog" aria-modal="true" aria-labelledby="shiftDayDetailTitle">
+        <div class="my-shift-modal-head">
+            <div>
+                <p>Daily Shift Overview</p>
+                <h3 id="shiftDayDetailTitle">รายละเอียดเวรประจำวัน</h3>
+                <span class="my-shift-day-modal-date" data-shift-day-detail-date>-</span>
+            </div>
+            <button type="button" class="dash-icon-button" data-shift-day-detail-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="my-shift-day-modal-meta shift-day-detail-meta">
+            <span>แผนก <strong data-shift-day-detail-department>-</strong></span>
+        </div>
+        <div class="shift-day-detail-summary" data-shift-day-detail-summary></div>
+        <div class="my-shift-day-modal-body" data-shift-day-detail-body>
+            <div class="shift-day-detail-loading">กำลังโหลดรายละเอียดเวร...</div>
+        </div>
+        <div class="shift-day-detail-footer">
+            <button type="button" class="dash-btn dash-btn-ghost" data-shift-day-detail-close>ปิด</button>
+        </div>
+    </div>
+</div>
+
 <?php render_staff_profile_modal(); ?>
 <div class="shift-loading-overlay" data-shift-loading hidden aria-live="assertive" aria-busy="true">
     <div class="shift-loading-card" role="status">
@@ -602,6 +718,146 @@ function app_shift_render_staff_avatar(?string $imageUrl, string $name, string $
         });
     });
     applyShiftTime();
+})();
+
+(() => {
+    const modal = document.querySelector('[data-shift-day-detail-modal]');
+    if (!modal) return;
+
+    const modalDate = modal.querySelector('[data-shift-day-detail-date]');
+    const modalDepartment = modal.querySelector('[data-shift-day-detail-department]');
+    const modalSummary = modal.querySelector('[data-shift-day-detail-summary]');
+    const modalBody = modal.querySelector('[data-shift-day-detail-body]');
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+
+    const statusLabel = (status) => {
+        const normalized = String(status || '').toLowerCase();
+        if (normalized === 'published') return 'PUBLISHED';
+        if (normalized === 'draft') return 'DRAFT';
+        return normalized ? normalized.toUpperCase() : '-';
+    };
+
+    const staffAvatarHtml = (staff) => {
+        const name = staff?.name || '-';
+        const initials = staff?.initials || name.slice(0, 1) || 'U';
+        if (staff?.avatarUrl) {
+            return `<span class="my-shift-day-avatar" data-initials="${escapeHtml(initials)}"><img src="${escapeHtml(staff.avatarUrl)}" alt="รูปโปรไฟล์ ${escapeHtml(name)}" onerror="this.parentElement.textContent=this.parentElement.dataset.initials||'U';"></span>`;
+        }
+        return `<span class="my-shift-day-avatar">${escapeHtml(initials)}</span>`;
+    };
+
+    const renderSummary = (summary = {}) => {
+        if (!modalSummary) return;
+        modalSummary.innerHTML = [
+            ['เวรทั้งหมด', summary.scheduleCount ?? 0],
+            ['เจ้าหน้าที่', summary.staffCount ?? 0],
+            ['Draft', summary.draftCount ?? 0],
+            ['Published', summary.publishedCount ?? 0],
+        ].map(([label, value]) => `
+            <div class="shift-day-detail-stat">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(value)}</strong>
+            </div>
+        `).join('');
+    };
+
+    const renderSchedule = (schedule) => {
+        const status = String(schedule.status || '').toLowerCase();
+        const staff = Array.isArray(schedule.staff) ? schedule.staff : [];
+        const timeRange = `${schedule.startTime || '-'}-${schedule.endTime || '-'}`;
+        const staffList = staff.length > 0
+            ? staff.map((person) => `
+                <article class="my-shift-day-staff">
+                    ${staffAvatarHtml(person)}
+                    <div class="my-shift-day-staff-main">
+                        <strong>${escapeHtml(person.name || '-')}</strong>
+                        <span>${escapeHtml(person.position || 'ไม่ระบุตำแหน่ง')}</span>
+                    </div>
+                    <div class="my-shift-day-staff-meta">
+                        <span>${escapeHtml(person.department || schedule.department || '-')}</span>
+                        <small><span class="shift-day-detail-status is-${escapeHtml(status || 'unknown')}">${escapeHtml(statusLabel(status))}</span></small>
+                    </div>
+                </article>
+            `).join('')
+            : '<div class="my-shift-day-empty-state">ยังไม่มีเจ้าหน้าที่ในเวรนี้</div>';
+
+        return `
+            <section class="my-shift-day-section is-shift-${escapeHtml(schedule.shiftClass || 'other')}">
+                <div class="my-shift-day-section-head shift-day-detail-section-head">
+                    <div>
+                        <strong>${escapeHtml(schedule.shiftLabel || schedule.shiftType || 'เวรอื่น ๆ')}</strong>
+                        <small>${escapeHtml(timeRange)} · ${escapeHtml(schedule.plannedHours || 0)} ชม.</small>
+                    </div>
+                    <div class="shift-day-detail-section-badges">
+                        <span class="shift-day-detail-status is-${escapeHtml(status || 'unknown')}">${escapeHtml(statusLabel(status))}</span>
+                        <span>${escapeHtml(staff.length)} คน</span>
+                    </div>
+                </div>
+                <div class="my-shift-day-staff-list">
+                    ${staffList}
+                </div>
+            </section>
+        `;
+    };
+
+    const renderDetail = (payload) => {
+        if (modalDate) modalDate.textContent = payload?.dateLabel || payload?.date || '-';
+        if (modalDepartment) modalDepartment.textContent = payload?.department || '-';
+        renderSummary(payload?.summary || {});
+
+        const schedules = Array.isArray(payload?.schedules) ? payload.schedules : [];
+        if (!modalBody) return;
+        if (schedules.length === 0) {
+            modalBody.innerHTML = '<div class="my-shift-day-empty-state">ยังไม่มีเวรในวันนี้</div>';
+            return;
+        }
+        modalBody.innerHTML = schedules.map(renderSchedule).join('');
+    };
+
+    const openDetail = (payload) => {
+        if (modalBody) {
+            modalBody.innerHTML = '<div class="shift-day-detail-loading">กำลังโหลดรายละเอียดเวร...</div>';
+        }
+        modal.hidden = false;
+        document.body.classList.add('overflow-hidden');
+        window.requestAnimationFrame(() => renderDetail(payload));
+    };
+
+    const closeDetail = () => {
+        modal.hidden = true;
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-shift-day-detail-open]');
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+            openDetail(JSON.parse(button.dataset.dayDetail || '{}'));
+        } catch (error) {
+            openDetail({ schedules: [], summary: {}, department: '-', dateLabel: 'ไม่สามารถโหลดรายละเอียดเวรได้' });
+        }
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeDetail();
+    });
+    modal.querySelectorAll('[data-shift-day-detail-close]').forEach((button) => {
+        button.addEventListener('click', closeDetail);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeDetail();
+        }
+    });
 })();
 
 (() => {
