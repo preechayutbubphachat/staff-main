@@ -32,6 +32,7 @@ $userMeta = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 $role = app_current_role();
 $roleLabel = app_role_label($role);
 $profileImageSrc = app_column_exists($conn, 'users', 'profile_image_path') ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
+$profileSignaturePath = trim((string) ($userMeta['signature_path'] ?? ''));
 $displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
 $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
 $shiftTypes = app_shift_schedule_types();
@@ -149,9 +150,11 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
             <?php if (!$selectedAssignment || (int) ($selectedAssignment['staff_id'] ?? 0) !== $currentUserId): ?>
                 <div class="shift-swap-empty">กรุณาเลือกเวรของคุณจากหน้า “เวรของฉัน” เพื่อเริ่มคำขอแลกเวร</div>
             <?php else: ?>
-                <form method="post" action="../actions/create-shift-swap-request.php" class="shift-swap-form" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังส่งคำขอแลกเวร" data-loading-busy-text="กำลังส่ง...">
+                <form method="post" action="../actions/create-shift-swap-request.php" class="shift-swap-form" data-swap-signature-form data-signature-role="requester" data-signature-input="requester_signature_data" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังส่งคำขอแลกเวร" data-loading-busy-text="กำลังส่ง...">
                     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input type="hidden" name="requester_assignment_id" value="<?= (int) $selectedAssignmentId ?>">
+                    <input type="hidden" name="requester_signature_data" value="">
+                    <input type="hidden" name="use_profile_signature" value="0">
                     <div class="shift-swap-selected">
                         <span>เวรของฉัน</span>
                         <strong><?= htmlspecialchars(app_format_thai_date((string) $selectedAssignment['schedule_date'])) ?> · <?= htmlspecialchars($shiftTypes[(string) $selectedAssignment['shift_type']]['label'] ?? $selectedAssignment['shift_type']) ?> · <?= htmlspecialchars(substr((string) $selectedAssignment['start_time'], 0, 5)) ?>-<?= htmlspecialchars(substr((string) $selectedAssignment['end_time'], 0, 5)) ?></strong>
@@ -202,6 +205,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <p><strong>ของฉัน:</strong> <?= htmlspecialchars(shift_swap_request_line($row, 'requester')) ?></p>
                         <p><strong>แลกกับ:</strong> <?= htmlspecialchars($row['target_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></p>
                         <p class="shift-swap-muted"><?= htmlspecialchars((string) ($row['reason'] ?? '')) ?></p>
+                        <a class="dash-btn dash-btn-ghost" href="shift_swap_document.php?id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> ดูเอกสาร</a>
                         <?php if ((string) $row['status'] === 'pending_target_confirm'): ?>
                             <form method="post" action="../actions/cancel-shift-swap.php" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังยกเลิกคำขอแลกเวร" data-loading-busy-text="กำลังยกเลิก..." onsubmit="return confirm('ยกเลิกคำขอแลกเวรนี้?');">
                                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
@@ -234,12 +238,15 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <p><strong>ผู้ขอ:</strong> <?= htmlspecialchars($row['requester_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'requester')) ?></p>
                         <p><strong>เวรของคุณ:</strong> <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></p>
                         <p class="shift-swap-muted"><?= htmlspecialchars((string) ($row['reason'] ?? '')) ?></p>
-                        <form method="post" action="../actions/respond-shift-swap.php" class="shift-swap-inline-decision" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลการยืนยันคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
+                        <a class="dash-btn dash-btn-ghost" href="shift_swap_document.php?id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> ดูเอกสาร</a>
+                        <form method="post" action="../actions/respond-shift-swap.php" class="shift-swap-inline-decision" data-swap-signature-form data-signature-role="responder" data-signature-input="responder_signature_data" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลการยืนยันคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
+                            <input type="hidden" name="responder_signature_data" value="">
+                            <input type="hidden" name="use_profile_signature" value="0">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุถึงผู้ขอหรือหัวหน้า"></textarea>
                             <div>
-                                <button type="submit" name="decision" value="confirm" class="dash-btn dash-btn-primary"><i class="bi bi-check2-circle"></i> ยืนยัน</button>
+                                <button type="submit" name="decision" value="confirm" class="dash-btn dash-btn-primary"><i class="bi bi-clipboard-check"></i> พิจารณา</button>
                                 <button type="submit" name="decision" value="reject" class="dash-btn dash-btn-ghost"><i class="bi bi-x-circle"></i> ปฏิเสธ</button>
                             </div>
                         </form>
@@ -275,12 +282,15 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                         <?php if (!empty($row['target_response_note'])): ?>
                             <p class="shift-swap-muted">หมายเหตุอีกฝ่าย: <?= htmlspecialchars((string) $row['target_response_note']) ?></p>
                         <?php endif; ?>
-                        <form method="post" action="../actions/manager-shift-swap.php" class="shift-swap-inline-decision" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลอนุมัติคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
+                        <a class="dash-btn dash-btn-ghost" href="shift_swap_document.php?id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> ดูเอกสาร</a>
+                        <form method="post" action="../actions/manager-shift-swap.php" class="shift-swap-inline-decision" data-swap-signature-form data-signature-role="approver" data-signature-input="approver_signature_data" data-global-loading-form data-loading-message="โปรดรอสักครู่..." data-loading-sub-message="กำลังบันทึกผลอนุมัติคำขอแลกเวร" data-loading-busy-text="กำลังบันทึก...">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
+                            <input type="hidden" name="approver_signature_data" value="">
+                            <input type="hidden" name="use_profile_signature" value="0">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุหัวหน้า"></textarea>
                             <div>
-                                <button type="submit" name="decision" value="approve" class="dash-btn dash-btn-primary" onclick="return confirm('อนุมัติและสลับ assignment จริง?');"><i class="bi bi-check2-circle"></i> อนุมัติ</button>
+                                <button type="submit" name="decision" value="approve" class="dash-btn dash-btn-primary"><i class="bi bi-check2-circle"></i> อนุมัติ</button>
                                 <button type="submit" name="decision" value="reject" class="dash-btn dash-btn-ghost"><i class="bi bi-x-circle"></i> ปฏิเสธ</button>
                             </div>
                         </form>
@@ -307,6 +317,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                     <span class="shift-swap-status is-<?= htmlspecialchars($meta['class']) ?>"><?= htmlspecialchars($meta['label']) ?></span>
                     <strong>#<?= (int) $row['id'] ?></strong>
                     <span><?= htmlspecialchars($row['target_name']) ?> · <?= htmlspecialchars(shift_swap_request_line($row, 'target')) ?></span>
+                    <a class="dash-btn dash-btn-ghost" href="shift_swap_document.php?id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> ดูเอกสาร</a>
                     <?php if (!empty($row['target_response_note']) || !empty($row['manager_response_note'])): ?>
                         <small><?= htmlspecialchars(trim((string) ($row['target_response_note'] ?? '') . ' ' . (string) ($row['manager_response_note'] ?? ''))) ?></small>
                     <?php endif; ?>
@@ -317,8 +328,194 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
 </main>
 
 <?php render_staff_profile_modal(); ?>
+<style>
+    .swap-signature-backdrop{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(6,59,79,.36);padding:1rem;backdrop-filter:blur(8px)}
+    .swap-signature-backdrop[hidden]{display:none}
+    .swap-signature-modal{width:min(760px,100%);max-height:92vh;overflow:auto;border-radius:1.5rem;background:#fff;box-shadow:0 28px 80px rgba(6,59,79,.28);padding:1.25rem}
+    .swap-signature-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;border-bottom:1px solid #e2e8f0;padding-bottom:.85rem}
+    .swap-signature-head p{margin:0;color:#0f9f95;font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+    .swap-signature-head h3{margin:.2rem 0 0;color:#082b45;font-family:Prompt,Sarabun,sans-serif;font-size:1.35rem;font-weight:800}
+    .swap-signature-body{display:grid;gap:1rem;padding:1rem 0}
+    .swap-signature-paper{border:1px solid #dbeafe;border-radius:1.25rem;background:#f8fcfd;padding:1rem;color:#334155;font-size:.9rem;line-height:1.7}
+    .swap-signature-pad{border:1px dashed #9bd8d4;border-radius:1rem;background:#fff;padding:.75rem}
+    .swap-signature-pad canvas{display:block;width:100%;height:160px;border-radius:.8rem;background:linear-gradient(#fff,#fff),repeating-linear-gradient(0deg,transparent 0 31px,rgba(15,159,149,.08) 32px);touch-action:none}
+    .swap-signature-options{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+    .swap-signature-error{border:1px solid #fecdd3;border-radius:1rem;background:#fff1f2;color:#be123c;padding:.75rem 1rem;font-size:.875rem;font-weight:700}
+    .swap-signature-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.75rem;border-top:1px solid #e2e8f0;padding-top:1rem}
+</style>
+<div class="swap-signature-backdrop" data-swap-signature-modal hidden>
+    <div class="swap-signature-modal" role="dialog" aria-modal="true" aria-labelledby="swapSignatureTitle">
+        <div class="swap-signature-head">
+            <div>
+                <p>Shift Swap Document</p>
+                <h3 id="swapSignatureTitle">แบบขอเปลี่ยนเวร</h3>
+            </div>
+            <button type="button" class="dash-icon-button" data-swap-signature-close aria-label="ปิด"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="swap-signature-body">
+            <div class="swap-signature-paper">
+                ระบบจะบันทึกเอกสารคำขอเปลี่ยนเวรพร้อม snapshot ข้อมูลเวรและลายเซ็นของผู้ดำเนินการในขั้นตอนนี้
+                หลังอนุมัติครบขั้นตอนจะสามารถเปิดพิมพ์หรือดาวน์โหลด PDF จากหน้าประวัติได้
+            </div>
+            <?php if ($profileSignaturePath !== ''): ?>
+                <label class="swap-signature-options">
+                    <input type="checkbox" data-swap-use-profile-signature>
+                    <span>ใช้ลายเซ็นจากโปรไฟล์</span>
+                </label>
+            <?php endif; ?>
+            <div class="swap-signature-pad">
+                <canvas data-swap-signature-canvas width="720" height="180" aria-label="พื้นที่วาดลายเซ็น"></canvas>
+            </div>
+            <div class="swap-signature-options">
+                <button type="button" class="dash-btn dash-btn-ghost" data-swap-signature-clear><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+                <span class="text-sm text-hospital-muted">รองรับ mouse และ touch</span>
+            </div>
+            <div class="swap-signature-error" data-swap-signature-error hidden></div>
+        </div>
+        <div class="swap-signature-actions">
+            <button type="button" class="dash-btn dash-btn-ghost" data-swap-signature-close>ยกเลิก</button>
+            <button type="button" class="dash-btn dash-btn-primary" data-swap-signature-confirm><i class="bi bi-check2-circle"></i> ยืนยันและดำเนินการ</button>
+        </div>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/notifications.js"></script>
 <?php render_staff_profile_modal_script(); ?>
+<script>
+(() => {
+    const modal = document.querySelector('[data-swap-signature-modal]');
+    const canvas = document.querySelector('[data-swap-signature-canvas]');
+    if (!modal || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    const errorBox = document.querySelector('[data-swap-signature-error]');
+    const profileToggle = document.querySelector('[data-swap-use-profile-signature]');
+    let activeForm = null;
+    let activeSubmitter = null;
+    let allowSubmit = false;
+    let drawing = false;
+    let hasStroke = false;
+
+    function showError(message) {
+        if (!errorBox) return;
+        errorBox.textContent = message;
+        errorBox.hidden = false;
+    }
+    function clearError() {
+        if (!errorBox) return;
+        errorBox.textContent = '';
+        errorBox.hidden = true;
+    }
+    function clearPad() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasStroke = false;
+    }
+    function point(event) {
+        const rect = canvas.getBoundingClientRect();
+        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
+        return {
+            x: (source.clientX - rect.left) * (canvas.width / rect.width),
+            y: (source.clientY - rect.top) * (canvas.height / rect.height),
+        };
+    }
+    function begin(event) {
+        if (profileToggle?.checked) return;
+        drawing = true;
+        hasStroke = true;
+        const p = point(event);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        event.preventDefault();
+    }
+    function move(event) {
+        if (!drawing || profileToggle?.checked) return;
+        const p = point(event);
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#063b4f';
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        event.preventDefault();
+    }
+    function end() {
+        drawing = false;
+    }
+    function open(form, submitter) {
+        activeForm = form;
+        activeSubmitter = submitter;
+        clearError();
+        clearPad();
+        if (profileToggle) profileToggle.checked = false;
+        modal.hidden = false;
+        document.body.classList.add('overflow-hidden');
+    }
+    function close() {
+        modal.hidden = true;
+        document.body.classList.remove('overflow-hidden');
+        activeForm = null;
+        activeSubmitter = null;
+    }
+    function selectedDecision() {
+        return activeSubmitter?.value || activeForm?.querySelector('[name="decision"]')?.value || '';
+    }
+    function signatureRequired() {
+        const role = activeForm?.dataset.signatureRole || '';
+        const decision = selectedDecision();
+        return role === 'requester' || decision === 'confirm' || decision === 'approve';
+    }
+
+    canvas.addEventListener('mousedown', begin);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', begin, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', end);
+    document.querySelector('[data-swap-signature-clear]')?.addEventListener('click', () => {
+        if (profileToggle) profileToggle.checked = false;
+        clearPad();
+        clearError();
+    });
+    document.querySelectorAll('[data-swap-signature-close]').forEach((button) => button.addEventListener('click', close));
+
+    document.querySelectorAll('[data-swap-signature-form]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (allowSubmit) {
+                allowSubmit = false;
+                return;
+            }
+            const submitter = event.submitter || document.activeElement;
+            event.preventDefault();
+            open(form, submitter);
+        });
+    });
+
+    document.querySelector('[data-swap-signature-confirm]')?.addEventListener('click', () => {
+        if (!activeForm) return;
+        const useProfile = Boolean(profileToggle?.checked);
+        if (signatureRequired() && !useProfile && !hasStroke) {
+            showError('กรุณาลงลายเซ็นก่อนดำเนินการ');
+            return;
+        }
+        const inputName = activeForm.dataset.signatureInput || 'requester_signature_data';
+        const signatureInput = activeForm.querySelector('input[name="' + inputName.replace(/"/g, '') + '"]');
+        const useProfileInput = activeForm.querySelector('[name="use_profile_signature"]');
+        if (signatureInput) {
+            signatureInput.value = useProfile ? '' : canvas.toDataURL('image/png');
+        }
+        if (useProfileInput) {
+            useProfileInput.value = useProfile ? '1' : '0';
+        }
+        allowSubmit = true;
+        const form = activeForm;
+        const submitter = activeSubmitter;
+        close();
+        if (submitter && form?.requestSubmit) {
+            form.requestSubmit(submitter);
+        } else {
+            form?.submit();
+        }
+    });
+})();
+</script>
 </body>
 </html>

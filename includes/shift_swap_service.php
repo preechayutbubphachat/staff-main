@@ -280,7 +280,273 @@ function app_shift_swap_manager_recipients(PDO $conn, int $departmentId): array
     return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
 }
 
-function app_shift_swap_create_request(PDO $conn, int $requesterId, int $requesterAssignmentId, int $targetAssignmentId, string $reason): array
+function app_shift_swap_document_table_ready(PDO $conn): bool
+{
+    return app_table_exists($conn, 'shift_swap_documents');
+}
+
+function app_shift_swap_user_snapshot(PDO $conn, int $userId): array
+{
+    $stmt = $conn->prepare("
+        SELECT u.id, u.fullname, u.position_name, u.department_id, u.signature_path, d.department_name
+        FROM users u
+        LEFT JOIN departments d ON d.id = u.department_id
+        WHERE u.id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    return [
+        'name' => trim((string) ($row['fullname'] ?? '')),
+        'position' => trim((string) ($row['position_name'] ?? '')),
+        'department' => trim((string) ($row['department_name'] ?? '')),
+        'signature_path' => trim((string) ($row['signature_path'] ?? '')),
+    ];
+}
+
+function app_shift_swap_signature_storage_dir(): string
+{
+    return dirname(__DIR__) . '/uploads/shift_swap_signatures';
+}
+
+function app_shift_swap_signature_relative_path(string $fileName): string
+{
+    return 'uploads/shift_swap_signatures/' . $fileName;
+}
+
+function app_shift_swap_save_signature_file(string $signatureData, string $role, int $swapRequestId, int $actorUserId): string
+{
+    $signatureData = trim($signatureData);
+    if ($signatureData === '') {
+        throw new RuntimeException('กรุณาลงลายเซ็นก่อนดำเนินการ');
+    }
+    if (strpos($signatureData, ',') !== false) {
+        [, $signatureData] = explode(',', $signatureData, 2);
+    }
+
+    $binary = base64_decode($signatureData, true);
+    if ($binary === false || strlen($binary) < 100) {
+        throw new RuntimeException('ข้อมูลลายเซ็นไม่ถูกต้อง กรุณาลงลายเซ็นใหม่');
+    }
+
+    $dir = app_shift_swap_signature_storage_dir();
+    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+        throw new RuntimeException('ไม่สามารถเตรียมพื้นที่เก็บลายเซ็นได้');
+    }
+
+    $safeRole = preg_replace('/[^a-z0-9_\\-]/i', '', $role) ?: 'signer';
+    $fileName = 'swap_' . $swapRequestId . '_' . $safeRole . '_' . $actorUserId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.png';
+    $fullPath = $dir . '/' . $fileName;
+    if (file_put_contents($fullPath, $binary) === false) {
+        throw new RuntimeException('ไม่สามารถบันทึกลายเซ็นได้');
+    }
+
+    return app_shift_swap_signature_relative_path($fileName);
+}
+
+function app_shift_swap_copy_profile_signature(PDO $conn, int $userId, string $role, int $swapRequestId): string
+{
+    $snapshot = app_shift_swap_user_snapshot($conn, $userId);
+    $relative = $snapshot['signature_path'];
+    if ($relative === '') {
+        throw new RuntimeException('ไม่พบลายเซ็นจากโปรไฟล์ กรุณาวาดลายเซ็นใหม่');
+    }
+
+    $projectRoot = realpath(dirname(__DIR__));
+    $source = realpath($projectRoot . '/' . ltrim(str_replace('\\', '/', $relative), '/'));
+    if (!$projectRoot || !$source || strpos($source, $projectRoot) !== 0 || !is_file($source)) {
+        throw new RuntimeException('ไม่สามารถใช้ลายเซ็นจากโปรไฟล์ได้ กรุณาวาดลายเซ็นใหม่');
+    }
+
+    $dir = app_shift_swap_signature_storage_dir();
+    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+        throw new RuntimeException('ไม่สามารถเตรียมพื้นที่เก็บลายเซ็นได้');
+    }
+
+    $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['png', 'jpg', 'jpeg'], true)) {
+        $ext = 'png';
+    }
+    $safeRole = preg_replace('/[^a-z0-9_\\-]/i', '', $role) ?: 'signer';
+    $fileName = 'swap_' . $swapRequestId . '_' . $safeRole . '_' . $userId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $target = $dir . '/' . $fileName;
+    if (!copy($source, $target)) {
+        throw new RuntimeException('ไม่สามารถแนบลายเซ็นจากโปรไฟล์ได้');
+    }
+
+    return app_shift_swap_signature_relative_path($fileName);
+}
+
+function app_shift_swap_capture_signature(PDO $conn, int $swapRequestId, int $actorUserId, string $role, string $signatureData, bool $useProfileSignature): string
+{
+    if ($useProfileSignature) {
+        return app_shift_swap_copy_profile_signature($conn, $actorUserId, $role, $swapRequestId);
+    }
+
+    return app_shift_swap_save_signature_file($signatureData, $role, $swapRequestId, $actorUserId);
+}
+
+function app_shift_swap_shift_snapshot_text(array $request, string $prefix, string $staffName): string
+{
+    $date = app_format_thai_date((string) ($request[$prefix . '_date'] ?? ''));
+    $shift = app_shift_swap_assignment_summary([
+        'id' => $request[$prefix . '_assignment_id'] ?? 0,
+        'schedule_id' => $request[$prefix . '_schedule_id'] ?? 0,
+        'staff_id' => 0,
+        'staff_name' => $staffName,
+        'department_id' => $request['department_id'] ?? 0,
+        'department_name' => $request['department_name'] ?? '',
+        'schedule_date' => $request[$prefix . '_date'] ?? '',
+        'shift_type' => $request[$prefix . '_shift_type'] ?? '',
+        'start_time' => $request[$prefix . '_start_time'] ?? '',
+        'end_time' => $request[$prefix . '_end_time'] ?? '',
+        'planned_hours' => $request[$prefix . '_hours'] ?? 0,
+    ]);
+
+    return trim($staffName . ' · ' . $date . ' · ' . $shift['shift_label'] . ' · ' . $shift['time']);
+}
+
+function app_shift_swap_create_document(PDO $conn, int $swapRequestId, int $requesterId, int $targetUserId, array $requesterAssignment, array $targetAssignment, string $reason, string $signatureData, bool $useProfileSignature): void
+{
+    if (!app_shift_swap_document_table_ready($conn)) {
+        throw new RuntimeException('ยังไม่ได้ติดตั้งตารางเอกสารแลกเวร กรุณารัน migration 2026_05_20_create_shift_swap_documents.sql');
+    }
+
+    $requester = app_shift_swap_user_snapshot($conn, $requesterId);
+    $responder = app_shift_swap_user_snapshot($conn, $targetUserId);
+    $signaturePath = app_shift_swap_capture_signature($conn, $swapRequestId, $requesterId, 'requester', $signatureData, $useProfileSignature);
+
+    $stmt = $conn->prepare("
+        INSERT INTO shift_swap_documents (
+            swap_request_id, document_status, requester_signature_path, requester_signed_at,
+            requester_name_snapshot, responder_name_snapshot,
+            requester_position_snapshot, responder_position_snapshot,
+            requester_department_snapshot, responder_department_snapshot,
+            requester_shift_snapshot, responder_shift_snapshot, reason_snapshot
+        ) VALUES (?, 'requester_signed', ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            requester_signature_path = VALUES(requester_signature_path),
+            requester_signed_at = VALUES(requester_signed_at),
+            requester_name_snapshot = VALUES(requester_name_snapshot),
+            responder_name_snapshot = VALUES(responder_name_snapshot),
+            requester_position_snapshot = VALUES(requester_position_snapshot),
+            responder_position_snapshot = VALUES(responder_position_snapshot),
+            requester_department_snapshot = VALUES(requester_department_snapshot),
+            responder_department_snapshot = VALUES(responder_department_snapshot),
+            requester_shift_snapshot = VALUES(requester_shift_snapshot),
+            responder_shift_snapshot = VALUES(responder_shift_snapshot),
+            reason_snapshot = VALUES(reason_snapshot),
+            updated_at = NOW()
+    ");
+    $stmt->execute([
+        $swapRequestId,
+        $signaturePath,
+        $requester['name'],
+        $responder['name'],
+        $requester['position'],
+        $responder['position'],
+        $requester['department'] !== '' ? $requester['department'] : (string) ($requesterAssignment['department_name'] ?? ''),
+        $responder['department'] !== '' ? $responder['department'] : (string) ($targetAssignment['department_name'] ?? ''),
+        app_shift_swap_shift_snapshot_text([
+            'requester_assignment_id' => $requesterAssignment['id'] ?? 0,
+            'requester_schedule_id' => $requesterAssignment['schedule_id'] ?? 0,
+            'department_id' => $requesterAssignment['department_id'] ?? 0,
+            'department_name' => $requesterAssignment['department_name'] ?? '',
+            'requester_date' => $requesterAssignment['schedule_date'] ?? '',
+            'requester_shift_type' => $requesterAssignment['shift_type'] ?? '',
+            'requester_start_time' => $requesterAssignment['start_time'] ?? '',
+            'requester_end_time' => $requesterAssignment['end_time'] ?? '',
+            'requester_hours' => $requesterAssignment['planned_hours'] ?? 0,
+        ], 'requester', $requester['name']),
+        app_shift_swap_shift_snapshot_text([
+            'target_assignment_id' => $targetAssignment['id'] ?? 0,
+            'target_schedule_id' => $targetAssignment['schedule_id'] ?? 0,
+            'department_id' => $targetAssignment['department_id'] ?? 0,
+            'department_name' => $targetAssignment['department_name'] ?? '',
+            'target_date' => $targetAssignment['schedule_date'] ?? '',
+            'target_shift_type' => $targetAssignment['shift_type'] ?? '',
+            'target_start_time' => $targetAssignment['start_time'] ?? '',
+            'target_end_time' => $targetAssignment['end_time'] ?? '',
+            'target_hours' => $targetAssignment['planned_hours'] ?? 0,
+        ], 'target', $responder['name']),
+        $reason,
+    ]);
+
+    app_shift_swap_insert_audit($conn, $swapRequestId, 'requester_signed_swap_document', null, ['signature_path' => $signaturePath], $requesterId, 'ผู้ขอลงลายเซ็นในแบบขอเปลี่ยนเวร');
+}
+
+function app_shift_swap_update_document_signature(PDO $conn, int $swapRequestId, int $actorUserId, string $role, string $signatureData, bool $useProfileSignature, string $status, ?string $note = null): void
+{
+    if (!app_shift_swap_document_table_ready($conn)) {
+        throw new RuntimeException('ยังไม่ได้ติดตั้งตารางเอกสารแลกเวร กรุณารัน migration 2026_05_20_create_shift_swap_documents.sql');
+    }
+
+    $signaturePath = app_shift_swap_capture_signature($conn, $swapRequestId, $actorUserId, $role, $signatureData, $useProfileSignature);
+    $actor = app_shift_swap_user_snapshot($conn, $actorUserId);
+
+    if ($role === 'responder') {
+        $stmt = $conn->prepare("
+            UPDATE shift_swap_documents
+            SET responder_signature_path = ?,
+                responder_signed_at = NOW(),
+                responder_name_snapshot = COALESCE(NULLIF(responder_name_snapshot, ''), ?),
+                responder_position_snapshot = COALESCE(NULLIF(responder_position_snapshot, ''), ?),
+                responder_department_snapshot = COALESCE(NULLIF(responder_department_snapshot, ''), ?),
+                target_response_note_snapshot = ?,
+                document_status = ?,
+                updated_at = NOW()
+            WHERE swap_request_id = ?
+        ");
+        $stmt->execute([$signaturePath, $actor['name'], $actor['position'], $actor['department'], $note, $status, $swapRequestId]);
+        app_shift_swap_insert_audit($conn, $swapRequestId, 'responder_signed_swap_document', null, ['signature_path' => $signaturePath, 'document_status' => $status], $actorUserId, 'ผู้ยินยอมลงลายเซ็นในแบบขอเปลี่ยนเวร');
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE shift_swap_documents
+        SET approver_signature_path = ?,
+            approver_signed_at = NOW(),
+            approver_name_snapshot = ?,
+            approver_position_snapshot = ?,
+            approver_department_snapshot = ?,
+            manager_response_note_snapshot = ?,
+            document_status = ?,
+            updated_at = NOW()
+        WHERE swap_request_id = ?
+    ");
+    $stmt->execute([$signaturePath, $actor['name'], $actor['position'], $actor['department'], $note, $status, $swapRequestId]);
+    app_shift_swap_insert_audit($conn, $swapRequestId, 'approver_signed_swap_document', null, ['signature_path' => $signaturePath, 'document_status' => $status], $actorUserId, 'หัวหน้างานลงลายเซ็นในแบบขอเปลี่ยนเวร');
+}
+
+function app_shift_swap_get_document(PDO $conn, int $swapRequestId): ?array
+{
+    if (!app_shift_swap_document_table_ready($conn)) {
+        return null;
+    }
+    $stmt = $conn->prepare('SELECT * FROM shift_swap_documents WHERE swap_request_id = ? LIMIT 1');
+    $stmt->execute([$swapRequestId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
+function app_shift_swap_user_can_view_document(PDO $conn, array $request, int $userId): bool
+{
+    if ($userId <= 0) {
+        return false;
+    }
+    if ((int) $request['requester_id'] === $userId || (int) $request['target_staff_id'] === $userId) {
+        return true;
+    }
+    if ((int) ($request['manager_approved_by'] ?? 0) === $userId || (int) ($request['manager_rejected_by'] ?? 0) === $userId) {
+        return true;
+    }
+
+    return app_shift_swap_manager_can_access_department($conn, (int) $request['department_id']);
+}
+
+function app_shift_swap_create_request(PDO $conn, int $requesterId, int $requesterAssignmentId, int $targetAssignmentId, string $reason, string $requesterSignatureData = '', bool $useProfileSignature = false): array
 {
     $requesterAssignment = app_shift_swap_get_assignment($conn, $requesterAssignmentId);
     $targetAssignment = app_shift_swap_get_assignment($conn, $targetAssignmentId);
@@ -334,6 +600,7 @@ function app_shift_swap_create_request(PDO $conn, int $requesterId, int $request
             $newValues,
             'high'
         );
+        app_shift_swap_create_document($conn, $swapRequestId, $requesterId, (int) $targetAssignment['staff_id'], $requesterAssignment, $targetAssignment, $reason, $requesterSignatureData, $useProfileSignature);
         $conn->commit();
 
         return ['swap_request_id' => $swapRequestId, 'message' => 'ส่งคำขอแลกเวรเรียบร้อยแล้ว รออีกฝ่ายยืนยัน'];
@@ -351,9 +618,18 @@ function app_shift_swap_get_request(PDO $conn, int $swapRequestId): ?array
         SELECT
             sr.*,
             requester.fullname AS requester_name,
+            requester.position_name AS requester_position,
+            requester.signature_path AS requester_signature_profile,
+            requesterDept.department_name AS requester_department_name,
             target.fullname AS target_name,
+            target.position_name AS target_position,
+            target.signature_path AS target_signature_profile,
+            targetDept.department_name AS target_department_name,
             d.department_name,
             approver.fullname AS approver_name,
+            approver.position_name AS approver_position,
+            approver.signature_path AS approver_signature_profile,
+            approverDept.department_name AS approver_department_name,
             ra.schedule_id AS requester_schedule_id,
             rs.schedule_date AS requester_date,
             rs.shift_type AS requester_shift_type,
@@ -370,7 +646,10 @@ function app_shift_swap_get_request(PDO $conn, int $swapRequestId): ?array
         INNER JOIN users requester ON requester.id = sr.requester_id
         INNER JOIN users target ON target.id = sr.target_staff_id
         LEFT JOIN departments d ON d.id = sr.department_id
+        LEFT JOIN departments requesterDept ON requesterDept.id = requester.department_id
+        LEFT JOIN departments targetDept ON targetDept.id = target.department_id
         LEFT JOIN users approver ON approver.id = sr.manager_approved_by
+        LEFT JOIN departments approverDept ON approverDept.id = approver.department_id
         INNER JOIN shift_assignments ra ON ra.id = sr.requester_assignment_id
         INNER JOIN shift_schedules rs ON rs.id = ra.schedule_id
         INNER JOIN shift_assignments ta ON ta.id = sr.target_assignment_id
@@ -384,7 +663,7 @@ function app_shift_swap_get_request(PDO $conn, int $swapRequestId): ?array
     return $row ?: null;
 }
 
-function app_shift_swap_update_target_response(PDO $conn, int $swapRequestId, int $targetUserId, string $decision, string $note): array
+function app_shift_swap_update_target_response(PDO $conn, int $swapRequestId, int $targetUserId, string $decision, string $note, string $signatureData = '', bool $useProfileSignature = false): array
 {
     $request = app_shift_swap_get_request($conn, $swapRequestId);
     if (!$request) {
@@ -416,6 +695,7 @@ function app_shift_swap_update_target_response(PDO $conn, int $swapRequestId, in
             }
             $newStatus = 'pending_manager_approval';
             app_shift_swap_insert_audit($conn, $swapRequestId, 'target_confirm_swap_request', ['status' => $old['status']], ['status' => $newStatus, 'note' => $note], $targetUserId, 'อีกฝ่ายยืนยันคำขอแลกเวร');
+            app_shift_swap_update_document_signature($conn, $swapRequestId, $targetUserId, 'responder', $signatureData, $useProfileSignature, 'responder_signed', $note);
             foreach (app_shift_swap_manager_recipients($conn, (int) $request['department_id']) as $managerId) {
                 app_shift_swap_notify($conn, $managerId, 'swap_target_confirmed', 'มีคำขอแลกเวรรออนุมัติ', 'มีคำขอแลกเวรรอหัวหน้าอนุมัติ', $swapRequestId, $targetUserId, ['department_id' => (int) $request['department_id']], 'high');
             }
@@ -435,6 +715,12 @@ function app_shift_swap_update_target_response(PDO $conn, int $swapRequestId, in
             }
             $newStatus = 'rejected_by_target';
             app_shift_swap_insert_audit($conn, $swapRequestId, 'target_reject_swap_request', ['status' => $old['status']], ['status' => $newStatus, 'note' => $note], $targetUserId, 'อีกฝ่ายปฏิเสธคำขอแลกเวร');
+            if ($signatureData !== '' || $useProfileSignature) {
+                app_shift_swap_update_document_signature($conn, $swapRequestId, $targetUserId, 'responder', $signatureData, $useProfileSignature, 'responder_rejected', $note);
+            } elseif (app_shift_swap_document_table_ready($conn)) {
+                $docStmt = $conn->prepare('UPDATE shift_swap_documents SET document_status = ?, target_response_note_snapshot = ?, updated_at = NOW() WHERE swap_request_id = ?');
+                $docStmt->execute(['responder_rejected', $note, $swapRequestId]);
+            }
             app_shift_swap_notify($conn, (int) $request['requester_id'], 'swap_target_rejected', 'คำขอแลกเวรถูกปฏิเสธ', 'คำขอแลกเวรถูกปฏิเสธโดยอีกฝ่าย', $swapRequestId, $targetUserId, ['note' => $note], 'high');
             $message = 'ปฏิเสธคำขอแลกเวรแล้ว';
         }
@@ -477,7 +763,7 @@ function app_shift_swap_cancel_request(PDO $conn, int $swapRequestId, int $reque
     return ['message' => 'ยกเลิกคำขอแลกเวรเรียบร้อยแล้ว'];
 }
 
-function app_shift_swap_manager_decision(PDO $conn, int $swapRequestId, int $managerUserId, string $decision, string $note): array
+function app_shift_swap_manager_decision(PDO $conn, int $swapRequestId, int $managerUserId, string $decision, string $note, string $signatureData = '', bool $useProfileSignature = false): array
 {
     $request = app_shift_swap_get_request($conn, $swapRequestId);
     if (!$request) {
@@ -490,29 +776,44 @@ function app_shift_swap_manager_decision(PDO $conn, int $swapRequestId, int $man
 
     $note = trim($note);
     if ($decision === 'reject') {
-        $stmt = $conn->prepare("
-            UPDATE shift_swap_requests
-            SET status = 'rejected_by_manager',
-                manager_response_note = ?,
-                manager_rejected_by = ?,
-                manager_rejected_at = NOW(),
-                updated_at = NOW()
-            WHERE id = ? AND status = 'pending_manager_approval'
-        ");
-        $stmt->execute([$note !== '' ? $note : null, $managerUserId, $swapRequestId]);
-        if ($stmt->rowCount() !== 1) {
-            throw new RuntimeException('ไม่สามารถปฏิเสธคำขอซ้ำได้');
+        $conn->beginTransaction();
+        try {
+            $stmt = $conn->prepare("
+                UPDATE shift_swap_requests
+                SET status = 'rejected_by_manager',
+                    manager_response_note = ?,
+                    manager_rejected_by = ?,
+                    manager_rejected_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = ? AND status = 'pending_manager_approval'
+            ");
+            $stmt->execute([$note !== '' ? $note : null, $managerUserId, $swapRequestId]);
+            if ($stmt->rowCount() !== 1) {
+                throw new RuntimeException('ไม่สามารถปฏิเสธคำขอซ้ำได้');
+            }
+            app_shift_swap_insert_audit($conn, $swapRequestId, 'manager_reject_swap_request', ['status' => $request['status']], ['status' => 'rejected_by_manager', 'note' => $note], $managerUserId, 'หัวหน้าปฏิเสธคำขอแลกเวร');
+            if ($signatureData !== '' || $useProfileSignature) {
+                app_shift_swap_update_document_signature($conn, $swapRequestId, $managerUserId, 'approver', $signatureData, $useProfileSignature, 'approver_rejected', $note);
+            } elseif (app_shift_swap_document_table_ready($conn)) {
+                $docStmt = $conn->prepare('UPDATE shift_swap_documents SET document_status = ?, manager_response_note_snapshot = ?, updated_at = NOW() WHERE swap_request_id = ?');
+                $docStmt->execute(['approver_rejected', $note, $swapRequestId]);
+            }
+            app_shift_swap_notify($conn, (int) $request['requester_id'], 'swap_manager_rejected', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', $swapRequestId, $managerUserId, ['note' => $note], 'high');
+            app_shift_swap_notify($conn, (int) $request['target_staff_id'], 'swap_manager_rejected', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', $swapRequestId, $managerUserId, ['note' => $note], 'high');
+            $conn->commit();
+            return ['message' => 'ปฏิเสธคำขอแลกเวรแล้ว'];
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            throw $e;
         }
-        app_shift_swap_insert_audit($conn, $swapRequestId, 'manager_reject_swap_request', ['status' => $request['status']], ['status' => 'rejected_by_manager', 'note' => $note], $managerUserId, 'หัวหน้าปฏิเสธคำขอแลกเวร');
-        app_shift_swap_notify($conn, (int) $request['requester_id'], 'swap_manager_rejected', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', $swapRequestId, $managerUserId, ['note' => $note], 'high');
-        app_shift_swap_notify($conn, (int) $request['target_staff_id'], 'swap_manager_rejected', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', 'คำขอแลกเวรถูกปฏิเสธโดยหัวหน้า', $swapRequestId, $managerUserId, ['note' => $note], 'high');
-        return ['message' => 'ปฏิเสธคำขอแลกเวรแล้ว'];
     }
 
-    return app_shift_swap_apply($conn, $swapRequestId, $managerUserId, $note);
+    return app_shift_swap_apply($conn, $swapRequestId, $managerUserId, $note, $signatureData, $useProfileSignature);
 }
 
-function app_shift_swap_apply(PDO $conn, int $swapRequestId, int $managerUserId, string $note = ''): array
+function app_shift_swap_apply(PDO $conn, int $swapRequestId, int $managerUserId, string $note = '', string $signatureData = '', bool $useProfileSignature = false): array
 {
     $conn->beginTransaction();
     try {
@@ -602,6 +903,8 @@ function app_shift_swap_apply(PDO $conn, int $swapRequestId, int $managerUserId,
             ],
         ];
         app_shift_swap_insert_audit($conn, $swapRequestId, 'manager_approve_and_apply_swap', ['status' => $request['status']], $applySummary, $managerUserId, 'หัวหน้าอนุมัติและระบบสลับ assignment แล้ว');
+        app_shift_swap_update_document_signature($conn, $swapRequestId, $managerUserId, 'approver', $signatureData, $useProfileSignature, 'complete', $note);
+        app_shift_swap_insert_audit($conn, $swapRequestId, 'approver_approved_swap_request', ['status' => $request['status']], $applySummary, $managerUserId, 'อนุมัติเอกสารและสลับเวรสำเร็จ');
         app_shift_insert_audit($conn, 'shift_assignments', (int) $requesterAssignment['id'], 'apply_swap_assignment_staff', ['staff_id' => $requesterStaffId, 'swap_request_id' => $swapRequestId], ['staff_id' => $targetStaffId, 'swap_request_id' => $swapRequestId], $managerUserId, 'สลับ staff_id จากระบบแลกเวร');
         app_shift_insert_audit($conn, 'shift_assignments', (int) $targetAssignment['id'], 'apply_swap_assignment_staff', ['staff_id' => $targetStaffId, 'swap_request_id' => $swapRequestId], ['staff_id' => $requesterStaffId, 'swap_request_id' => $swapRequestId], $managerUserId, 'สลับ staff_id จากระบบแลกเวร');
         app_shift_swap_notify($conn, (int) $request['requester_id'], 'swap_manager_approved', 'คำขอแลกเวรได้รับอนุมัติ', 'คำขอแลกเวรได้รับอนุมัติและปรับตารางเวรแล้ว', $swapRequestId, $managerUserId, $applySummary, 'high');

@@ -27,7 +27,9 @@ try {
         (int) ($_POST['swap_request_id'] ?? 0),
         $currentUserId,
         $decision,
-        (string) ($_POST['note'] ?? '')
+        (string) ($_POST['note'] ?? ''),
+        (string) ($_POST['responder_signature_data'] ?? ''),
+        (string) ($_POST['use_profile_signature'] ?? '') === '1'
     );
     $_SESSION['shift_swap_flash'] = $result['message'];
     $_SESSION['shift_swap_flash_type'] = 'success';
