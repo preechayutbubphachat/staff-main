@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/profile_modal.php';
 require_once __DIR__ . '/../includes/notification_helpers.php';
 require_once __DIR__ . '/../includes/shift_schedule_service.php';
 require_once __DIR__ . '/../includes/shift_swap_service.php';
+require_once __DIR__ . '/../includes/shift_cover_service.php';
 
 app_require_login();
 date_default_timezone_set('Asia/Bangkok');
@@ -71,6 +72,10 @@ foreach ($assignments as &$assignment) {
     $assignment['swap_target_meta'] = $swapSelectionMode
         ? my_shift_swap_target_meta($conn, $assignment, $currentUserId, $swapSourceAssignment)
         : ['can' => false, 'reason' => ''];
+    $assignment['cover_source_meta'] = my_shift_cover_source_meta($conn, $assignment, $currentUserId);
+    $assignment['cover_candidates'] = !empty($assignment['cover_source_meta']['can'])
+        ? app_shift_cover_available_substitutes($conn, $currentUserId, (int) $assignment['assignment_id'])
+        : [];
     if (!empty($assignment['swap_target_meta']['can'])) {
         $swapEligibleCount++;
     }
@@ -205,6 +210,36 @@ function my_shift_swap_target_meta(PDO $conn, array $assignment, int $currentUse
     }
 }
 
+function my_shift_cover_source_meta(PDO $conn, array $assignment, int $currentUserId): array
+{
+    $assignmentId = (int) ($assignment['assignment_id'] ?? 0);
+    if (!app_shift_cover_tables_ready($conn)) {
+        return ['can' => false, 'reason' => 'ยังไม่ได้ติดตั้งตารางแทนเวร'];
+    }
+    if (empty($assignment['is_mine'])) {
+        return ['can' => false, 'reason' => 'เวรของเจ้าหน้าที่คนอื่น'];
+    }
+    if ($assignmentId <= 0) {
+        return ['can' => false, 'reason' => 'ไม่มี assignment อ้างอิง'];
+    }
+    if (app_shift_cover_has_active_request($conn, $assignmentId)) {
+        return ['can' => false, 'reason' => 'รอคำขอแทนเวรอยู่'];
+    }
+    if (app_shift_swap_has_active_request($conn, [$assignmentId])) {
+        return ['can' => false, 'reason' => 'รอคำขอแลกเวรอยู่'];
+    }
+    $coverAssignment = app_shift_swap_get_assignment($conn, $assignmentId);
+    if (!$coverAssignment) {
+        return ['can' => false, 'reason' => 'ไม่พบ assignment'];
+    }
+    try {
+        app_shift_swap_assert_assignment_swappable($conn, $coverAssignment, $currentUserId);
+        return ['can' => true, 'reason' => ''];
+    } catch (Throwable $e) {
+        return ['can' => false, 'reason' => str_replace(['แลกเวร', 'แลก'], ['แทนเวร', 'แทนเวร'], $e->getMessage())];
+    }
+}
+
 function my_shift_type_class(string $shiftType): string
 {
     return match ($shiftType) {
@@ -271,6 +306,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     $statusMeta = $assignment['status_meta'] ?? app_my_shift_status_meta($assignment);
     $isMine = !empty($assignment['is_mine']);
     $swapSourceMeta = $assignment['swap_source_meta'] ?? ['can' => false, 'reason' => ''];
+    $coverSourceMeta = $assignment['cover_source_meta'] ?? ['can' => false, 'reason' => ''];
     $shiftType = (string) ($assignment['shift_type'] ?? 'custom');
     $payload = [
         'assignmentId' => (int) $assignment['assignment_id'],
@@ -300,6 +336,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         'note' => (string) ($assignment['time_log_note'] ?? ''),
         'canRequestSwap' => !empty($swapSourceMeta['can']),
         'swapBlockedReason' => (string) ($swapSourceMeta['reason'] ?? ''),
+        'canRequestCover' => !empty($coverSourceMeta['can']),
+        'coverBlockedReason' => (string) ($coverSourceMeta['reason'] ?? ''),
+        'coverCandidates' => $assignment['cover_candidates'] ?? [],
         'swapUrl' => 'my-shifts.php?' . http_build_query([
             'month' => $selectedMonth,
             'year' => $selectedYearBe,
@@ -665,13 +704,14 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                     <span class="my-shift-swap-pending" data-modal-swap-status hidden>รอคำขอแลกอยู่</span>
                 </article>
 
-                <article class="my-shift-action-card is-substitute" aria-disabled="true">
+                <article class="my-shift-action-card is-substitute" data-modal-cover-group>
                     <div>
                         <span class="my-shift-action-kicker">การแทนเวร</span>
                         <h4>แทนเวร</h4>
-                        <p>ฟังก์ชันนี้เตรียมไว้สำหรับการให้เจ้าหน้าที่คนอื่นแทนเวร และจะเปิดใช้งานในอนาคต</p>
+                        <p>ขอให้เจ้าหน้าที่อื่นในแผนกปฏิบัติหน้าที่แทนเวรนี้ โดยไม่มีเวรคู่แลก</p>
                     </div>
-                    <button type="button" class="dash-btn my-shift-substitute-soon" disabled><i class="bi bi-clock-history"></i> ยังไม่เปิดใช้งาน</button>
+                    <button type="button" class="dash-btn my-shift-substitute-soon" data-modal-cover><i class="bi bi-person-plus"></i> แทนเวร</button>
+                    <span class="my-shift-swap-pending" data-modal-cover-status hidden>ยังไม่พร้อมแทนเวร</span>
                 </article>
             </section>
 
@@ -717,6 +757,18 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     .swap-document-draw-area{display:grid;gap:.75rem}
     .swap-document-draw-area[hidden]{display:none}
     .swap-document-signature-canvas{width:100%;height:150px;border:1px dashed #9bd8d4;border-radius:1rem;background:#fff;touch-action:none}
+    .cover-candidate-list{display:grid;gap:.65rem;max-height:310px;overflow:auto;padding-right:.25rem}
+    .cover-candidate-option{display:grid;grid-template-columns:auto 1fr auto;gap:.7rem;align-items:center;border:1px solid #dbeafe;border-radius:1rem;background:#fff;padding:.7rem;text-align:left;color:#082b45}
+    .cover-candidate-option.is-selected{border-color:#0891b2;background:#ecfeff;box-shadow:0 12px 24px rgba(8,145,178,.14)}
+    .cover-candidate-option:disabled{cursor:not-allowed;opacity:.6;background:#f8fafc}
+    .cover-candidate-avatar{display:grid;width:42px;height:42px;place-items:center;overflow:hidden;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:800}
+    .cover-candidate-avatar img{width:100%;height:100%;object-fit:cover}
+    .cover-candidate-main{min-width:0}
+    .cover-candidate-main strong,.cover-candidate-main span{display:block}
+    .cover-candidate-main strong{font-weight:800}
+    .cover-candidate-main span{color:#64748b;font-size:.82rem;font-weight:700}
+    .cover-candidate-badge{border-radius:999px;background:#dcfce7;color:#166534;padding:.25rem .55rem;font-size:.75rem;font-weight:900}
+    .cover-candidate-option:disabled .cover-candidate-badge{background:#fee2e2;color:#991b1b}
 </style>
 
 <div class="swap-confirm-backdrop" id="swapConfirmBackdrop" hidden>
@@ -794,6 +846,72 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     </div>
 </div>
 
+<div class="swap-confirm-backdrop" id="coverConfirmBackdrop" hidden>
+    <div class="swap-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="coverConfirmTitle">
+        <div class="swap-confirm-head">
+            <p><i class="bi bi-person-plus"></i> ยืนยันการแทนเวร</p>
+            <h3 id="coverConfirmTitle">ยืนยันคำขอแทนเวร</h3>
+        </div>
+        <div class="swap-confirm-warning">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            เลือกเจ้าหน้าที่ในแผนกที่ต้องการให้แทนเวรของคุณ ระบบจะแสดงสถานะว่าง/ไม่ว่างจากเวรที่ชนกันในช่วงเวลานี้
+        </div>
+        <div class="swap-confirm-sides">
+            <div class="swap-confirm-side is-source">
+                <span class="swap-confirm-side-label"><i class="bi bi-person-check"></i> เวรต้นทาง</span>
+                <div class="swap-confirm-detail">
+                    <div><span>วันที่</span><strong data-cover-src-date>-</strong></div>
+                    <div><span>กะ</span><strong data-cover-src-shift>-</strong></div>
+                    <div><span>เวลา</span><strong data-cover-src-time>-</strong></div>
+                    <div><span>แผนก</span><strong data-cover-src-dept>-</strong></div>
+                    <div><span>เจ้าของเดิม</span><strong data-cover-src-staff>-</strong></div>
+                </div>
+            </div>
+            <div class="swap-confirm-side is-target">
+                <span class="swap-confirm-side-label"><i class="bi bi-people"></i> ผู้ยินยอมแทนเวร</span>
+                <div class="cover-candidate-list" id="coverCandidateList"></div>
+            </div>
+        </div>
+        <label class="my-shift-note-input">
+            <span>เหตุผลการขอแทนเวร</span>
+            <textarea id="coverConfirmReason" rows="3" class="form-control" placeholder="ระบุเหตุผลเพื่อให้ผู้แทนและหัวหน้าใช้ประกอบการพิจารณา"></textarea>
+        </label>
+        <div class="swap-document-signature-block">
+            <div>
+                <strong>ลายเซ็นผู้ขอแทนเวร</strong>
+                <span>ใช้ลายเซ็นโปรไฟล์หรือวาดลายเซ็นใหม่ ระบบจะเก็บเป็น snapshot ของคำขอนี้</span>
+            </div>
+            <button type="button"
+                    class="swap-document-profile-toggle"
+                    id="coverConfirmUseProfileSignature"
+                    aria-pressed="false"
+                    data-has-profile-signature="<?= $profileSignaturePath !== '' ? '1' : '0' ?>"
+                    data-profile-signature-src="<?= htmlspecialchars($profileSignatureSrc, ENT_QUOTES, 'UTF-8') ?>"
+                    <?= $profileSignaturePath === '' ? 'disabled' : '' ?>>
+                <i class="bi bi-person-badge"></i>
+                <span data-cover-profile-toggle-label><?= $profileSignaturePath !== '' ? 'ใช้ลายเซ็นจากโปรไฟล์' : 'ยังไม่มีลายเซ็นในโปรไฟล์' ?></span>
+            </button>
+            <p class="swap-document-signature-feedback" id="coverConfirmSignatureFeedback">
+                <?= $profileSignaturePath !== '' ? 'กรุณาเลือกใช้ลายเซ็นโปรไฟล์หรือวาดลายเซ็นด้านล่าง' : 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง' ?>
+            </p>
+            <div class="swap-document-profile-preview" id="coverConfirmProfileSignaturePreview" hidden>
+                <?php if ($profileSignatureSrc !== ''): ?>
+                    <img src="<?= htmlspecialchars($profileSignatureSrc, ENT_QUOTES, 'UTF-8') ?>" alt="ลายเซ็นจากโปรไฟล์">
+                <?php endif; ?>
+            </div>
+            <div class="swap-document-draw-area" id="coverConfirmDrawArea">
+                <canvas id="coverConfirmSignatureCanvas" class="swap-document-signature-canvas" width="720" height="180" aria-label="พื้นที่วาดลายเซ็น"></canvas>
+                <button type="button" class="dash-btn dash-btn-ghost" id="coverConfirmClearSignature"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+            </div>
+        </div>
+        <div id="coverConfirmError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" hidden></div>
+        <div class="swap-confirm-actions">
+            <button type="button" class="dash-btn dash-btn-ghost" id="coverConfirmCancel"><i class="bi bi-x-circle"></i> ยกเลิก</button>
+            <button type="button" class="dash-btn dash-btn-primary" id="coverConfirmSubmit"><i class="bi bi-check2-circle"></i> ส่งคำขอแทนเวร</button>
+        </div>
+    </div>
+</div>
+
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../assets/js/notifications.js"></script>
@@ -815,6 +933,21 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const swapGroup       = document.querySelector('[data-modal-swap-group]');
     const swapLink        = document.querySelector('[data-modal-swap]');
     const swapStatus      = document.querySelector('[data-modal-swap-status]');
+    const coverButton     = document.querySelector('[data-modal-cover]');
+    const coverStatus     = document.querySelector('[data-modal-cover-status]');
+    const coverBackdrop   = document.getElementById('coverConfirmBackdrop');
+    const coverCandidateList = document.getElementById('coverCandidateList');
+    const coverReason     = document.getElementById('coverConfirmReason');
+    const coverCancel     = document.getElementById('coverConfirmCancel');
+    const coverSubmit     = document.getElementById('coverConfirmSubmit');
+    const coverError      = document.getElementById('coverConfirmError');
+    const coverSignatureCanvas = document.getElementById('coverConfirmSignatureCanvas');
+    const coverClearSignature = document.getElementById('coverConfirmClearSignature');
+    const coverUseProfileSignature = document.getElementById('coverConfirmUseProfileSignature');
+    const coverProfileToggleLabel = document.querySelector('[data-cover-profile-toggle-label]');
+    const coverSignatureFeedback = document.getElementById('coverConfirmSignatureFeedback');
+    const coverProfilePreview = document.getElementById('coverConfirmProfileSignaturePreview');
+    const coverDrawArea = document.getElementById('coverConfirmDrawArea');
     const confirmBackdrop = document.getElementById('swapConfirmBackdrop');
     const confirmCancel   = document.getElementById('swapConfirmCancel');
     const confirmSubmit   = document.getElementById('swapConfirmSubmit');
@@ -865,6 +998,12 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     let signatureDrawing = false;
     let signatureHasStroke = false;
     let useProfileSignature = false;
+    const coverSignatureCtx = coverSignatureCanvas?.getContext('2d');
+    let coverSourceShift = null;
+    let coverSelectedStaffId = 0;
+    let coverSignatureDrawing = false;
+    let coverSignatureHasStroke = false;
+    let coverUseProfileSignatureValue = false;
 
     // ── Helpers ───────────────────────────────────────────────────────────
     function escapeHtml(value) {
@@ -1022,6 +1161,72 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         signatureDrawing = false;
     }
 
+    function clearCoverSignature() {
+        if (!coverSignatureCtx || !coverSignatureCanvas) return;
+        coverSignatureCtx.clearRect(0, 0, coverSignatureCanvas.width, coverSignatureCanvas.height);
+        coverSignatureHasStroke = false;
+    }
+
+    function hasCoverProfileSignature() {
+        return coverUseProfileSignature?.dataset.hasProfileSignature === '1' && !coverUseProfileSignature.disabled;
+    }
+
+    function setCoverProfileSignatureMode(useProfile) {
+        coverUseProfileSignatureValue = Boolean(useProfile && hasCoverProfileSignature());
+        coverUseProfileSignature?.setAttribute('aria-pressed', coverUseProfileSignatureValue ? 'true' : 'false');
+        if (coverProfileToggleLabel) {
+            coverProfileToggleLabel.textContent = !hasCoverProfileSignature()
+                ? 'ยังไม่มีลายเซ็นในโปรไฟล์'
+                : (coverUseProfileSignatureValue ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'ใช้ลายเซ็นจากโปรไฟล์');
+        }
+        if (coverSignatureFeedback) {
+            coverSignatureFeedback.textContent = !hasCoverProfileSignature()
+                ? 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง'
+                : (coverUseProfileSignatureValue ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'กรุณาวาดลายเซ็นด้านล่าง');
+        }
+        if (coverDrawArea) coverDrawArea.hidden = coverUseProfileSignatureValue;
+        if (coverProfilePreview) coverProfilePreview.hidden = !coverUseProfileSignatureValue;
+    }
+
+    function coverSignaturePoint(event) {
+        const rect = coverSignatureCanvas.getBoundingClientRect();
+        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
+        return {
+            x: (source.clientX - rect.left) * (coverSignatureCanvas.width / rect.width),
+            y: (source.clientY - rect.top) * (coverSignatureCanvas.height / rect.height),
+        };
+    }
+
+    function beginCoverSignature(event) {
+        if (!coverSignatureCtx || coverUseProfileSignatureValue) return;
+        coverSignatureDrawing = true;
+        coverSignatureHasStroke = true;
+        const p = coverSignaturePoint(event);
+        coverSignatureCtx.beginPath();
+        coverSignatureCtx.moveTo(p.x, p.y);
+        if (coverError) {
+            coverError.hidden = true;
+            coverError.textContent = '';
+        }
+        event.preventDefault();
+    }
+
+    function moveCoverSignature(event) {
+        if (!coverSignatureDrawing || !coverSignatureCtx || coverUseProfileSignatureValue) return;
+        const p = coverSignaturePoint(event);
+        coverSignatureCtx.lineWidth = 2.4;
+        coverSignatureCtx.lineCap = 'round';
+        coverSignatureCtx.lineJoin = 'round';
+        coverSignatureCtx.strokeStyle = '#063b4f';
+        coverSignatureCtx.lineTo(p.x, p.y);
+        coverSignatureCtx.stroke();
+        event.preventDefault();
+    }
+
+    function endCoverSignature() {
+        coverSignatureDrawing = false;
+    }
+
     function openDayModal(payload) {
         if (!dayModal || !dayModalBody) return;
         hideShiftTooltip();
@@ -1114,6 +1319,17 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (swapGroup) {
             swapGroup.hidden = !payload.isMine || (!payload.canRequestSwap && swapStatus?.hidden !== false);
         }
+        if (coverButton) {
+            coverButton.hidden = !payload.isMine;
+            coverButton.disabled = !payload.canRequestCover;
+            coverButton.innerHTML = payload.canRequestCover
+                ? '<i class="bi bi-person-plus"></i> แทนเวร'
+                : '<i class="bi bi-lock"></i> แทนเวรไม่ได้';
+        }
+        if (coverStatus) {
+            coverStatus.hidden = !payload.isMine || payload.canRequestCover;
+            coverStatus.textContent = payload.coverBlockedReason || '';
+        }
         modal.hidden = false;
         document.body.classList.add('overflow-hidden');
     }
@@ -1158,6 +1374,64 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (!confirmBackdrop) return;
         confirmBackdrop.hidden = true;
         confirmModalOpen = false;
+    }
+
+    function renderCoverCandidates(candidates) {
+        if (!coverCandidateList) return;
+        if (!Array.isArray(candidates) || candidates.length === 0) {
+            coverCandidateList.innerHTML = '<div class="my-shift-day-empty-state">ไม่มีเจ้าหน้าที่ที่พร้อมแทนเวรในช่วงเวลานี้</div>';
+            return;
+        }
+        coverCandidateList.innerHTML = candidates.map((staff) => {
+            const disabled = staff.available ? '' : 'disabled';
+            const avatar = staff.avatar_url
+                ? `<span class="cover-candidate-avatar"><img src="${escapeHtml(staff.avatar_url)}" alt="${escapeHtml(staff.name || '')}"></span>`
+                : `<span class="cover-candidate-avatar">${escapeHtml(staff.initials || 'U')}</span>`;
+            return `
+                <button type="button" class="cover-candidate-option" data-cover-candidate="${Number(staff.staff_id || 0)}" ${disabled}>
+                    ${avatar}
+                    <span class="cover-candidate-main">
+                        <strong>${escapeHtml(staff.name || '-')}</strong>
+                        <span>${escapeHtml(staff.position || 'ไม่ระบุตำแหน่ง')}</span>
+                        <span>${escapeHtml(staff.department || '-')}</span>
+                    </span>
+                    <span class="cover-candidate-badge">${staff.available ? 'ว่าง' : 'มีเวรชนกัน'}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function openCoverModal(payload) {
+        if (!coverBackdrop || !payload?.canRequestCover) return;
+        coverSourceShift = payload;
+        coverSelectedStaffId = 0;
+        document.querySelector('[data-cover-src-date]').textContent = payload.date || '-';
+        document.querySelector('[data-cover-src-shift]').textContent = payload.shiftLabel || '-';
+        document.querySelector('[data-cover-src-time]').textContent = payload.timeRange || '-';
+        document.querySelector('[data-cover-src-dept]').textContent = payload.department || '-';
+        document.querySelector('[data-cover-src-staff]').textContent = payload.staffName || '-';
+        if (coverReason) coverReason.value = '';
+        if (coverError) {
+            coverError.hidden = true;
+            coverError.textContent = '';
+        }
+        renderCoverCandidates(payload.coverCandidates || []);
+        clearCoverSignature();
+        setCoverProfileSignatureMode(false);
+        if (coverSubmit) {
+            coverSubmit.disabled = false;
+            coverSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ส่งคำขอแทนเวร';
+        }
+        coverBackdrop.hidden = false;
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeCoverModal() {
+        if (!coverBackdrop) return;
+        coverBackdrop.hidden = true;
+        coverSourceShift = null;
+        coverSelectedStaffId = 0;
+        document.body.classList.remove('overflow-hidden');
     }
 
     function cancelSwapConfirmation() {
@@ -1240,6 +1514,103 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (!submitBtn) return;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังบันทึก...';
+    });
+
+    coverButton?.addEventListener('click', () => {
+        const assignmentId = fields.assignmentId?.value || '';
+        const opener = assignmentId ? document.querySelector(`[data-my-shift-open][data-assignment-id="${assignmentId}"]`) : null;
+        const payload = opener ? JSON.parse(opener.dataset.shift || '{}') : null;
+        if (payload?.canRequestCover) {
+            openCoverModal(payload);
+        }
+    });
+    coverCancel?.addEventListener('click', closeCoverModal);
+    coverBackdrop?.addEventListener('click', (event) => {
+        if (event.target === coverBackdrop) closeCoverModal();
+    });
+    coverCandidateList?.addEventListener('click', (event) => {
+        const candidate = event.target.closest('[data-cover-candidate]');
+        if (!candidate || candidate.disabled) return;
+        coverSelectedStaffId = Number(candidate.dataset.coverCandidate || 0);
+        coverCandidateList.querySelectorAll('.cover-candidate-option').forEach((item) => item.classList.remove('is-selected'));
+        candidate.classList.add('is-selected');
+        if (coverError) {
+            coverError.hidden = true;
+            coverError.textContent = '';
+        }
+    });
+    coverUseProfileSignature?.addEventListener('click', () => {
+        if (!hasCoverProfileSignature()) return;
+        setCoverProfileSignatureMode(!coverUseProfileSignatureValue);
+        if (coverError) coverError.hidden = true;
+    });
+    coverClearSignature?.addEventListener('click', () => {
+        setCoverProfileSignatureMode(false);
+        clearCoverSignature();
+        if (coverError) coverError.hidden = true;
+    });
+    coverSignatureCanvas?.addEventListener('mousedown', beginCoverSignature);
+    coverSignatureCanvas?.addEventListener('mousemove', moveCoverSignature);
+    window.addEventListener('mouseup', endCoverSignature);
+    coverSignatureCanvas?.addEventListener('touchstart', beginCoverSignature, { passive: false });
+    coverSignatureCanvas?.addEventListener('touchmove', moveCoverSignature, { passive: false });
+    coverSignatureCanvas?.addEventListener('touchend', endCoverSignature);
+
+    coverSubmit?.addEventListener('click', async () => {
+        if (!coverSourceShift || !coverSubmit) return;
+        if (!coverSelectedStaffId) {
+            if (coverError) {
+                coverError.textContent = 'กรุณาเลือกเจ้าหน้าที่ผู้แทนเวร';
+                coverError.hidden = false;
+            }
+            return;
+        }
+        const signatureSource = coverUseProfileSignatureValue && hasCoverProfileSignature() ? 'profile' : 'drawn';
+        if (signatureSource === 'drawn' && !coverSignatureHasStroke) {
+            if (coverError) {
+                coverError.textContent = 'กรุณาลงลายเซ็นก่อนส่งคำขอแทนเวร';
+                coverError.hidden = false;
+            }
+            return;
+        }
+        coverSubmit.disabled = true;
+        coverSubmit.innerHTML = '<i class="bi bi-hourglass-split"></i> กำลังส่งคำขอ...';
+        const loadingApi = window.StaffLoading;
+        const loadingHandle = loadingApi
+            ? loadingApi.showPageLoading('โปรดรอสักครู่...', 'กำลังส่งคำขอแทนเวร', { trigger: coverSubmit, busyText: 'กำลังส่งคำขอ...' })
+            : null;
+        try {
+            const formData = new FormData();
+            formData.append('_csrf', '<?= htmlspecialchars($swapCsrfToken, ENT_QUOTES, 'UTF-8') ?>');
+            formData.append('source_assignment_id', String(coverSourceShift.assignmentId || ''));
+            formData.append('substitute_staff_id', String(coverSelectedStaffId));
+            formData.append('reason', coverReason?.value || 'ขอแทนเวรจากหน้าเวรของฉัน');
+            formData.append('signature_source', signatureSource);
+            formData.append('use_profile_signature', signatureSource === 'profile' ? '1' : '0');
+            formData.append('requester_signature_data', signatureSource === 'profile' ? '' : coverSignatureCanvas.toDataURL('image/png'));
+            const response = await fetch('../actions/create-shift-cover-request.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'fetch' },
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) {
+                throw new Error(data.message || 'ไม่สามารถส่งคำขอแทนเวรได้');
+            }
+            loadingHandle?.complete?.('ส่งคำขอแทนเวรสำเร็จ');
+            closeCoverModal();
+            closeDetailModal();
+            showToast(data.message || 'ส่งคำขอแทนเวรสำเร็จแล้ว', 'success');
+            setTimeout(() => window.location.reload(), 900);
+        } catch (error) {
+            loadingHandle?.fail?.('ส่งคำขอแทนเวรไม่สำเร็จ');
+            if (coverError) {
+                coverError.textContent = error.message || 'เกิดข้อผิดพลาดในการส่งคำขอแทนเวร';
+                coverError.hidden = false;
+            }
+            coverSubmit.disabled = false;
+            coverSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ส่งคำขอแทนเวร';
+        }
     });
 
     // ── "ขอแลกเวร" button — open confirm modal instead of submitting ──────

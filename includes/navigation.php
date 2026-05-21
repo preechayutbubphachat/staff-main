@@ -31,6 +31,12 @@ function app_nav_items(): array
             'show' => true,
         ],
         [
+            'href' => 'shift-cover-requests.php',
+            'label' => 'คำขอแทนเวร',
+            'icon' => 'bi-person-plus',
+            'show' => true,
+        ],
+        [
             'href' => 'approval_queue.php',
             'label' => 'ตรวจสอบเวร',
             'icon' => 'bi-patch-check',
@@ -126,6 +132,15 @@ function app_nav_group_items(): array
             'href' => 'shift-swap-requests.php',
             'label' => 'คำขอแลกเวร',
             'icon' => 'bi-arrow-left-right',
+        ];
+    }
+
+    if (isset($indexed['shift-cover-requests.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'shift-cover-requests.php',
+            'label' => 'คำขอแทนเวร',
+            'icon' => 'bi-person-plus',
         ];
     }
 
@@ -437,7 +452,7 @@ function app_dashboard_sidebar_sections(): array
     $sections = [
         [
             'label' => 'เมนูหลัก',
-            'items' => $sectionItems(['dashboard.php', 'time.php', 'my-shifts.php', 'shift-swap-requests.php', 'approval_queue.php', 'daily_schedule.php', 'shift_schedules.php']),
+            'items' => $sectionItems(['dashboard.php', 'time.php', 'my-shifts.php', 'shift-swap-requests.php', 'shift-cover-requests.php', 'approval_queue.php', 'daily_schedule.php', 'shift_schedules.php']),
         ],
         [
             'label' => 'รายงาน',
