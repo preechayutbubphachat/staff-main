@@ -33,6 +33,7 @@ $role = app_current_role();
 $roleLabel = app_role_label($role);
 $profileImageSrc = app_column_exists($conn, 'users', 'profile_image_path') ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
 $profileSignaturePath = trim((string) ($userMeta['signature_path'] ?? ''));
+$profileSignatureSrc = $profileSignaturePath !== '' ? '../uploads/signatures/' . rawurlencode($profileSignaturePath) : '';
 $displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
 $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
 $shiftTypes = app_shift_schedule_types();
@@ -155,6 +156,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                     <input type="hidden" name="requester_assignment_id" value="<?= (int) $selectedAssignmentId ?>">
                     <input type="hidden" name="requester_signature_data" value="">
                     <input type="hidden" name="use_profile_signature" value="0">
+                    <input type="hidden" name="signature_source" value="drawn">
                     <div class="shift-swap-selected">
                         <span>เวรของฉัน</span>
                         <strong><?= htmlspecialchars(app_format_thai_date((string) $selectedAssignment['schedule_date'])) ?> · <?= htmlspecialchars($shiftTypes[(string) $selectedAssignment['shift_type']]['label'] ?? $selectedAssignment['shift_type']) ?> · <?= htmlspecialchars(substr((string) $selectedAssignment['start_time'], 0, 5)) ?>-<?= htmlspecialchars(substr((string) $selectedAssignment['end_time'], 0, 5)) ?></strong>
@@ -244,6 +246,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
                             <input type="hidden" name="responder_signature_data" value="">
                             <input type="hidden" name="use_profile_signature" value="0">
+                            <input type="hidden" name="signature_source" value="drawn">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุถึงผู้ขอหรือหัวหน้า"></textarea>
                             <div>
                                 <button type="submit" name="decision" value="confirm" class="dash-btn dash-btn-primary"><i class="bi bi-clipboard-check"></i> พิจารณา</button>
@@ -288,6 +291,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                             <input type="hidden" name="swap_request_id" value="<?= (int) $row['id'] ?>">
                             <input type="hidden" name="approver_signature_data" value="">
                             <input type="hidden" name="use_profile_signature" value="0">
+                            <input type="hidden" name="signature_source" value="drawn">
                             <textarea name="note" class="form-control" rows="2" placeholder="หมายเหตุหัวหน้า"></textarea>
                             <div>
                                 <button type="submit" name="decision" value="approve" class="dash-btn dash-btn-primary"><i class="bi bi-check2-circle"></i> อนุมัติ</button>
@@ -340,6 +344,17 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
     .swap-signature-pad{border:1px dashed #9bd8d4;border-radius:1rem;background:#fff;padding:.75rem}
     .swap-signature-pad canvas{display:block;width:100%;height:160px;border-radius:.8rem;background:linear-gradient(#fff,#fff),repeating-linear-gradient(0deg,transparent 0 31px,rgba(15,159,149,.08) 32px);touch-action:none}
     .swap-signature-options{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+    .swap-signature-profile-toggle{display:inline-flex;align-items:center;gap:.45rem;width:max-content;max-width:100%;border:1px solid #a7f3d0;border-radius:999px;background:#f0fdfa;color:#075985;padding:.55rem .85rem;font:inherit;font-size:.88rem;font-weight:800;line-height:1.2;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease}
+    .swap-signature-profile-toggle:hover{border-color:#14b8a6;background:#ccfbf1}
+    .swap-signature-profile-toggle:focus-visible{outline:3px solid rgba(20,184,166,.24);outline-offset:2px}
+    .swap-signature-profile-toggle[aria-pressed="true"]{border-color:#075985;background:#063b4f;color:#fff;box-shadow:0 10px 24px rgba(6,59,79,.18)}
+    .swap-signature-profile-toggle:disabled{border-color:#e2e8f0;background:#f1f5f9;color:#64748b;cursor:not-allowed;box-shadow:none}
+    .swap-signature-feedback{margin:0;color:#475569;font-size:.86rem;font-weight:700}
+    .swap-signature-profile-preview{display:flex;align-items:center;gap:.75rem;border:1px solid #bae6fd;border-radius:1rem;background:#f0f9ff;padding:.75rem;color:#075985;font-size:.86rem;font-weight:800}
+    .swap-signature-profile-preview[hidden]{display:none}
+    .swap-signature-profile-preview img{display:block;width:190px;max-width:48%;height:64px;object-fit:contain;border-radius:.7rem;background:#fff;border:1px solid #e0f2fe}
+    .swap-signature-draw-area{display:grid;gap:.75rem}
+    .swap-signature-draw-area[hidden]{display:none}
     .swap-signature-error{border:1px solid #fecdd3;border-radius:1rem;background:#fff1f2;color:#be123c;padding:.75rem 1rem;font-size:.875rem;font-weight:700}
     .swap-signature-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.75rem;border-top:1px solid #e2e8f0;padding-top:1rem}
 </style>
@@ -357,18 +372,35 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
                 ระบบจะบันทึกเอกสารคำขอเปลี่ยนเวรพร้อม snapshot ข้อมูลเวรและลายเซ็นของผู้ดำเนินการในขั้นตอนนี้
                 หลังอนุมัติครบขั้นตอนจะสามารถเปิดพิมพ์หรือดาวน์โหลด PDF จากหน้าประวัติได้
             </div>
-            <?php if ($profileSignaturePath !== ''): ?>
-                <label class="swap-signature-options">
-                    <input type="checkbox" data-swap-use-profile-signature>
-                    <span>ใช้ลายเซ็นจากโปรไฟล์</span>
-                </label>
-            <?php endif; ?>
-            <div class="swap-signature-pad">
-                <canvas data-swap-signature-canvas width="720" height="180" aria-label="พื้นที่วาดลายเซ็น"></canvas>
+            <button type="button"
+                    class="swap-signature-profile-toggle"
+                    data-swap-use-profile-signature
+                    data-has-profile-signature="<?= $profileSignaturePath !== '' ? '1' : '0' ?>"
+                    data-profile-signature-src="<?= htmlspecialchars($profileSignatureSrc) ?>"
+                    aria-pressed="false"
+                    aria-disabled="<?= $profileSignaturePath !== '' ? 'false' : 'true' ?>"
+                    aria-controls="swapSignatureDrawArea"
+                    <?= $profileSignaturePath === '' ? 'disabled' : '' ?>>
+                <i class="bi bi-person-badge"></i>
+                <span data-swap-profile-toggle-label><?= $profileSignaturePath !== '' ? 'ใช้ลายเซ็นจากโปรไฟล์' : 'ยังไม่มีลายเซ็นในโปรไฟล์' ?></span>
+            </button>
+            <p class="swap-signature-feedback" data-swap-signature-feedback>
+                <?= $profileSignaturePath !== '' ? 'กรุณาเลือกใช้ลายเซ็นโปรไฟล์ หรือวาดลายเซ็นด้านล่าง' : 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง' ?>
+            </p>
+            <div class="swap-signature-profile-preview" data-swap-profile-preview hidden>
+                <?php if ($profileSignatureSrc !== ''): ?>
+                    <img src="<?= htmlspecialchars($profileSignatureSrc) ?>" alt="ลายเซ็นจากโปรไฟล์">
+                <?php endif; ?>
+                <span>กำลังใช้ลายเซ็นจากโปรไฟล์</span>
             </div>
-            <div class="swap-signature-options">
-                <button type="button" class="dash-btn dash-btn-ghost" data-swap-signature-clear><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
-                <span class="text-sm text-hospital-muted">รองรับ mouse และ touch</span>
+            <div class="swap-signature-draw-area" data-swap-draw-area id="swapSignatureDrawArea">
+                <div class="swap-signature-pad">
+                    <canvas data-swap-signature-canvas width="720" height="180" aria-label="พื้นที่วาดลายเซ็น"></canvas>
+                </div>
+                <div class="swap-signature-options">
+                    <button type="button" class="dash-btn dash-btn-ghost" data-swap-signature-clear><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+                    <span class="text-sm text-hospital-muted">วาดลายเซ็นด้วย mouse หรือ touch</span>
+                </div>
             </div>
             <div class="swap-signature-error" data-swap-signature-error hidden></div>
         </div>
@@ -389,11 +421,16 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
     const ctx = canvas.getContext('2d');
     const errorBox = document.querySelector('[data-swap-signature-error]');
     const profileToggle = document.querySelector('[data-swap-use-profile-signature]');
+    const profileToggleLabel = document.querySelector('[data-swap-profile-toggle-label]');
+    const signatureFeedback = document.querySelector('[data-swap-signature-feedback]');
+    const profilePreview = document.querySelector('[data-swap-profile-preview]');
+    const drawArea = document.querySelector('[data-swap-draw-area]');
     let activeForm = null;
     let activeSubmitter = null;
     let allowSubmit = false;
     let drawing = false;
     let hasStroke = false;
+    let useProfileSignature = false;
 
     function showError(message) {
         if (!errorBox) return;
@@ -409,6 +446,33 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         hasStroke = false;
     }
+    function hasProfileSignature() {
+        return profileToggle?.dataset.hasProfileSignature === '1' && !profileToggle.disabled;
+    }
+    function setSignatureMode(useProfile) {
+        useProfileSignature = Boolean(useProfile && hasProfileSignature());
+        if (profileToggle) {
+            profileToggle.setAttribute('aria-pressed', useProfileSignature ? 'true' : 'false');
+        }
+        if (profileToggleLabel) {
+            if (!hasProfileSignature()) {
+                profileToggleLabel.textContent = 'ยังไม่มีลายเซ็นในโปรไฟล์';
+            } else {
+                profileToggleLabel.textContent = useProfileSignature ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'ใช้ลายเซ็นจากโปรไฟล์';
+            }
+        }
+        if (signatureFeedback) {
+            signatureFeedback.textContent = !hasProfileSignature()
+                ? 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง'
+                : (useProfileSignature ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'กรุณาวาดลายเซ็นด้านล่าง');
+        }
+        if (drawArea) {
+            drawArea.hidden = useProfileSignature;
+        }
+        if (profilePreview) {
+            profilePreview.hidden = !useProfileSignature;
+        }
+    }
     function point(event) {
         const rect = canvas.getBoundingClientRect();
         const source = event.touches?.[0] || event.changedTouches?.[0] || event;
@@ -418,7 +482,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         };
     }
     function begin(event) {
-        if (profileToggle?.checked) return;
+        if (useProfileSignature) return;
         drawing = true;
         hasStroke = true;
         const p = point(event);
@@ -427,7 +491,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         event.preventDefault();
     }
     function move(event) {
-        if (!drawing || profileToggle?.checked) return;
+        if (!drawing || useProfileSignature) return;
         const p = point(event);
         ctx.lineWidth = 2.4;
         ctx.lineCap = 'round';
@@ -445,7 +509,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         activeSubmitter = submitter;
         clearError();
         clearPad();
-        if (profileToggle) profileToggle.checked = false;
+        setSignatureMode(false);
         modal.hidden = false;
         document.body.classList.add('overflow-hidden');
     }
@@ -463,6 +527,7 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
         const decision = selectedDecision();
         return role === 'requester' || decision === 'confirm' || decision === 'approve';
     }
+    setSignatureMode(false);
 
     canvas.addEventListener('mousedown', begin);
     canvas.addEventListener('mousemove', move);
@@ -471,8 +536,13 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
     canvas.addEventListener('touchmove', move, { passive: false });
     canvas.addEventListener('touchend', end);
     document.querySelector('[data-swap-signature-clear]')?.addEventListener('click', () => {
-        if (profileToggle) profileToggle.checked = false;
+        setSignatureMode(false);
         clearPad();
+        clearError();
+    });
+    profileToggle?.addEventListener('click', () => {
+        if (!hasProfileSignature()) return;
+        setSignatureMode(!useProfileSignature);
         clearError();
     });
     document.querySelectorAll('[data-swap-signature-close]').forEach((button) => button.addEventListener('click', close));
@@ -491,19 +561,23 @@ $activeSentRows = array_values(array_filter($sentRows, static fn(array $row): bo
 
     document.querySelector('[data-swap-signature-confirm]')?.addEventListener('click', () => {
         if (!activeForm) return;
-        const useProfile = Boolean(profileToggle?.checked);
-        if (signatureRequired() && !useProfile && !hasStroke) {
+        const signatureSource = useProfileSignature && hasProfileSignature() ? 'profile' : 'drawn';
+        if (signatureRequired() && signatureSource === 'drawn' && !hasStroke) {
             showError('กรุณาลงลายเซ็นก่อนดำเนินการ');
             return;
         }
         const inputName = activeForm.dataset.signatureInput || 'requester_signature_data';
         const signatureInput = activeForm.querySelector('input[name="' + inputName.replace(/"/g, '') + '"]');
         const useProfileInput = activeForm.querySelector('[name="use_profile_signature"]');
+        const signatureSourceInput = activeForm.querySelector('[name="signature_source"]');
         if (signatureInput) {
-            signatureInput.value = useProfile ? '' : canvas.toDataURL('image/png');
+            signatureInput.value = signatureSource === 'profile' || !hasStroke ? '' : canvas.toDataURL('image/png');
         }
         if (useProfileInput) {
-            useProfileInput.value = useProfile ? '1' : '0';
+            useProfileInput.value = signatureSource === 'profile' ? '1' : '0';
+        }
+        if (signatureSourceInput) {
+            signatureSourceInput.value = signatureSource;
         }
         allowSubmit = true;
         const form = activeForm;

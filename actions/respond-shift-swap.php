@@ -22,6 +22,11 @@ try {
         throw new RuntimeException('คำสั่งไม่ถูกต้อง');
     }
 
+    $signatureSource = (string) ($_POST['signature_source'] ?? '');
+    if (!in_array($signatureSource, ['profile', 'drawn'], true)) {
+        $signatureSource = (string) ($_POST['use_profile_signature'] ?? '') === '1' ? 'profile' : 'drawn';
+    }
+
     $result = app_shift_swap_update_target_response(
         $conn,
         (int) ($_POST['swap_request_id'] ?? 0),
@@ -29,7 +34,7 @@ try {
         $decision,
         (string) ($_POST['note'] ?? ''),
         (string) ($_POST['responder_signature_data'] ?? ''),
-        (string) ($_POST['use_profile_signature'] ?? '') === '1'
+        $signatureSource === 'profile'
     );
     $_SESSION['shift_swap_flash'] = $result['message'];
     $_SESSION['shift_swap_flash_type'] = 'success';

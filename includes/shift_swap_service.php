@@ -526,6 +526,9 @@ function app_shift_swap_update_document_signature(PDO $conn, int $swapRequestId,
     }
 
     $signaturePath = app_shift_swap_capture_signature($conn, $swapRequestId, $actorUserId, $role, $signatureData, $useProfileSignature);
+    if (!$useProfileSignature) {
+        app_shift_swap_update_profile_signature_from_data($conn, $actorUserId, $signatureData);
+    }
     $actor = app_shift_swap_user_snapshot($conn, $actorUserId);
 
     if ($role === 'responder') {
