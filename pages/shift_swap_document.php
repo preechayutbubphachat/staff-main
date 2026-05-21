@@ -45,6 +45,27 @@ function swap_doc_signature_img(?string $path): string
     return '<img src="../' . swap_doc_h($path) . '" alt="ลายเซ็น" class="swap-doc-signature-img">';
 }
 
+function swap_doc_approver_status_label(array $request, array $document): string
+{
+    $requestStatus = (string) ($request['status'] ?? '');
+    $documentStatus = (string) ($document['document_status'] ?? '');
+
+    if (in_array($requestStatus, ['approved', 'applied'], true) || $documentStatus === 'complete') {
+        return 'อนุมัติ';
+    }
+
+    if ($requestStatus === 'rejected_by_manager' || $documentStatus === 'approver_rejected') {
+        return 'ไม่อนุมัติ';
+    }
+
+    if (in_array($requestStatus, ['pending_target_confirm', 'pending_manager_approval'], true)
+        || in_array($documentStatus, ['requester_signed', 'responder_signed'], true)) {
+        return 'รอพิจารณา';
+    }
+
+    return '';
+}
+
 function swap_doc_date_parts(string $date): array
 {
     if ($date === '') {
@@ -72,8 +93,10 @@ $approverName = (string) ($document['approver_name_snapshot'] ?? $request['appro
 $requesterPosition = (string) ($document['requester_position_snapshot'] ?? $request['requester_position'] ?? '-');
 $responderPosition = (string) ($document['responder_position_snapshot'] ?? $request['target_position'] ?? '-');
 $approverPosition = (string) ($document['approver_position_snapshot'] ?? $request['approver_position'] ?? 'หัวหน้างาน');
+$approverPosition = trim($approverPosition) !== '' ? trim($approverPosition) : 'หัวหน้างาน';
 $requesterDepartment = (string) ($document['requester_department_snapshot'] ?? $request['requester_department_name'] ?? $request['department_name'] ?? '-');
 $responderDepartment = (string) ($document['responder_department_snapshot'] ?? $request['target_department_name'] ?? $request['department_name'] ?? '-');
+$approverStatusLabel = swap_doc_approver_status_label($request, $document);
 ?>
 <!doctype html>
 <html lang="th">
@@ -95,17 +118,25 @@ $responderDepartment = (string) ($document['responder_department_snapshot'] ?? $
         .swap-doc-line.short { min-width: 64px; }
         .swap-doc-line.mid { min-width: 140px; }
         .swap-doc-line.long { min-width: 210px; }
+        .swap-doc-line.month { min-width: 112px; }
+        .swap-doc-line.year { min-width: 72px; }
         .swap-doc-paragraph { text-indent: 3.2rem; margin: 13px 0; }
         .swap-doc-paragraph-line { display: block; text-indent: 0; margin-top: 3px; }
+        .swap-doc-date-run,
+        .swap-doc-shift-run { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+        .swap-doc-shift-run { margin-left: 4px; }
         .swap-doc-sign-stack { display: grid; gap: 13px; width: 63%; margin-top: 42px; margin-left: auto; }
-        .swap-doc-sign-box { min-height: 82px; text-align: center; }
+        .swap-doc-sign-box { min-height: 70px; text-align: center; }
+        .swap-doc-approver-sign-box { margin-top: 26px; }
         .swap-doc-sign-row { display: grid; grid-template-columns: 54px 185px minmax(112px, 1fr); align-items: center; column-gap: 8px; white-space: nowrap; }
-        .swap-doc-sign-label { text-align: right; }
+        .swap-doc-sign-label { text-align: left; }
         .swap-doc-sign-role { text-align: left; }
         .swap-doc-signature-img { width: 185px; max-height: 42px; object-fit: contain; display: inline-block; justify-self: center; }
         .swap-doc-empty-sign { display: inline-flex; align-items: center; justify-content: center; width: 185px; height: 40px; color: #94a3b8; border-bottom: 1px dotted #111827; font-size: 13px; justify-self: center; }
         .swap-doc-name-line { width: 185px; margin: 3px 0 0 62px; }
-        .swap-doc-position-line { margin-top: 0; font-size: 14.4px; }
+        .swap-doc-approver-meta-line { display: grid; grid-template-columns: 54px 185px minmax(112px, 1fr); align-items: baseline; column-gap: 8px; margin-top: 2px; font-size: 14.4px; }
+        .swap-doc-approver-meta-label { text-align: left; white-space: nowrap; }
+        .swap-doc-approver-meta-value { grid-column: 2 / 4; text-align: left; }
         @media print {
             body { background: #fff; }
             .swap-doc-toolbar { display: none; }
@@ -155,10 +186,10 @@ $responderDepartment = (string) ($document['responder_department_snapshot'] ?? $
             ตำแหน่ง <span class="swap-doc-line mid"><?= swap_doc_h($responderPosition) ?></span>
             <span class="swap-doc-paragraph-line">
                 แผนก/กลุ่มงาน <span class="swap-doc-line mid"><?= swap_doc_h($responderDepartment) ?></span>
-                และจะอยู่เวรแทนในวันที่ <span class="swap-doc-line short"><?= swap_doc_h($targetShiftDate['day']) ?></span>
-                เดือน <span class="swap-doc-line mid"><?= swap_doc_h($targetShiftDate['month']) ?></span>
-                พ.ศ. <span class="swap-doc-line"><?= swap_doc_h($targetShiftDate['year']) ?></span>
-                กะ <?= swap_doc_h(swap_doc_shift_label($request, 'target', $types)) ?> เวลา <?= swap_doc_h(swap_doc_time($request, 'target')) ?>
+                <span class="swap-doc-date-run">และจะอยู่เวรแทนในวันที่ <span class="swap-doc-line short"><?= swap_doc_h($targetShiftDate['day']) ?></span>
+                เดือน <span class="swap-doc-line month"><?= swap_doc_h($targetShiftDate['month']) ?></span>
+                พ.ศ. <span class="swap-doc-line year"><?= swap_doc_h($targetShiftDate['year']) ?></span></span>
+                <span class="swap-doc-shift-run">กะ <?= swap_doc_h(swap_doc_shift_label($request, 'target', $types)) ?> เวลา <?= swap_doc_h(swap_doc_time($request, 'target')) ?></span>
             </span>
         </p>
         <p class="swap-doc-paragraph">จึงเรียนมาเพื่อโปรดพิจารณา</p>
@@ -167,17 +198,18 @@ $responderDepartment = (string) ($document['responder_department_snapshot'] ?? $
             <div class="swap-doc-sign-box">
                 <div class="swap-doc-sign-row"><span class="swap-doc-sign-label">(ลงชื่อ)</span> <?= swap_doc_signature_img($document['requester_signature_path'] ?? null) ?> <span class="swap-doc-sign-role">ผู้ขอเปลี่ยนเวร</span></div>
                 <div class="swap-doc-name-line">(<?= swap_doc_h($requesterName) ?>)</div>
-                <div class="swap-doc-position-line">ผู้ขอเปลี่ยนเวร</div>
             </div>
             <div class="swap-doc-sign-box">
                 <div class="swap-doc-sign-row"><span class="swap-doc-sign-label">(ลงชื่อ)</span> <?= swap_doc_signature_img($document['responder_signature_path'] ?? null) ?> <span class="swap-doc-sign-role">ผู้ยินยอมเปลี่ยนเวร</span></div>
                 <div class="swap-doc-name-line">(<?= swap_doc_h($responderName) ?>)</div>
-                <div class="swap-doc-position-line">ผู้ยินยอมเปลี่ยนเวร</div>
             </div>
-            <div class="swap-doc-sign-box">
+            <div class="swap-doc-sign-box swap-doc-approver-sign-box">
                 <div class="swap-doc-sign-row"><span class="swap-doc-sign-label">(ลงชื่อ)</span> <?= swap_doc_signature_img($document['approver_signature_path'] ?? null) ?> <span class="swap-doc-sign-role">หัวหน้างานแผนก</span></div>
                 <div class="swap-doc-name-line">(<?= swap_doc_h($approverName !== '' ? $approverName : '................................') ?>)</div>
-                <div class="swap-doc-position-line">ตำแหน่ง <?= swap_doc_h($approverPosition) ?></div>
+                <?php if ($approverStatusLabel !== ''): ?>
+                    <div class="swap-doc-approver-meta-line"><span class="swap-doc-approver-meta-label">(สถานะ)</span><span class="swap-doc-approver-meta-value"><?= swap_doc_h($approverStatusLabel) ?></span></div>
+                <?php endif; ?>
+                <div class="swap-doc-approver-meta-line"><span class="swap-doc-approver-meta-label">ตำแหน่ง</span><span class="swap-doc-approver-meta-value"><?= swap_doc_h($approverPosition) ?></span></div>
             </div>
         </section>
     </main>
