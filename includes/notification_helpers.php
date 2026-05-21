@@ -292,6 +292,43 @@ function app_find_unread_notification_for_entity(
     return $row ?: null;
 }
 
+function app_find_notification_for_entity(
+    PDO $conn,
+    int $userId,
+    string $type,
+    ?string $entityType = null,
+    ?int $entityId = null
+): ?array {
+    if (!app_notifications_available($conn) || $userId <= 0 || $type === '') {
+        return null;
+    }
+
+    $sql = "
+        SELECT *
+        FROM notifications
+        WHERE user_id = ?
+          AND type = ?
+    ";
+    $params = [$userId, $type];
+
+    if ($entityType !== null) {
+        $sql .= " AND target_entity_type = ?";
+        $params[] = $entityType;
+    }
+
+    if ($entityId !== null) {
+        $sql .= " AND target_entity_id = ?";
+        $params[] = $entityId;
+    }
+
+    $sql .= " ORDER BY id DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
 function app_update_notification_row(PDO $conn, int $notificationId, array $data): void
 {
     if (!app_notifications_available($conn) || $notificationId <= 0) {
@@ -943,4 +980,432 @@ function app_notification_present(array $row): array
         'priority' => (string) ($row['priority'] ?? 'normal'),
         'metadata' => app_notification_decode_metadata($row['metadata_json'] ?? null),
     ];
+}
+
+function app_notification_sidebar_mapping(): array
+{
+    return [
+        'time' => [
+            'pages' => ['time.php'],
+            'types' => ['approval_completed', 'attendance_log_returned'],
+            'entity_types' => ['time_log'],
+            'url_contains' => ['time.php'],
+        ],
+        'my_shifts' => [
+            'pages' => ['my-shifts.php'],
+            'types' => ['monthly_schedule_published', 'my_shift', 'shift_assignment', 'schedule_published'],
+            'entity_types' => ['monthly_schedule', 'shift_assignment'],
+            'url_contains' => ['my-shifts.php'],
+        ],
+        'shift_swaps' => [
+            'pages' => ['shift-swap-requests.php'],
+            'types' => [
+                'swap_request_created',
+                'swap_target_confirmed',
+                'swap_target_rejected',
+                'swap_manager_approved',
+                'swap_manager_rejected',
+                'swap_cancelled',
+                'shift_swap_request_created',
+                'shift_swap_target_confirmed',
+                'shift_swap_target_rejected',
+                'shift_swap_manager_approved',
+                'shift_swap_manager_rejected',
+                'shift_swap_cancelled',
+            ],
+            'entity_types' => ['shift_swap_request'],
+            'url_contains' => ['shift-swap-requests.php'],
+        ],
+        'review' => [
+            'pages' => ['approval_queue.php'],
+            'types' => ['approval_queue_pending', 'approval_queue_ready', 'reviewer_queue_pending_summary'],
+            'entity_types' => ['approval_queue'],
+            'url_contains' => ['approval_queue.php'],
+        ],
+        'today' => [
+            'pages' => ['daily_schedule.php'],
+            'types' => ['today_shift', 'shift_today', 'assigned_today'],
+            'entity_types' => ['daily_schedule', 'today_shift'],
+            'url_contains' => ['daily_schedule.php'],
+        ],
+        'shift_schedules' => [
+            'pages' => ['shift_schedules.php'],
+            'types' => ['monthly_schedule', 'schedule_publish', 'schedule_management'],
+            'entity_types' => ['shift_schedule_management'],
+            'url_contains' => ['shift_schedules.php'],
+        ],
+        'my_reports' => [
+            'pages' => ['my_reports.php'],
+            'types' => ['report_ready', 'export_or_report_job_completed'],
+            'entity_types' => ['report_job'],
+            'url_contains' => ['my_reports.php'],
+        ],
+        'department_reports' => [
+            'pages' => ['department_reports.php'],
+            'types' => ['department_report', 'department_report_ready'],
+            'entity_types' => ['department_report'],
+            'url_contains' => ['department_reports.php'],
+        ],
+    ];
+}
+
+function app_notification_sidebar_key_for_page(string $page): ?string
+{
+    $page = strtolower(trim(basename(parse_url($page, PHP_URL_PATH) ?: $page)));
+    if ($page === '') {
+        return null;
+    }
+
+    foreach (app_notification_sidebar_mapping() as $key => $rule) {
+        if (in_array($page, array_map('strtolower', $rule['pages'] ?? []), true)) {
+            return $key;
+        }
+    }
+
+    return null;
+}
+
+function app_notification_sidebar_key_for_row(array $row): ?string
+{
+    $type = strtolower((string) ($row['type'] ?? ''));
+    $entityType = strtolower((string) ($row['target_entity_type'] ?? ''));
+    $targetUrl = strtolower((string) ($row['target_url'] ?? ''));
+    $targetPage = strtolower(basename(parse_url($targetUrl, PHP_URL_PATH) ?: $targetUrl));
+
+    foreach (app_notification_sidebar_mapping() as $key => $rule) {
+        if ($type !== '' && in_array($type, array_map('strtolower', $rule['types'] ?? []), true)) {
+            return $key;
+        }
+        if ($entityType !== '' && in_array($entityType, array_map('strtolower', $rule['entity_types'] ?? []), true)) {
+            return $key;
+        }
+        if ($targetPage !== '' && in_array($targetPage, array_map('strtolower', $rule['pages'] ?? []), true)) {
+            return $key;
+        }
+        foreach ($rule['url_contains'] ?? [] as $needle) {
+            if ($needle !== '' && $targetUrl !== '' && strpos($targetUrl, strtolower($needle)) !== false) {
+                return $key;
+            }
+        }
+    }
+
+    return null;
+}
+
+function app_get_sidebar_notification_counts(PDO $conn, int $userId): array
+{
+    if (!app_notifications_available($conn) || $userId <= 0) {
+        return [];
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, target_url, target_entity_type, target_entity_id, metadata_json
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+    ");
+    $stmt->execute([$userId]);
+
+    $counts = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        $key = app_notification_sidebar_key_for_row($row);
+        if ($key === null) {
+            continue;
+        }
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+
+    return $counts;
+}
+
+function app_notification_target_section_for_row(array $row, string $moduleKey): string
+{
+    $type = strtolower((string) ($row['type'] ?? ''));
+
+    if ($moduleKey === 'shift_swaps') {
+        if (strpos($type, 'request_created') !== false) {
+            return 'incoming';
+        }
+        if (strpos($type, 'target_confirmed') !== false) {
+            return 'manager';
+        }
+        if (
+            strpos($type, 'target_rejected') !== false
+            || strpos($type, 'manager_approved') !== false
+            || strpos($type, 'manager_rejected') !== false
+            || strpos($type, 'cancelled') !== false
+        ) {
+            return 'history';
+        }
+
+        return 'sent';
+    }
+
+    return $moduleKey;
+}
+
+function app_notification_target_id_from_row(array $row): ?int
+{
+    $entityId = isset($row['target_entity_id']) ? (int) $row['target_entity_id'] : 0;
+    if ($entityId > 0) {
+        return $entityId;
+    }
+
+    $metadata = app_notification_decode_metadata($row['metadata_json'] ?? null);
+    foreach (['swap_request_id', 'request_id', 'target_id'] as $key) {
+        $value = isset($metadata[$key]) ? (int) $metadata[$key] : 0;
+        if ($value > 0) {
+            return $value;
+        }
+    }
+
+    $targetUrl = (string) ($row['target_url'] ?? '');
+    $query = parse_url($targetUrl, PHP_URL_QUERY);
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $params);
+        foreach (['highlight', 'swap_request_id', 'request_id'] as $key) {
+            $value = isset($params[$key]) ? (int) $params[$key] : 0;
+            if ($value > 0) {
+                return $value;
+            }
+        }
+    }
+
+    return null;
+}
+
+function app_notification_focus_target_for_row(array $row): ?array
+{
+    $moduleKey = app_notification_sidebar_key_for_row($row);
+    if ($moduleKey === null) {
+        return null;
+    }
+
+    $targetId = app_notification_target_id_from_row($row);
+    $section = app_notification_target_section_for_row($row, $moduleKey);
+    $targetType = (string) ($row['target_entity_type'] ?? '');
+    $selector = null;
+
+    if ($moduleKey === 'shift_swaps' && $targetId !== null) {
+        $targetType = $targetType !== '' ? $targetType : 'shift_swap_request';
+        $selector = '[data-notification-target="shift-swap-request-' . $targetId . '"]';
+    }
+
+    return [
+        'notification_id' => (int) ($row['id'] ?? 0),
+        'module' => $moduleKey,
+        'target_type' => $targetType,
+        'target_id' => $targetId,
+        'section' => $section,
+        'selector' => $selector,
+        'target_url' => (string) ($row['target_url'] ?? ''),
+        'message' => (string) ($row['message'] ?? ''),
+        'created_at' => (string) ($row['created_at'] ?? ''),
+    ];
+}
+
+function app_get_unread_notification_targets_for_sidebar_key(PDO $conn, int $userId, string $moduleKey, int $limit = 5): array
+{
+    $moduleKey = trim($moduleKey);
+    if (!app_notifications_available($conn) || $userId <= 0 || !isset(app_notification_sidebar_mapping()[$moduleKey])) {
+        return [];
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, message, target_url, target_entity_type, target_entity_id, metadata_json, created_at
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+        ORDER BY created_at DESC, id DESC
+        LIMIT 100
+    ");
+    $stmt->execute([$userId]);
+
+    $targets = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        if (app_notification_sidebar_key_for_row($row) !== $moduleKey) {
+            continue;
+        }
+
+        $target = app_notification_focus_target_for_row($row);
+        if ($target === null) {
+            continue;
+        }
+
+        $targets[] = $target;
+        if (count($targets) >= max(1, $limit)) {
+            break;
+        }
+    }
+
+    return $targets;
+}
+
+function app_mark_notifications_read_for_sidebar_key(PDO $conn, int $userId, string $moduleKey): int
+{
+    $moduleKey = trim($moduleKey);
+    if (!app_notifications_available($conn) || $userId <= 0 || !isset(app_notification_sidebar_mapping()[$moduleKey])) {
+        return 0;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, type, target_url, target_entity_type, target_entity_id, metadata_json
+        FROM notifications
+        WHERE user_id = ? AND is_read = 0
+    ");
+    $stmt->execute([$userId]);
+
+    $ids = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $row) {
+        if (app_notification_sidebar_key_for_row($row) === $moduleKey) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $updated = 0;
+    foreach (array_chunk($ids, 100) as $chunk) {
+        $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+        $update = $conn->prepare("
+            UPDATE notifications
+            SET is_read = 1, read_at = COALESCE(read_at, NOW())
+            WHERE user_id = ? AND is_read = 0 AND id IN ({$placeholders})
+        ");
+        $update->execute(array_merge([$userId], $chunk));
+        $updated += (int) $update->rowCount();
+    }
+
+    return $updated;
+}
+
+/**
+ * Notify every staff member who has at least one published shift assignment in
+ * the given department/month/year.
+ *
+ * Dedup strategy: a synthetic entity_id = dept_id * 100000 + (year%100)*12 + month
+ * is stored per user. If any notification with that entity_id already exists for
+ * the user, we update and re-surface that row instead of inserting a duplicate.
+ *
+ * Returns the number of notifications inserted or refreshed.
+ */
+function app_notify_monthly_schedule_published(
+    PDO $conn,
+    int $departmentId,
+    int $month,
+    int $year,
+    int $actorUserId
+): int {
+    if (!app_notifications_available($conn) || $departmentId <= 0) {
+        return 0;
+    }
+
+    // --- Find all users who have assignments in this dept/month that are now published ---
+    $firstDay = sprintf('%04d-%02d-01', $year, $month);
+    $lastDay  = date('Y-m-t', strtotime($firstDay));
+
+    $stmt = $conn->prepare("
+        SELECT DISTINCT sa.staff_id
+        FROM shift_assignments sa
+        INNER JOIN shift_schedules ss ON ss.id = sa.schedule_id
+        INNER JOIN users u ON u.id = sa.staff_id
+        WHERE ss.department_id = ?
+          AND ss.status = 'published'
+          AND ss.schedule_date >= ?
+          AND ss.schedule_date <= ?
+          AND sa.assignment_status <> 'cancelled'
+          AND sa.staff_id > 0
+          AND COALESCE(u.is_active, 1) = 1
+    ");
+    $stmt->execute([$departmentId, $firstDay, $lastDay]);
+    $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+    if (empty($userIds)) {
+        return 0;
+    }
+
+    // --- Build notification payload ---
+    $thaiMonths = [
+        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม',
+    ];
+    $monthName = $thaiMonths[$month] ?? $month;
+    $yearBe    = $year + 543;
+
+    // Fetch department name for the message
+    $deptStmt = $conn->prepare("SELECT department_name FROM departments WHERE id = ? LIMIT 1");
+    $deptStmt->execute([$departmentId]);
+    $deptName = (string) ($deptStmt->fetchColumn() ?: 'แผนกของคุณ');
+
+    $title   = 'ตารางเวรรายเดือนเผยแพร่แล้ว';
+    $message = "ตารางเวรประจำเดือน {$monthName} {$yearBe} ของแผนก {$deptName} ได้รับการเผยแพร่แล้ว กรุณาตรวจสอบเวรของคุณ";
+    $url     = "my-shifts.php?month={$month}&year={$yearBe}&view=my&display=calendar";
+
+    // Synthetic entity_id: unique per dept + year + month combination
+    $entityId   = $departmentId * 100000 + ($year % 100) * 12 + $month;
+    $entityType = 'monthly_schedule';
+    $eventKey = "monthly_schedule_published:{$departmentId}:{$year}:{$month}";
+
+    $notified = 0;
+
+    foreach ($userIds as $userId) {
+        $userId = (int) $userId;
+        if ($userId <= 0) {
+            continue;
+        }
+
+        // Dedup across read/unread rows so re-publishing the same month never spams inboxes.
+        $existing = app_find_notification_for_entity(
+            $conn,
+            $userId,
+            'monthly_schedule_published',
+            $entityType,
+            $entityId
+        );
+
+        if ($existing) {
+            // Re-surface existing notification (update content + mark unread again)
+            app_update_notification_row($conn, (int) $existing['id'], [
+                'title'        => $title,
+                'message'      => $message,
+                'target_url'   => $url,
+                'actor_user_id'=> $actorUserId,
+                'priority'     => 'normal',
+                'metadata'     => [
+                    'event_key' => $eventKey,
+                    'department_id' => $departmentId,
+                    'month' => $month,
+                    'year' => $year,
+                    'year_be' => $yearBe,
+                    'target_url' => $url,
+                ],
+            ]);
+        } else {
+            app_create_notification($conn, [
+                'user_id'            => $userId,
+                'type'               => 'monthly_schedule_published',
+                'title'              => $title,
+                'message'            => $message,
+                'target_url'         => $url,
+                'target_entity_type' => $entityType,
+                'target_entity_id'   => $entityId,
+                'source_type'        => 'shift_schedule',
+                'actor_user_id'      => $actorUserId,
+                'priority'           => 'normal',
+                'metadata'           => [
+                    'event_key' => $eventKey,
+                    'department_id' => $departmentId,
+                    'month' => $month,
+                    'year' => $year,
+                    'year_be' => $yearBe,
+                    'target_url' => $url,
+                ],
+            ]);
+        }
+
+        $notified++;
+    }
+
+    return $notified;
 }

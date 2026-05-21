@@ -13,4 +13,5 @@ ajax_json([
     'message' => $updated > 0 ? 'อ่านทั้งหมดแล้ว' : 'ไม่มีรายการที่ยังไม่ได้อ่าน',
     'updated_count' => $updated,
     'unread_count' => app_get_unread_notification_count($conn, $userId),
+    'sidebar_counts' => app_get_sidebar_notification_counts($conn, $userId),
 ]);

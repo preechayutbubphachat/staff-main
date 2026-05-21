@@ -26,7 +26,17 @@ $form = [
     'note' => (string) ($row['note'] ?? ''),
 ];
 
-$html = ajax_capture(function () use ($row, $form, $csrfToken): void {
+$currentReviewStatus = !empty($row['checked_at'])
+    ? 'checked'
+    : (!empty($row['checked_by']) ? 'returned' : 'pending');
+$canChangeReviewStatus = app_can('can_approve_logs');
+$statusOptions = [
+    'pending' => 'รอตรวจ',
+    'checked' => 'ตรวจแล้ว / อนุมัติแล้ว',
+    'returned' => 'ตีกลับ / ไม่อนุมัติ',
+];
+
+$html = ajax_capture(function () use ($row, $form, $csrfToken, $currentReviewStatus, $canChangeReviewStatus, $statusOptions): void {
     ?>
     <div class="modal-header border-0 pb-0">
         <div>
@@ -44,6 +54,18 @@ $html = ajax_capture(function () use ($row, $form, $csrfToken): void {
                 <div class="col-md-4"><label class="form-label fw-semibold">วันที่ปฏิบัติงาน</label><input type="date" name="work_date" class="form-control" value="<?= htmlspecialchars($form['work_date']) ?>" required></div>
                 <div class="col-md-4"><label class="form-label fw-semibold">เวลาเข้า</label><input type="time" name="time_in" class="form-control" value="<?= htmlspecialchars($form['time_in']) ?>" required></div>
                 <div class="col-md-4"><label class="form-label fw-semibold">เวลาออก</label><input type="time" name="time_out" class="form-control" value="<?= htmlspecialchars($form['time_out']) ?>" required></div>
+                <?php if ($canChangeReviewStatus): ?>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">สถานะรายการ</label>
+                        <select name="review_status" class="form-select" required>
+                            <?php foreach ($statusOptions as $statusValue => $statusLabel): ?>
+                                <option value="<?= htmlspecialchars($statusValue) ?>" <?= $currentReviewStatus === $statusValue ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($statusLabel) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="col-12"><label class="form-label fw-semibold">หมายเหตุ</label><textarea name="note" rows="4" class="form-control"><?= htmlspecialchars($form['note']) ?></textarea></div>
             </div>
         </div>

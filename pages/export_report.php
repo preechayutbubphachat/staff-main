@@ -42,9 +42,20 @@ if ($type === 'my') {
     app_require_permission('can_view_department_reports');
     $reportData = app_fetch_department_report_data($conn, $_GET);
     $headingContext = $reportData['heading_context'] ?? app_get_department_report_heading_context($reportData['filters']);
-    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $reportData['filters']);
-    fputcsv($output, [$headingContext['heading_text']]);
-    fputcsv($output, [$headingContext['subheading_text']]);
+    $filters = $reportData['filters'];
+    $matrixData = app_fetch_department_monthly_shift_matrix($conn, $filters, $reportData['staff_rows']);
+    $thaiMonthName = (string) ($filters['month_label_th'] ?? '');
+    $thaiYear = (int) ($filters['year_be'] ?? ((int) date('Y') + 543));
+    fputcsv($output, ['ที่ 159/' . $thaiYear]);
+    fputcsv($output, ['เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานตามตามเวลาราชการนอกเวลาราชการและวันหยุดราชการ (IM)']);
+    fputcsv($output, ['ประจำเดือน ' . $thaiMonthName . ' พ.ศ. ' . $thaiYear]);
+    fputcsv($output, [$headingContext['department_label'] ?? 'แผนกทั้งหมด']);
+    fputcsv($output, [
+        'ชุดข้อมูล: ' . ($filters['report_dataset_label'] ?? 'จากเวรที่ลงจริง')
+        . ' | สถานะ: ' . ($filters['review_status_label'] ?? 'ทั้งหมด')
+        . ' | ประเภท: ' . ($filters['classification_label'] ?? 'ทั้งหมด')
+    ]);
+    fputcsv($output, ['Legend', 'ช=เวรเช้า 08.30-16.30 น.', 'บ=เวรบ่าย 16.30-00.30 น.', 'ด=เวรดึก 00.30-08.30 น.', 'BD=เวรนอกเวลาราชการ']);
     fputcsv($output, []);
 
     $headers = ['ลำดับ', 'ชื่อ-สกุล', 'ตำแหน่ง', 'แผนก'];
@@ -125,7 +136,7 @@ if ($type === 'my') {
     app_require_permission('can_approve_logs');
     $reportData = app_fetch_time_log_report_data($conn, $_GET, 'pending');
 
-    fputcsv($output, ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'หมายเหตุ', 'สถานะ']);
+    fputcsv($output, ['ลำดับ', 'วันที่', 'ชื่อเจ้าหน้าที่', 'ตำแหน่ง', 'แผนก', 'เวลาเข้า', 'เวลาออก', 'ชั่วโมงรวม', 'หมายเหตุ', 'สถานะ', 'ประเภท']);
     foreach ($reportData['rows'] as $index => $row) {
         $status = app_time_log_status_meta($row);
         fputcsv($output, [
@@ -139,6 +150,7 @@ if ($type === 'my') {
             number_format((float) ($row['work_hours'] ?? 0), 2, '.', ''),
             $row['note'] ?? '',
             $status['label'],
+            $row['classification_label'] ?? '',
         ]);
     }
 } elseif ($type === 'manage') {
@@ -183,9 +195,7 @@ if ($type === 'my') {
 } elseif ($type === 'db_change_logs') {
     app_require_permission('can_manage_database');
     $tableConfigs = app_db_admin_tables();
-    $rows = app_table_exists($conn, 'db_admin_audit_logs')
-        ? $conn->query('SELECT * FROM db_admin_audit_logs ORDER BY id DESC')->fetchAll(PDO::FETCH_ASSOC)
-        : [];
+    $rows = app_fetch_db_change_log_rows_for_report($conn, $_GET);
 
     fputcsv($output, ['ลำดับ', 'เวลา', 'ตาราง', 'การกระทำ', 'ผู้ดำเนินการ', 'หมายเหตุ']);
     foreach ($rows as $index => $row) {

@@ -21,4 +21,5 @@ ajax_json([
     'success' => $marked,
     'message' => $marked ? 'ทำเครื่องหมายว่าอ่านแล้ว' : 'ไม่พบการแจ้งเตือนที่ต้องการ',
     'unread_count' => app_get_unread_notification_count($conn, $userId),
+    'sidebar_counts' => app_get_sidebar_notification_counts($conn, $userId),
 ], $marked ? 200 : 404);

@@ -1,6 +1,32 @@
-﻿# PROJECT_STATUS.md
+# PROJECT_STATUS.md
 
 > à¹„à¸Ÿà¸¥à¹Œà¸™à¸µà¹‰à¹€à¸›à¹‡à¸™à¹€à¸­à¸à¸ªà¸²à¸£à¸ªà¸–à¸²à¸™à¸°à¸à¸¥à¸²à¸‡à¸‚à¸­à¸‡à¹‚à¸›à¸£à¹€à¸ˆà¸à¸•à¹Œà¸ªà¸³à¸«à¸£à¸±à¸šà¹ƒà¸«à¹‰ AI Codex / à¸™à¸±à¸à¸žà¸±à¸’à¸™à¸² / à¸œà¸¹à¹‰à¸”à¸¹à¹à¸¥à¸£à¸°à¸šà¸š à¸­à¹ˆà¸²à¸™à¸à¹ˆà¸­à¸™à¹€à¸£à¸´à¹ˆà¸¡à¸‡à¸²à¸™à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡ à¹à¸¥à¸°à¸•à¹‰à¸­à¸‡à¸­à¸±à¸›à¹€à¸”à¸•à¸«à¸¥à¸±à¸‡à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆà¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡
+
+---
+
+## Deployment / Git Status
+
+- Active branch: `codex/strict-monthly-matrix-mapping`
+- Rule: All Codex work must stay on this branch unless instructed otherwise.
+- Latest task: Build Tailwind/frontend and push UI fixes.
+- Build command used: `npm ci`; `npm run build:tailwind`
+- Deployment target: Plesk
+- Plesk issue checked:
+  - branch mapping: must point to `codex/strict-monthly-matrix-mapping`
+  - document root: must point to the live PHP project root that serves `index.php`
+  - frontend build output: `assets/css/index-tailwind.css` and `assets/css/dashboard-tailwind.output.css`
+  - cache clearing: clear browser/server cache and restart PHP-FPM/OPcache if stale assets remain
+  - server pull status: server must show the latest commit from `codex/strict-monthly-matrix-mapping`
+- Files changed:
+  - UI/PHP/CSS/JS files in the current UI update set
+  - `scripts/deploy-plesk.sh`
+  - `PROJECT_STATUS.md`
+- Verification:
+  - local build passed with `npm run build:tailwind`
+  - pushed to origin branch after local verification
+  - server updated: pending manual Plesk deploy confirmation
+- Next action:
+  - On Plesk, run `scripts/deploy-plesk.sh` or the equivalent fetch/pull/build commands, then hard refresh the browser.
 
 ---
 
@@ -237,6 +263,14 @@
 
 ## 10. Work Log
 
+### 2026-04-30 09:43
+**Task:** Fix Thai text rendering on the authenticated ลงเวลาเวร page.
+**Files changed:** pages/time.php, PROJECT_STATUS.md
+**Root cause:** pages/time.php contained corrupted question-mark UI strings and invalid non-UTF-8 bytes, so labels, placeholders, buttons, cards, hero copy, PHP messages, and JS labels rendered incorrectly in the browser. Other pages were not the source of this issue.
+**What changed:** Restored Thai copy for the Topbar, hero, KPI cards, Today Entry form, preset shifts, time summary, History & Review filters/list controls, bottom summary, PHP flash/audit messages, and page JavaScript labels while preserving route, SQL, permissions, form names, POST flow, layout classes, and design-system styling. Re-saved pages/time.php as UTF-8.
+**Verification:** Ran ripgrep for repeated question marks, replacement characters, and mojibake bullets in pages/time.php and found no corrupted placeholders; ran C:\xampp\php\php.exe -l pages\time.php and it passed.
+**Remaining issues:** Needs logged-in browser hard refresh on pages/time.php to visually confirm all strings after runtime data loads. If department/status/note data from the database still appears as question marks, the next fix is database/connection charset, not this page template.
+**Next recommended task:** Hard refresh the ลงเวลาเวร page at desktop and mobile widths, verify no question-mark placeholders remain, then test save/filter/history interactions once.
 > à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆ Codex à¸—à¸³à¸‡à¸²à¸™à¹€à¸ªà¸£à¹‡à¸ˆ à¹ƒà¸«à¹‰à¹€à¸žà¸´à¹ˆà¸¡ entry à¹ƒà¸«à¸¡à¹ˆà¹„à¸§à¹‰à¸šà¸™à¸ªà¸¸à¸”à¸‚à¸­à¸‡à¸£à¸²à¸¢à¸à¸²à¸£à¸™à¸µà¹‰
 
 ### 2026-04-29 09:02
@@ -344,3 +378,240 @@ npm run build
 - à¸«à¹‰à¸²à¸¡à¹€à¸”à¸²à¸‚à¹‰à¸­à¸¡à¸¹à¸¥
 - à¸«à¹‰à¸²à¸¡à¸‹à¹ˆà¸­à¸™ error à¸ªà¸³à¸„à¸±à¸
 - à¸«à¹‰à¸²à¸¡à¸—à¸³ UI à¸ªà¸§à¸¢à¹à¸•à¹ˆà¸—à¸³à¹ƒà¸«à¹‰à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆà¹ƒà¸Šà¹‰à¸‡à¸²à¸™à¸¢à¸²à¸
+
+---
+
+## ล่าสุด: ปรับหน้าแรกระบบ StaffMain / Over Time
+
+- วันที่: 30 เมษายน 2569
+- หน้า: หน้าแรก / Homepage Dashboard
+- ไฟล์ที่แก้: `index.php`, `assets/css/tailwind-index.css`, `assets/css/index-tailwind.css`
+- สิ่งที่ปรับ:
+  - เพิ่ม Hero Summary Card พร้อมภาพ `images/hopital.png` และ fallback กรณีไม่พบไฟล์
+  - เพิ่ม Real-time Overview Block ขนาดใหญ่ พร้อม live clock, วันที่ภาษาไทย, location และ KPI ภาพรวม
+  - ปรับ KPI cards, ตารางบุคลากรที่ลงเวรตอนนี้, ตารางแผนกที่ปฏิบัติงาน และ CTA ให้เข้ากับ dashboard hospital operation
+  - ใช้ mock fallback แยกชัดเจนเฉพาะกรณีไม่มีข้อมูลจากฐานข้อมูล
+  - ปรับ responsive layout สำหรับ desktop/tablet/mobile
+- วิธีทดสอบ:
+  - `php -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+  - `curl http://localhost/staff-main/index.php` พบข้อความ `หน้าแรกระบบ Over Time`, `ภาพรวมวันนี้`, และ asset `images/hopital.png`
+  - ตรวจ `rg` ไม่พบ `????`, replacement character หรือ mojibake ในไฟล์หน้าแรก/CSS ที่แก้
+- สถานะ: completed / รอตรวจเทียบภาพจริงใน browser ที่ 1440px และ 1600px
+---
+
+## ล่าสุด: ปรับหน้าแรก Over Time เป็น Public Landing Dashboard
+
+- วันที่: 30 เมษายน 2569
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก / Public Homepage
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css` (generated จาก `npm run build:tailwind`)
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - เปลี่ยนชื่อและ header เป็น `Over Time` พร้อม subtitle, date badge, ปุ่มสมัครใช้งาน และปุ่มเข้าสู่ระบบ
+  - ลบเมนูกลาง public header, search, notification, user profile และ section ที่ไม่ต้องการออกจากหน้าแรก
+  - เพิ่ม Hero Card พร้อมภาพ `images/hopital.png` และสถานะระบบ
+  - เพิ่ม Real-time Overview Card พร้อม live clock, วันที่ไทย, location และ KPI จากข้อมูลฐานข้อมูลพร้อม fallback
+  - เพิ่ม realtime cards 3 ใบ: User Active, Department Active, Today Attendance
+  - เพิ่มตารางบุคลากรที่ลงเวรตอนนี้และตารางแผนกที่กำลังปฏิบัติงาน
+  - เพิ่ม modal รายละเอียดและ export/print/PDF/CSV แบบ frontend helper
+  - เพิ่ม CSS สำหรับ modal, status badge และ responsive layout
+- วิธีทดสอบ:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+  - `curl http://localhost/staff-main/index.php` พบข้อความ `หน้าแรกระบบ Over Time`, `ภาพรวมวันนี้`, `User Active`, `Department Active`, `Today Attendance`
+  - ตรวจไม่พบ `Core Workflow`, `NEXT STEP`, `งานหลักในระบบ`, `home-nav-menu` ใน HTML ที่ render
+  - ตรวจไม่พบ `????`, `�`, หรือ mojibake pattern ใน `index.php` และ `assets/css/tailwind-index.css`
+- สิ่งที่ยังต้องตรวจ:
+  - Visual QA ใน browser ที่ 1440px/1600px เทียบภาพออกแบบ
+  - ทดสอบปุ่ม modal/export บน browser จริง
+  - ตรวจนโยบายข้อมูล public ว่าสามารถแสดงรายชื่อบุคลากรบนหน้าแรกได้หรือควรจำกัดสิทธิ์
+- สถานะ: completed / pending visual browser review
+
+---
+
+## ล่าสุด: Polish หน้าแรก Over Time ให้ compact ใกล้ภาพออกแบบ
+
+- วันที่: 30 เมษายน 2569 15:33 น.
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก / Public Homepage
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - เพิ่มความกว้าง container เป็นแนว `calc(100% - 48px)` และ `max-width: 1720px` เพื่อลดพื้นที่ว่างซ้าย-ขวาบน desktop
+  - ปรับ hero row เป็น 2 columns แบบ compact และลดความสูง card หลักให้อยู่ราว 270px
+  - ปรับ realtime overview ให้สูงเท่ากับ hero card และจัด KPI ด้านขวาให้แน่นขึ้น
+  - ปรับ card แถว 2 ให้สูงเท่ากันและ compact ขึ้น พร้อมเอาปุ่ม `รายละเอียด` ออกจาก User Active, Department Active และ Today Attendance
+  - ปรับ User Active ให้ใช้ `profile_image_path` ถ้ามีรูปจริง และ fallback เป็น initials avatar ถ้าไม่มีรูป
+  - ปรับ User Active และ Department Active ให้ render รายการทั้งหมดใน preview list พร้อม internal scroll เมื่อเกิน 3 รายการ
+  - ลด gap/padding/table spacing เพื่อให้ layout ใกล้ภาพออกแบบที่ 1440px/1600px มากขึ้น
+- วิธีทดสอบ:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+  - ตรวจ HTML render ไม่พบเมนูกลาง, Core Workflow, NEXT STEP หรือปุ่มรายละเอียดในการ์ดแถว 2
+- สิ่งที่ยังต้องตรวจ:
+  - Visual QA ด้วย browser hard refresh ที่ 1440px และ 1600px
+  - ทดสอบปุ่ม Print/PDF/CSV และ internal scroll ใน preview list ด้วยข้อมูลจริงหลายรายการ
+- สถานะ: completed / pending browser visual review
+
+---
+
+## ล่าสุด: ปรับ realtime/empty state หน้าแรก Public Over Time
+
+- วันที่/เวลา: 1 พฤษภาคม 2569 09:25 น.
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก public landing page / Over Time
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `api/public/home/realtime.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - ตัดวงเปอร์เซ็นต์และข้อความ `อัตราการลงเวรภาพรวม` ออกจากการ์ด `ภาพรวมวันนี้` แล้วจัด metrics เหลือ 3 ช่องให้เต็มพื้นที่
+  - แก้ logic active-now ให้อิง `work_date`, `TIME(time_in)`, `TIME(time_out)` และรองรับเวรข้ามวัน
+  - การ์ด `แผนกที่ลงเวรตอนนี้` แสดง empty state เมื่อไม่มีแผนกที่มีบุคลากรปฏิบัติงานจริง และไม่แสดงแถว 0 คน
+  - ตาราง `แผนกที่กำลังปฏิบัติงาน` แสดงเฉพาะแผนกที่มีคน > 0 หรือ empty state แทนแถว ICU/IPD/OPD 0 คน
+  - ตาราง `รายการบุคลากรที่ลงเวรตอนนี้` ซ่อน pagination ที่ทำให้เข้าใจผิดเมื่อไม่มีข้อมูล และแสดง `ไม่มีรายการ`
+  - เพิ่ม endpoint `GET /api/public/home/realtime.php` และ polling ทุก 15 วินาที เพื่ออัปเดตตัวเลข/list/table โดยไม่ reload หน้า
+  - ปุ่ม export/print ของ User Active และ Department Active ถูก disable เมื่อไม่มีข้อมูลสำหรับส่งออก
+- วิธีทดสอบ:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `C:\xampp\php\php.exe -l api\public\home\realtime.php` ผ่าน
+  - `curl http://localhost/staff-main/api/public/home/realtime.php` คืน JSON UTF-8 พร้อม `active_users`, `active_departments`, metrics และ timestamp
+  - `npm run build:tailwind` ผ่าน และ generate `assets/css/index-tailwind.css`
+- สิ่งที่ยังต้องตรวจ:
+  - Browser visual QA หลัง hard refresh ที่ 1440px/1600px
+  - ตรวจ DevTools ว่า polling ทุก 15 วินาทีไม่มี console/network error บนเครื่อง deploy
+- สถานะ: completed / pending browser visual review
+
+---
+
+## Deployment / Git Status
+
+- วันที่/เวลา: 30 เมษายน 2569 16:13 น.
+- Active branch: `codex/strict-monthly-matrix-mapping`
+- Rule: All Codex work must stay on this branch unless instructed otherwise.
+- Latest task: Build Tailwind/frontend assets and prepare Plesk deployment.
+- Build command used:
+  - `npm install`
+  - `npm run build:tailwind`
+- Build output:
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+- Project type checked:
+  - Plain PHP + Tailwind CLI build scripts in `package.json`
+  - No Laravel/Next/Vite build output or manifest detected for this page
+- Plesk deployment status:
+  - Local build completed.
+  - Existing deploy helper: `scripts/deploy-plesk.sh`
+  - Plesk document root: pending verification in Plesk/SSH; not guessed.
+  - Server pull status: pending verification in Plesk/SSH.
+  - Cache clearing: pending server access; no Laravel/Next cache commands needed locally.
+- Files changed for commit:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+  - `images/hopital.png`
+  - `PROJECT_STATUS.md`
+- Verification:
+  - `C:\xampp\php\php.exe -l index.php` passed
+  - `npm run build:tailwind` passed
+  - `curl -I http://localhost/staff-main/uploads/profiles/profile_1775119508_69cf30acb56071.92287533.png` returned `200 OK`
+  - Browser/Plesk production verification still requires server access and hard refresh/cache-bust check.
+- Next action:
+  - On Plesk server, run `scripts/deploy-plesk.sh` from the project root after confirming document root.
+  - Verify production with `https://<domain>/?v=<timestamp>` and DevTools Network cache disabled.
+
+---
+
+## ล่าสุด: เพิ่มรูปโปรไฟล์ในหน้าแรก Over Time
+
+- วันที่: 30 เมษายน 2569 15:56 น.
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก / Public Homepage
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `assets/css/dashboard-tailwind.output.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - ปรับ helper รูปโปรไฟล์ให้ resolve path จริงจาก `uploads/avatars` และ `uploads/profiles` แทนการชี้ไป root path
+  - User Active card แสดงรูปโปรไฟล์จาก `profile_image_path` ถ้ามี และ fallback เป็น initials avatar ถ้าไม่มีรูปหรือไม่พบไฟล์
+  - ตาราง `รายการบุคลากรที่ลงเวรตอนนี้` และ modal รายชื่อ แสดง avatar ซ้ายของชื่อผู้ใช้
+  - ลดขนาด typography ของชื่อ/ตำแหน่งใน preview row และ table cell พร้อม truncate เพื่อกันชื่อยาวดัน layout
+  - ปรับ CSS avatar/row layout ให้เป็นวงกลม, object-fit cover, และ spacing ใกล้ภาพออกแบบ
+- วิธีทดสอบ:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+  - `curl -I http://localhost/staff-main/uploads/profiles/profile_1775119508_69ce2c946848e1.14449180.png` ได้ `200 OK`
+  - ตรวจ HTML render พบ `active-user-row`, `active-table-person`, `active-table-avatar` และ path รูป `/staff-main/uploads/profiles/...`
+- สิ่งที่ยังต้องตรวจ:
+  - Visual QA ใน browser ว่ารูปไม่ถูก crop ผิดจุด และชื่อยาว truncate สวยที่ 1440px/1600px
+  - ตรวจ Network tab ว่าไม่มี 404 ของรูปผู้ใช้รายอื่นที่มี filename ภาษาไทยหรือ path เก่า
+- สถานะ: completed / pending browser visual review
+## ล่าสุด: แก้ export/print/PDF/CSV หน้าแรกเป็น text-only
+
+- วันที่: 1 พฤษภาคม 2569
+- Branch: `codex/strict-monthly-matrix-mapping`
+- หน้า: หน้าแรก / Public Homepage
+- ไฟล์ที่แก้:
+  - `index.php`
+  - `assets/css/tailwind-index.css`
+  - `assets/css/index-tailwind.css`
+  - `PROJECT_STATUS.md`
+- สิ่งที่ปรับ:
+  - แยกข้อมูล export ของ User Active, Department Active และ Today Attendance ออกจาก UI table ที่มี avatar
+  - ให้ CSV และ Print/PDF ใช้ dataset แบบ text-only แทนการ clone DOM จาก modal/card
+  - ซ่อน profile image/avatar จาก print/export zone ด้วย `export-hide`, `print-hide`, `avatar`, `profile-avatar`, และ `img[data-export-hidden="true"]`
+  - เพิ่ม print layout แบบ A4 portrait มีชื่อรายงาน, วันที่/เวลาส่งออก, ตารางข้อมูล และจำนวนรายการรวม
+- สถานะ build:
+  - `C:\xampp\php\php.exe -l index.php` ผ่าน
+  - `npm run build:tailwind` ผ่าน
+
+---
+
+---
+
+## ล่าสุด: ปรับหน้า Login เป็นโทน Over Time ฟ้า-เขียว
+
+- วันที่: 1 พฤษภาคม 2569
+- Branch: `codex/strict-monthly-matrix-mapping`
+- ไฟล์ที่แก้: `auth/login.php`
+
+### สิ่งที่ปรับ
+
+- **โทนสีใหม่**: เปลี่ยนจาก blue gradient หนัก → teal-navy palette
+  - `--teal: #0f9f94`, `--teal-dark: #062f4f`, `--fog: #eaf8f8`
+  - visual-side gradient: `#062f4f → #073b5c → #0b706a` (148deg)
+  - body background: soft cyan `#eaf8f8 / #f4fbfb`
+- **Brand หลัก**: เปลี่ยนจาก NONG PHOK HOSPITAL → **Over Time**
+  - subtitle: "ระบบลงเวลางานสำหรับโรงพยาบาล"
+  - เพิ่ม clock icon + overtime-logo block
+- **ปุ่มหน้าแรก**: เปลี่ยนจาก `history.back()` → `href="/staff-main/"` โดยตรง
+  - ลบ JS handler `data-simple-back` ออก
+  - ปุ่มเป็น pill outline สีขาว `<a>` tag
+- **btn-submit**: gradient teal/navy (`#062f4f → #0f9f94`) แทน blue
+- **Focus ring**: teal `rgba(15,159,148,0.12)`
+- **Layout desktop**: `max-height: calc(100vh-48px)` ไม่ scroll บน 1366x768 / 1440x900
+  - padding ลดลง, gap กระชับขึ้น, mini-grid icon เล็กลง
+- **SSO**: ยังคง `display: none !important` (ไม่มี function)
+- **dot pattern overlay**: เพิ่ม pattern จุดเบา ๆ บน left panel
+
+### สถานะ build
+
+- `npm run build:tailwind` ผ่าน ✅
+- commit บันทึกใน branch แล้ว ✅
+- push: ต้อง push จากเครื่อง local (sandbox network ถูก restrict)
+

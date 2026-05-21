@@ -155,15 +155,7 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตาราง, โมดูล หรือคำอธิบาย">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -508,5 +500,6 @@ $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtim
 <?php render_staff_profile_modal(); ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

@@ -19,6 +19,18 @@ function app_nav_items(): array
             'show' => true,
         ],
         [
+            'href' => 'my-shifts.php',
+            'label' => 'เวรของฉัน',
+            'icon' => 'bi-person-lines-fill',
+            'show' => true,
+        ],
+        [
+            'href' => 'shift-swap-requests.php',
+            'label' => 'คำขอแลกเวร',
+            'icon' => 'bi-arrow-left-right',
+            'show' => true,
+        ],
+        [
             'href' => 'approval_queue.php',
             'label' => 'ตรวจสอบเวร',
             'icon' => 'bi-patch-check',
@@ -29,6 +41,12 @@ function app_nav_items(): array
             'label' => 'เวรวันนี้',
             'icon' => 'bi-calendar-week',
             'show' => true,
+        ],
+        [
+            'href' => 'shift_schedules.php',
+            'label' => 'จัดตารางเวรรายเดือน',
+            'icon' => 'bi-calendar2-plus',
+            'show' => app_can_manage_shift_schedules(),
         ],
         [
             'href' => 'my_reports.php',
@@ -93,6 +111,24 @@ function app_nav_group_items(): array
         ];
     }
 
+    if (isset($indexed['my-shifts.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'my-shifts.php',
+            'label' => 'เวรของฉัน',
+            'icon' => 'bi-person-lines-fill',
+        ];
+    }
+
+    if (isset($indexed['shift-swap-requests.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'shift-swap-requests.php',
+            'label' => 'คำขอแลกเวร',
+            'icon' => 'bi-arrow-left-right',
+        ];
+    }
+
     if (isset($indexed['approval_queue.php'])) {
         $groups[] = [
             'type' => 'link',
@@ -108,6 +144,15 @@ function app_nav_group_items(): array
             'href' => 'daily_schedule.php',
             'label' => 'เวรวันนี้',
             'icon' => 'bi-calendar-week',
+        ];
+    }
+
+    if (isset($indexed['shift_schedules.php'])) {
+        $groups[] = [
+            'type' => 'link',
+            'href' => 'shift_schedules.php',
+            'label' => 'จัดตารางเวรรายเดือน',
+            'icon' => 'bi-calendar2-plus',
         ];
     }
 
@@ -137,7 +182,9 @@ function app_nav_group_items(): array
 
     $operationsItems = array_values(array_filter([
         $indexed['manage_time_logs.php'] ?? null,
-        $indexed['manage_users.php'] ?? null,
+        // Hidden from primary navigation to reduce duplicate admin workflow.
+        // Feature remains accessible via direct route and internal links.
+        // $indexed['manage_users.php'] ?? null,
     ]));
 
     $moreItems = [];
@@ -209,11 +256,13 @@ function app_nav_admin_group_items(): array
     }
 
     return [
-        [
-            'href' => 'db_admin_dashboard.php',
-            'label' => 'จัดการข้อมูลฐานข้อมูล',
-            'icon' => 'bi-database-gear',
-        ],
+        // Hidden from sidebar navigation to reduce duplicate admin workflow.
+        // Feature remains accessible via direct route and internal links.
+        // [
+        //     'href' => 'db_admin_dashboard.php',
+        //     'label' => 'จัดการข้อมูลฐานข้อมูล',
+        //     'icon' => 'bi-database-gear',
+        // ],
         [
             'href' => 'db_table_browser.php',
             'label' => 'จัดการตารางข้อมูล',
@@ -236,6 +285,138 @@ function app_nav_resolve_href(string $href): string
     return $href;
 }
 
+function app_notification_ui_state(?int $userId = null, int $limit = 6): array
+{
+    global $conn;
+
+    $context = app_ui_state_context();
+    $safeUserId = $userId ?? (int) ($context['user_id'] ?? 0);
+    $safeLimit = max(1, min(12, $limit));
+
+    if (!isset($conn) || !$conn instanceof PDO || $safeUserId <= 0) {
+        return [
+            'unread_count' => 0,
+            'items' => [],
+            'csrf' => app_csrf_token('notifications_ajax'),
+        ];
+    }
+
+    if (app_can('can_approve_logs')) {
+        app_sync_reviewer_queue_notifications($conn);
+    }
+
+    return [
+        'unread_count' => app_get_unread_notification_count($conn, $safeUserId),
+        'items' => app_get_recent_notifications($conn, $safeUserId, $safeLimit),
+        'sidebar_counts' => app_get_sidebar_notification_counts($conn, $safeUserId),
+        'csrf' => app_csrf_token('notifications_ajax'),
+    ];
+}
+
+function render_notification_dropdown_items(array $notifications): void
+{
+    if (!$notifications) {
+        ?>
+        <div class="notification-empty" data-notification-empty>ยังไม่มีการแจ้งเตือนใหม่</div>
+        <?php
+        return;
+    }
+
+    $unreadNotifications = array_values(array_filter($notifications, static fn($item) => empty($item['is_read'])));
+    $readNotifications = array_values(array_filter($notifications, static fn($item) => !empty($item['is_read'])));
+    $sections = [
+        ['label' => 'ยังไม่ได้อ่าน', 'items' => $unreadNotifications, 'unread' => true],
+        ['label' => 'อ่านแล้ว', 'items' => $readNotifications, 'unread' => false],
+    ];
+
+    foreach ($sections as $section) {
+        if (!$section['items']) {
+            continue;
+        }
+        ?>
+        <div class="notification-section-label"><?= htmlspecialchars($section['label']) ?></div>
+        <div class="notification-section">
+            <?php foreach ($section['items'] as $notification): ?>
+                <?php $isUnread = !empty($section['unread']); ?>
+                <div class="notification-item <?= $isUnread ? 'notification-item--unread' : '' ?>" data-notification-item>
+                    <button
+                        type="button"
+                        class="notification-link"
+                        data-notification-open
+                        data-notification-id="<?= (int) $notification['id'] ?>"
+                        data-notification-url="<?= htmlspecialchars((string) ($notification['target_url'] ?? '')) ?>"
+                        data-notification-type="<?= htmlspecialchars((string) ($notification['type'] ?? '')) ?>"
+                    >
+                        <span class="notification-item-head">
+                            <span class="notification-item-title" title="<?= htmlspecialchars($notification['title']) ?>"><?= htmlspecialchars($notification['title']) ?></span>
+                            <?php if ($isUnread): ?>
+                                <span class="notification-item-dot" aria-hidden="true"></span>
+                            <?php else: ?>
+                                <span class="notification-read-badge">อ่านแล้ว</span>
+                            <?php endif; ?>
+                        </span>
+                        <span class="notification-item-message" title="<?= htmlspecialchars($notification['message']) ?>"><?= htmlspecialchars($notification['message']) ?></span>
+                        <span class="notification-item-time"><?= htmlspecialchars($notification['created_at_label']) ?></span>
+                    </button>
+                    <?php if ($isUnread): ?>
+                        <button type="button" class="notification-mark-one" data-notification-read data-notification-id="<?= (int) $notification['id'] ?>">อ่านแล้ว</button>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+}
+
+function render_notification_bell(?array $state = null, string $buttonClass = 'dash-icon-button', string $ariaLabel = 'เปิดการแจ้งเตือน'): void
+{
+    $state = $state ?? app_notification_ui_state();
+    $notificationCount = (int) ($state['unread_count'] ?? 0);
+    $recentNotifications = is_array($state['items'] ?? null) ? $state['items'] : [];
+    $csrf = (string) ($state['csrf'] ?? app_csrf_token('notifications_ajax'));
+    $hasUnreadClass = $notificationCount > 0 ? ' has-unread notification-bell--active' : '';
+    ?>
+    <div
+        class="notification-popover-root"
+        data-notification-root
+        data-list-url="../ajax/notifications/list_recent.php"
+        data-count-url="../ajax/notifications/get_unread_count.php"
+        data-mark-read-url="../ajax/notifications/mark_read.php"
+        data-mark-all-url="../ajax/notifications/mark_all_read.php"
+        data-csrf-token="<?= htmlspecialchars($csrf) ?>"
+    >
+        <button
+            type="button"
+            class="<?= htmlspecialchars(trim($buttonClass . ' notification-bell' . $hasUnreadClass)) ?>"
+            aria-label="<?= htmlspecialchars($ariaLabel) ?>"
+            aria-expanded="false"
+            aria-haspopup="dialog"
+            data-notification-toggle
+        >
+            <i class="bi bi-bell"></i>
+            <span class="notification-count-badge <?= $notificationCount > 0 ? '' : 'd-none' ?>" data-notification-count>
+                <?= $notificationCount > 99 ? '99+' : (int) $notificationCount ?>
+            </span>
+        </button>
+        <div class="notification-menu notification-popover" role="dialog" aria-label="การแจ้งเตือน" data-notification-menu hidden>
+            <div class="notification-menu-header">
+                <div>
+                    <div class="notification-menu-title">การแจ้งเตือน</div>
+                    <div class="notification-menu-subtitle">อัปเดตล่าสุดตามสิทธิ์ของคุณ</div>
+                </div>
+                <button type="button" class="notification-mark-all-button" data-notification-mark-all>อ่านทั้งหมด</button>
+            </div>
+            <div class="notification-menu-body" data-notification-list>
+                <?php render_notification_dropdown_items($recentNotifications); ?>
+            </div>
+            <div class="notification-menu-footer">
+                <a href="notifications.php" class="notification-view-all" data-global-loading-nav data-loading-message="กำลังเปิดหน้าการแจ้งเตือน...">ดูทั้งหมด</a>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
 function app_dashboard_sidebar_sections(): array
 {
     $items = [];
@@ -256,7 +437,7 @@ function app_dashboard_sidebar_sections(): array
     $sections = [
         [
             'label' => 'เมนูหลัก',
-            'items' => $sectionItems(['dashboard.php', 'time.php', 'approval_queue.php', 'daily_schedule.php']),
+            'items' => $sectionItems(['dashboard.php', 'time.php', 'my-shifts.php', 'shift-swap-requests.php', 'approval_queue.php', 'daily_schedule.php', 'shift_schedules.php']),
         ],
         [
             'label' => 'รายงาน',
@@ -264,7 +445,12 @@ function app_dashboard_sidebar_sections(): array
         ],
         [
             'label' => 'และอื่นๆ',
-            'items' => $sectionItems(['profile.php', 'manage_time_logs.php', 'manage_users.php']),
+            'items' => $sectionItems([
+                'profile.php',
+                'manage_time_logs.php',
+                // Hidden from sidebar navigation to reduce duplicate admin workflow.
+                // 'manage_users.php',
+            ]),
         ],
     ];
 
@@ -281,16 +467,38 @@ function app_dashboard_sidebar_sections(): array
 
 function render_dashboard_sidebar_links(string $currentPage): void
 {
+    global $conn;
+    $uiStateContext = app_ui_state_context();
+    $sidebarCounts = isset($conn) && $conn instanceof PDO
+        ? app_get_sidebar_notification_counts($conn, (int) $uiStateContext['user_id'])
+        : [];
+
     foreach (app_dashboard_sidebar_sections() as $section) {
         ?>
-        <div class="mt-5 first:mt-0">
+        <div class="dash-nav-section">
             <div class="dash-section-label"><?= htmlspecialchars($section['label']) ?></div>
-            <div class="grid gap-1.5">
+            <div class="dash-nav-list">
                 <?php foreach ($section['items'] as $item): ?>
-                    <?php $isActive = $currentPage === $item['href']; ?>
-                    <a class="dash-nav-link <?= $isActive ? 'active' : '' ?>" href="<?= htmlspecialchars(app_nav_resolve_href($item['href'])) ?>">
+                    <?php
+                    $isActive = $currentPage === $item['href'];
+                    $sidebarKey = app_notification_sidebar_key_for_page((string) $item['href']);
+                    $badgeCount = $sidebarKey !== null ? (int) ($sidebarCounts[$sidebarKey] ?? 0) : 0;
+                    ?>
+                    <a
+                        class="dash-nav-link <?= $isActive ? 'active' : '' ?>"
+                        href="<?= htmlspecialchars(app_nav_resolve_href($item['href'])) ?>"
+                        <?= $sidebarKey !== null ? 'data-notification-sidebar-link="' . htmlspecialchars($sidebarKey) . '"' : '' ?>
+                        <?= $isActive ? 'aria-current="page"' : '' ?>
+                    >
                         <span class="dash-nav-icon"><i class="bi <?= htmlspecialchars($item['icon']) ?>"></i></span>
-                        <span><?= htmlspecialchars($item['label']) ?></span>
+                        <span class="dash-nav-text"><?= htmlspecialchars($item['label']) ?></span>
+                        <?php if ($sidebarKey !== null): ?>
+                            <span
+                                class="dash-nav-notification-badge <?= $badgeCount > 0 ? '' : 'd-none' ?>"
+                                data-notification-sidebar-badge="<?= htmlspecialchars($sidebarKey) ?>"
+                                <?= $badgeCount > 0 ? '' : 'hidden' ?>
+                            ><?= $badgeCount > 99 ? '99+' : (int) $badgeCount ?></span>
+                        <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -299,40 +507,67 @@ function render_dashboard_sidebar_links(string $currentPage): void
     }
 }
 
+function app_sidebar_notification_key_is_visible(string $moduleKey): bool
+{
+    foreach (app_nav_items() as $item) {
+        if (app_notification_sidebar_key_for_page((string) ($item['href'] ?? '')) === $moduleKey) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function render_dashboard_sidebar(string $currentPage, string $displayName, string $roleLabel, ?string $profileImageSrc = null): void
 {
+    $uiStateContext = app_ui_state_context();
+    $pageNotificationKey = app_notification_sidebar_key_for_page($currentPage);
     ?>
-    <aside class="dash-sidebar" aria-label="เมนูหลัก">
+    <script src="../assets/js/page-state.js"></script>
+    <script src="../assets/js/dashboard-state.js"></script>
+    <script>
+        window.PageState && window.PageState.setContext({
+            userId: <?= (int) $uiStateContext['user_id'] ?>,
+            loginMarker: <?= json_encode((string) $uiStateContext['login_marker'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+        });
+    </script>
+    <aside class="dash-sidebar" aria-label="เมนูหลัก"
+           data-ui-user-id="<?= (int) $uiStateContext['user_id'] ?>"
+           data-ui-login-marker="<?= htmlspecialchars($uiStateContext['login_marker']) ?>"
+           data-notification-page-key="<?= htmlspecialchars((string) $pageNotificationKey) ?>"
+           data-notification-mark-module-url="../ajax/notifications/mark_module_read.php"
+           data-notification-targets-url="../ajax/notifications/module_targets.php"
+           data-notification-csrf="<?= htmlspecialchars(app_csrf_token('notifications_ajax')) ?>">
         <div class="dash-sidebar-panel">
-            <a href="dashboard.php" class="mb-6 flex cursor-pointer items-center gap-3 rounded-3xl text-hospital-ink no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2">
-                <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-hospital-mist p-2">
-                    <img src="../LOGO/nongphok_logo.png" alt="Logo" class="h-full w-full object-contain">
+            <a href="dashboard.php" class="dash-sidebar-brand">
+                <span class="dash-sidebar-logo">
+                    <img src="../LOGO/nongphok_logo.png" alt="Logo" class="dash-sidebar-logo-image">
                 </span>
-                <span class="grid leading-tight">
-                    <span class="font-prompt text-lg font-bold">ระบบลงเวลา</span>
-                    <span class="text-xs font-semibold text-hospital-muted">โรงพยาบาลหนองพอก</span>
+                <span class="dash-sidebar-brand-copy">
+                    <span class="dash-sidebar-title">ระบบลงเวลา</span>
+                    <span class="dash-sidebar-subtitle">โรงพยาบาลหนองพอก</span>
                 </span>
             </a>
 
-            <nav class="min-h-0 flex-1 overflow-y-auto pr-1">
+            <nav class="dash-sidebar-menu">
                 <?php render_dashboard_sidebar_links($currentPage); ?>
             </nav>
 
-            <div class="mt-5 rounded-[1.35rem] bg-hospital-mist p-3">
-                <div class="flex items-center gap-3">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white text-hospital-teal">
+            <div class="dash-sidebar-user-card">
+                <div class="dash-sidebar-user-row">
+                    <span class="dash-sidebar-avatar">
                         <?php if ($profileImageSrc): ?>
-                            <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์" class="h-full w-full object-cover">
+                            <img src="<?= htmlspecialchars($profileImageSrc) ?>" alt="รูปโปรไฟล์">
                         <?php else: ?>
-                            <i class="bi bi-person-fill text-xl"></i>
+                            <i class="bi bi-person-fill"></i>
                         <?php endif; ?>
                     </span>
-                    <span class="min-w-0">
-                        <span class="block truncate text-sm font-bold text-hospital-ink"><?= htmlspecialchars($displayName) ?></span>
-                        <span class="block truncate text-xs font-semibold text-hospital-muted"><?= htmlspecialchars($roleLabel) ?></span>
+                    <span class="dash-sidebar-user-copy">
+                        <span class="dash-sidebar-user-name"><?= htmlspecialchars($displayName) ?></span>
+                        <span class="dash-sidebar-user-role"><?= htmlspecialchars($roleLabel) ?></span>
                     </span>
                 </div>
-                <a href="../auth/logout.php" class="dash-btn dash-btn-secondary mt-3 w-full">
+                <a href="../auth/logout.php" class="dash-sidebar-logout" data-global-loading-nav data-loading-message="กำลังออกจากระบบ..." data-loading-sub-message="ระบบกำลังปิด session ของคุณ">
                     <i class="bi bi-box-arrow-right"></i>
                     ออกจากระบบ
                 </a>
@@ -343,14 +578,14 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
     <div class="dash-mobile-backdrop" data-dashboard-sidebar-backdrop></div>
     <aside class="dash-mobile-drawer" data-dashboard-sidebar-drawer aria-label="เมนูมือถือ">
         <div class="dash-sidebar-panel">
-            <div class="mb-5 flex items-center justify-between gap-3">
-                <a href="dashboard.php" class="flex min-w-0 cursor-pointer items-center gap-3 rounded-3xl text-hospital-ink no-underline transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-hospital-mist/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hospital-teal focus-visible:ring-offset-2">
-                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hospital-mist p-2">
-                        <img src="../LOGO/nongphok_logo.png" alt="Logo" class="h-full w-full object-contain">
+            <div class="dash-mobile-sidebar-head">
+                <a href="dashboard.php" class="dash-sidebar-brand">
+                    <span class="dash-sidebar-logo">
+                        <img src="../LOGO/nongphok_logo.png" alt="Logo" class="dash-sidebar-logo-image">
                     </span>
-                    <span class="grid leading-tight">
-                        <span class="font-prompt text-base font-bold">ระบบลงเวลา</span>
-                        <span class="text-xs font-semibold text-hospital-muted">โรงพยาบาลหนองพอก</span>
+                    <span class="dash-sidebar-brand-copy">
+                        <span class="dash-sidebar-title">ระบบลงเวลา</span>
+                        <span class="dash-sidebar-subtitle">โรงพยาบาลหนองพอก</span>
                     </span>
                 </a>
                 <button type="button" class="dash-icon-button !h-10 !w-10 bg-hospital-mist" data-dashboard-sidebar-close aria-label="ปิดเมนู">
@@ -358,16 +593,21 @@ function render_dashboard_sidebar(string $currentPage, string $displayName, stri
                 </button>
             </div>
 
-            <nav class="min-h-0 flex-1 overflow-y-auto pr-1">
+            <nav class="dash-sidebar-menu">
                 <?php render_dashboard_sidebar_links($currentPage); ?>
             </nav>
 
-            <a href="../auth/logout.php" class="dash-btn dash-btn-primary mt-5 w-full">
+            <a href="../auth/logout.php" class="dash-sidebar-logout is-mobile" data-global-loading-nav data-loading-message="กำลังออกจากระบบ..." data-loading-sub-message="ระบบกำลังปิด session ของคุณ">
                 <i class="bi bi-box-arrow-right"></i>
                 ออกจากระบบ
             </a>
         </div>
     </aside>
+    <link rel="stylesheet" href="../assets/css/loading-overlay.css">
+    <script src="../assets/js/global-loading.js"></script>
+    <script>
+        window.GlobalLoading && window.GlobalLoading.init();
+    </script>
     <?php
 }
 
@@ -449,80 +689,11 @@ function render_app_navigation(string $currentPage = ''): void
                     </ul>
 
                     <div class="d-flex align-items-center gap-3 nav-actions">
-                        <div class="dropdown notification-dropdown">
-                        <button
-                            class="btn btn-light rounded-pill position-relative notification-bell <?= $notificationCount > 0 ? 'has-unread notification-bell--active' : '' ?>"
-                            type="button"
-                            data-bs-toggle="dropdown"
-                            data-notification-toggle
-                            aria-expanded="false"
-                        >
-                            <i class="bi bi-bell"></i>
-                            <?php if ($notificationCount > 0): ?>
-                                <span class="notification-count-badge" data-notification-count><?= (int) min($notificationCount, 99) ?></span>
-                            <?php else: ?>
-                                <span class="notification-count-badge d-none" data-notification-count>0</span>
-                            <?php endif; ?>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end notification-menu p-0">
-                            <div class="notification-menu-header">
-                                <div>
-                                    <div class="fw-semibold">การแจ้งเตือน</div>
-                                    <div class="small text-muted">อัปเดตงานล่าสุดตามสิทธิ์ของคุณ</div>
-                                </div>
-                                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" data-notification-mark-all>
-                                    อ่านทั้งหมด
-                                </button>
-                            </div>
-                            <div class="notification-menu-body" data-notification-list>
-                                <?php if ($recentNotifications): ?>
-                                    <?php
-                                    $unreadNotifications = array_values(array_filter($recentNotifications, static fn($item) => empty($item['is_read'])));
-                                    $readNotifications = array_values(array_filter($recentNotifications, static fn($item) => !empty($item['is_read'])));
-                                    ?>
-                                    <?php if ($unreadNotifications): ?>
-                                        <div class="notification-section-label">ยังไม่ได้อ่าน</div>
-                                        <div class="notification-section">
-                                            <?php foreach ($unreadNotifications as $notification): ?>
-                                                <div class="notification-item notification-item--unread" data-notification-item>
-                                                    <a href="<?= htmlspecialchars($notification['target_url'] ?: 'notifications.php') ?>" class="notification-link" data-notification-open data-notification-id="<?= (int) $notification['id'] ?>">
-                                                        <div class="notification-item-head">
-                                                            <div class="notification-item-title" title="<?= htmlspecialchars($notification['title']) ?>"><?= htmlspecialchars($notification['title']) ?></div>
-                                                            <span class="notification-item-dot" aria-hidden="true"></span>
-                                                        </div>
-                                                        <div class="notification-item-message" title="<?= htmlspecialchars($notification['message']) ?>"><?= htmlspecialchars($notification['message']) ?></div>
-                                                        <div class="notification-item-time"><?= htmlspecialchars($notification['created_at_label']) ?></div>
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-link text-decoration-none notification-mark-one" data-notification-read data-notification-id="<?= (int) $notification['id'] ?>">อ่านแล้ว</button>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if ($readNotifications): ?>
-                                        <div class="notification-section-label">อ่านแล้ว</div>
-                                        <div class="notification-section">
-                                            <?php foreach ($readNotifications as $notification): ?>
-                                                <div class="notification-item" data-notification-item>
-                                                    <a href="<?= htmlspecialchars($notification['target_url'] ?: 'notifications.php') ?>" class="notification-link" data-notification-open data-notification-id="<?= (int) $notification['id'] ?>">
-                                                        <div class="notification-item-head">
-                                                            <div class="notification-item-title" title="<?= htmlspecialchars($notification['title']) ?>"><?= htmlspecialchars($notification['title']) ?></div>
-                                                        </div>
-                                                        <div class="notification-item-message" title="<?= htmlspecialchars($notification['message']) ?>"><?= htmlspecialchars($notification['message']) ?></div>
-                                                        <div class="notification-item-time"><?= htmlspecialchars($notification['created_at_label']) ?></div>
-                                                    </a>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <div class="notification-empty" data-notification-empty>ยังไม่มีการแจ้งเตือนใหม่</div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="notification-menu-footer">
-                                <a href="notifications.php" class="btn btn-outline-secondary btn-sm rounded-pill" data-global-loading-nav data-loading-message="กำลังเปิดหน้าการแจ้งเตือน...">ดูทั้งหมด</a>
-                            </div>
-                        </div>
-                        </div>
+                        <?php render_notification_bell([
+                            'unread_count' => $notificationCount,
+                            'items' => $recentNotifications,
+                            'csrf' => $notificationCsrf,
+                        ], 'btn btn-light rounded-pill position-relative'); ?>
                         <div class="text-end role-badge">
                             <div class="small text-muted">บทบาท</div>
                             <div class="fw-semibold" title="<?= htmlspecialchars($roleLabel) ?>"><?= htmlspecialchars($roleCompactLabel) ?></div>
@@ -537,6 +708,7 @@ function render_app_navigation(string $currentPage = ''): void
     </nav>
     <link rel="stylesheet" href="../assets/css/loading-overlay.css">
     <script src="../assets/js/page-state.js"></script>
+    <script src="../assets/js/dashboard-state.js"></script>
     <script src="../assets/js/global-loading.js"></script>
     <script src="../assets/js/navbar-auto-hide.js"></script>
     <script src="../assets/js/thai-date-ui.js"></script>

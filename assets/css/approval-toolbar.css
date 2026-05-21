@@ -1,0 +1,366 @@
+/*
+ * approval-toolbar.css
+ * New component classes for the Approval Queue toolbar redesign.
+ * These classes should be merged into dashboard-tailwind.css and rebuilt
+ * when the Tailwind build pipeline is available.
+ */
+
+/* ── Unified review-wrap card (toolbar header + AJAX list body) ── */
+.approval-review-wrap {
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+/* ── Toolbar header (static, not re-rendered by AJAX) ── */
+.approval-review-wrap-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(15, 159, 149, 0.1);
+  padding: 1rem;
+}
+
+.approval-review-header-copy {
+  min-width: 0;
+}
+
+/* ── Toolbar container ── */
+.approval-queue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Signature warning badge (amber, shown when no checker signature) ── */
+.approval-sig-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid #fde68a;
+  background-color: #fffbeb;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+/* ── Selection-count badge ── */
+.approval-toolbar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s ease-out;
+  white-space: nowrap;
+}
+
+.approval-toolbar-badge.is-empty {
+  border-color: rgba(15, 159, 149, 0.1);
+  background-color: #EAF7F8;
+  color: #64748B;
+}
+
+.approval-toolbar-badge.has-selection {
+  border-color: rgba(15, 159, 149, 0.25);
+  background-color: rgba(15, 159, 149, 0.1);
+  color: #0F9F95;
+}
+
+/* ── Divider between primary / utility button groups ── */
+.approval-toolbar-divider {
+  margin-left: 0.125rem;
+  margin-right: 0.125rem;
+  height: 1.5rem;
+  width: 1px;
+  flex-shrink: 0;
+  align-self: center;
+  background-color: rgba(15, 159, 149, 0.15);
+}
+
+/* ── Shared size class for every toolbar button ── */
+.approval-bulk-btn {
+  min-height: 38px;
+  border-radius: 0.9rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.approval-bulk-btn:disabled,
+.approval-bulk-btn[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Reject button — warm-negative style ── */
+.approval-btn-reject {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.9rem;
+  border: 1px solid #fecdd3;
+  background-color: #fff1f2;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #e11d48;
+  text-decoration: none;
+  transition: all 0.2s ease-out;
+  white-space: nowrap;
+  min-height: 38px;
+}
+
+.approval-btn-reject:hover {
+  transform: translateY(-0.125rem);
+  border-color: #fda4af;
+  background-color: #ffe4e6;
+  box-shadow: 0 18px 44px rgba(6, 59, 79, 0.08);
+}
+
+.approval-btn-reject:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #fb7185;
+}
+
+.approval-btn-reject:active {
+  transform: translateY(0);
+}
+
+.approval-btn-reject:disabled,
+.approval-btn-reject[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── AJAX list body (inside .approval-review-wrap) ── */
+.approval-results-inner {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1rem;
+}
+
+/* ── Controls bar: select-all | caption | view-switch ── */
+.approval-review-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* ── View switch — always visible (overrides previous hidden/xl:flex rule) ── */
+.approval-view-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ════════════════════════════════════════════════════
+   Card View Layout
+   ════════════════════════════════════════════════════ */
+
+/* ── Responsive card grid ── */
+.approval-card-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .approval-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .approval-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Individual card ── */
+.approval-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 159, 149, 0.15);
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 1rem;
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.approval-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(6, 59, 79, 0.1);
+}
+
+.approval-card.is-approved {
+  border-color: rgba(16, 185, 129, 0.25);
+  background-color: rgba(236, 253, 245, 0.6);
+}
+
+.approval-card.is-returned {
+  border-color: rgba(239, 68, 68, 0.2);
+  background-color: rgba(255, 241, 242, 0.6);
+}
+
+/* ── Card header: checkbox + status chip + row index ── */
+.approval-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.approval-card-index {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-left: auto;
+}
+
+/* ── Date section ── */
+.approval-card-date {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.approval-date-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  border-radius: 0.75rem;
+  background-color: rgba(15, 159, 149, 0.08);
+  padding: 0.375rem 0.5rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.approval-date-tile strong {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f9f95;
+  line-height: 1;
+}
+
+.approval-date-tile span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.approval-date-tile small {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+/* ── Shift time info ── */
+.approval-card-shift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.approval-card-shift i {
+  color: #0f9f95;
+  font-size: 0.8rem;
+}
+
+.approval-card-hours {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* ── Card body: staff name, meta, note ── */
+.approval-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 1;
+}
+
+.approval-card-body .approval-staff-link {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f9f95;
+  cursor: pointer;
+  text-align: left;
+}
+
+.approval-card-body .approval-staff-link:hover {
+  text-decoration: underline;
+}
+
+.approval-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.approval-card-meta i {
+  margin-right: 0.2rem;
+  font-size: 0.7rem;
+}
+
+.approval-card-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.approval-card-note i {
+  margin-right: 0.25rem;
+  font-size: 0.7rem;
+}
+
+/* ── Card actions row ── */
+.approval-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(15, 159, 149, 0.1);
+  margin-top: auto;
+}

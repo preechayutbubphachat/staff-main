@@ -50,14 +50,17 @@ $matrixDays = $schedule['matrix_days'] ?? [];
 
 $queryBase = [
     'mode' => $mode,
-    'date' => $selectedDate,
-    'month' => $selectedMonth,
-    'year_be' => $selectedYearBe,
     'department' => $selectedDepartment,
     'name' => $name,
     'review_status' => $reviewStatus,
     'per_page' => $perPage,
 ];
+if ($mode === 'monthly') {
+    $queryBase['month'] = $selectedMonth;
+    $queryBase['year_be'] = $selectedYearBe;
+} else {
+    $queryBase['date'] = $selectedDate;
+}
 $printQuery = app_build_table_query($queryBase, ['type' => 'daily']);
 $pdfQuery = app_build_table_query($queryBase, ['type' => 'daily', 'download' => 'pdf']);
 $csvQuery = app_build_table_query($queryBase, ['type' => 'daily']);
@@ -108,15 +111,7 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
             <i class="bi bi-search"></i>
             <input type="search" class="w-full bg-transparent outline-none placeholder:text-hospital-muted/70" placeholder="ค้นหาชื่อ, ตำแหน่ง, แผนก หรือสถานะ">
         </label>
-
-        <a href="notifications.php" class="dash-icon-button relative" aria-label="เปิดการแจ้งเตือน">
-            <i class="bi bi-bell text-lg"></i>
-            <?php if ($notificationCount > 0): ?>
-                <span class="absolute -right-1 -top-1 min-w-[1.15rem] rounded-full bg-rose-500 px-1 text-center text-[0.65rem] font-bold leading-[1.15rem] text-white">
-                    <?= $notificationCount > 9 ? '9+' : (int) $notificationCount ?>
-                </span>
-            <?php endif; ?>
-        </a>
+        <?php render_notification_bell(); ?>
 
         <button type="button" class="dash-profile-button" data-profile-modal-trigger data-user-id="<?= $currentUserId ?>">
             <span class="dash-avatar">
@@ -238,29 +233,23 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="daily-filter-field">
+                        <div class="daily-filter-field today-filter-date-group" data-period-group="daily">
                             <label class="daily-field-label" for="dailyDate">วันที่</label>
                             <input id="dailyDate" type="date" name="date" class="form-control thai-date-input" value="<?= htmlspecialchars($selectedDate) ?>" data-thai-date-display="full" data-thai-date-empty="วัน/เดือน/ปี">
                         </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyMonth">เดือน</label>
-                            <select id="dailyMonth" name="month" class="form-select">
-                                <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
-                                    <option value="<?= (int) $monthValue ?>" <?= $selectedMonth === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyYear">ปี (พ.ศ.)</label>
-                            <input id="dailyYear" type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
-                        </div>
-                        <div class="daily-filter-field">
-                            <label class="daily-field-label" for="dailyPerPage">แสดง</label>
-                            <select id="dailyPerPage" name="per_page" class="form-select">
-                                <?php foreach ([10, 20, 50, 100] as $size): ?>
-                                    <option value="<?= $size ?>" <?= $perPage === $size ? 'selected' : '' ?>><?= $size ?> รายการ</option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="today-filter-month-year-group" data-period-group="monthly">
+                            <div class="daily-filter-field">
+                                <label class="daily-field-label" for="dailyMonth">เดือน</label>
+                                <select id="dailyMonth" name="month" class="form-select">
+                                    <?php foreach ($monthOptions as $monthValue => $monthLabel): ?>
+                                        <option value="<?= (int) $monthValue ?>" <?= $selectedMonth === (int) $monthValue ? 'selected' : '' ?>><?= htmlspecialchars($monthLabel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="daily-filter-field">
+                                <label class="daily-field-label" for="dailyYear">ปี (พ.ศ.)</label>
+                                <input id="dailyYear" type="number" name="year_be" class="form-control" min="2400" max="2800" step="1" value="<?= htmlspecialchars((string) $selectedYearBe) ?>" inputmode="numeric">
+                            </div>
                         </div>
                     </div>
 
@@ -270,20 +259,6 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
                     </div>
                 </form>
 
-                <div class="daily-tools-card">
-                    <p class="daily-field-label !mb-1">เครื่องมือเพิ่มเติม</p>
-                    <div class="daily-tool-grid">
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" href="report_print.php?<?= htmlspecialchars($printQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-printer"></i>พิมพ์รายงาน
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="report_print.php" data-export-type="daily" data-export-download="pdf" href="report_print.php?<?= htmlspecialchars($pdfQuery) ?>" target="_blank" rel="noopener">
-                            <i class="bi bi-filetype-pdf"></i>ส่งออก PDF
-                        </a>
-                        <a class="dash-btn dash-btn-ghost daily-tool-btn" data-export-base="export_report.php" data-export-type="daily" href="export_report.php?<?= htmlspecialchars($csvQuery) ?>">
-                            <i class="bi bi-filetype-csv"></i>ส่งออก CSV
-                        </a>
-                    </div>
-                </div>
             </aside>
 
             <div id="dailyScheduleResults" class="min-w-0">
@@ -296,9 +271,11 @@ $notificationCount = app_get_unread_notification_count($conn, $currentUserId);
 </main>
 
 <?php render_staff_profile_modal(); ?>
+<?php require __DIR__ . '/../partials/modals/time_log_detail_modal.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php render_staff_profile_modal_script(); ?>
 <script src="../assets/js/table-filters.js"></script>
+<script src="../assets/js/time-log-detail.js"></script>
 <script>
 function buildDailyScheduleHeroContext(form) {
     if (!form) {
@@ -378,6 +355,75 @@ function syncDailyScheduleLayout(payload) {
     updateDailyHeroFromSummary(summaryBlock, form);
 }
 
+function applyDailySchedulePeriodFilters(form) {
+    if (!form) {
+        return;
+    }
+
+    const modeField = form.querySelector('[name="mode"]');
+    const mode = modeField ? String(modeField.value || 'daily').trim() : 'daily';
+    const dailyGroups = form.querySelectorAll('[data-period-group="daily"]');
+    const monthlyGroups = form.querySelectorAll('[data-period-group="monthly"]');
+    const setGroupState = function (groups, isActive) {
+        groups.forEach(function (group) {
+            group.hidden = !isActive;
+            group.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                field.disabled = !isActive;
+            });
+        });
+    };
+
+    if (mode === 'monthly') {
+        setGroupState(dailyGroups, false);
+        setGroupState(monthlyGroups, true);
+        return;
+    }
+
+    setGroupState(dailyGroups, true);
+    setGroupState(monthlyGroups, false);
+}
+
+function initDailySchedulePeriodFilters(form) {
+    if (!form) {
+        return;
+    }
+
+    const modeField = form.querySelector('[name="mode"]');
+    applyDailySchedulePeriodFilters(form);
+
+    if (modeField) {
+        modeField.addEventListener('change', function () {
+            applyDailySchedulePeriodFilters(form);
+        }, true);
+    }
+
+    form.addEventListener('formdata', function (event) {
+        const mode = modeField ? String(modeField.value || 'daily').trim() : 'daily';
+        const dateField = form.querySelector('[name="date"]');
+        const monthField = form.querySelector('[name="month"]');
+        const yearField = form.querySelector('[name="year_be"]');
+
+        if (mode === 'monthly') {
+            event.formData.delete('date');
+            if (monthField) {
+                event.formData.set('month', monthField.value);
+            }
+            if (yearField) {
+                event.formData.set('year_be', yearField.value);
+            }
+        } else {
+            event.formData.delete('month');
+            event.formData.delete('year_be');
+            if (dateField) {
+                event.formData.set('date', dateField.value);
+            }
+        }
+    });
+}
+
+initDailySchedulePeriodFilters(document.getElementById('dailyScheduleFilterForm'));
+
 TableFilters.init({
     formId: 'dailyScheduleFilterForm',
     containerId: 'dailyScheduleResults',
@@ -391,6 +437,8 @@ syncDailyScheduleLayout({
     form: document.getElementById('dailyScheduleFilterForm'),
     container: document.getElementById('dailyScheduleResults')
 });
+applyDailySchedulePeriodFilters(document.getElementById('dailyScheduleFilterForm'));
 </script>
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

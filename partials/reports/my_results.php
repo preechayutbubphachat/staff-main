@@ -93,15 +93,33 @@ if (!function_exists('my_report_status_meta')) {
     </article>
 </section>
 
+<?php
+/* Compute export URLs from $queryBase (available on both full-page load and AJAX refresh) */
+$_myExportBase = $queryBase ?? [];
+$_myPrintQuery = app_build_table_query($_myExportBase, ['type' => 'my']);
+$_myPdfQuery   = app_build_table_query($_myExportBase, ['type' => 'my', 'download' => 'pdf']);
+$_myCsvQuery   = app_build_table_query($_myExportBase, ['type' => 'my']);
+?>
 <section class="dash-card my-report-results-panel" id="my-report-results-panel">
     <div class="my-report-results-header">
         <div>
             <h2 class="my-report-card-title">รายการรายงานของฉัน</h2>
             <p class="my-report-card-copy">ข้อมูลส่วนตัวจะแสดงตามช่วงเวลาที่เลือก และใช้ชุดตัวกรองเดียวกันกับการพิมพ์หรือส่งออก</p>
         </div>
-        <button type="button" class="my-report-view-button">
-            <i class="bi bi-grid"></i>ปรับมุมมอง
-        </button>
+        <div class="report-action-group">
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="my"
+               href="report_print.php?<?= htmlspecialchars($_myPrintQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-printer"></i>พิมพ์
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="report_print.php" data-export-type="my" data-export-download="pdf"
+               href="report_print.php?<?= htmlspecialchars($_myPdfQuery) ?>" target="_blank" rel="noopener">
+                <i class="bi bi-filetype-pdf"></i>PDF
+            </a>
+            <a class="dash-btn dash-btn-ghost" data-export-base="export_report.php" data-export-type="my"
+               href="export_report.php?<?= htmlspecialchars($_myCsvQuery) ?>">
+                <i class="bi bi-filetype-csv"></i>CSV
+            </a>
+        </div>
     </div>
 
     <div class="my-report-table-shell">
@@ -151,7 +169,7 @@ if (!function_exists('my_report_status_meta')) {
                         </td>
                         <td>
                             <div class="my-report-row-actions">
-                                <button type="button" class="my-report-row-btn">ดูรายละเอียด</button>
+                                <button type="button" class="my-report-row-btn" data-time-log-detail-trigger data-time-log-id="<?= (int) ($log['id'] ?? 0) ?>">ดูรายละเอียด</button>
                                 <button type="button" class="my-report-row-menu" aria-label="ตัวเลือกเพิ่มเติม"><i class="bi bi-chevron-down"></i></button>
                             </div>
                         </td>

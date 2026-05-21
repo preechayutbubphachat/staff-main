@@ -77,6 +77,7 @@
 
         const canUsePageState = !!(window.PageState && pageStateKey);
         let restoredStateOnLoad = false;
+        const boundFields = new WeakSet();
 
         function syncExportLinks() {
             syncExportLinksFor(form, scope);
@@ -99,6 +100,7 @@
 
             container.innerHTML = await response.text();
             container.removeAttribute('aria-busy');
+            bindFilterFields();
             bindPagination();
             syncExportLinks();
 
@@ -152,39 +154,49 @@
             refresh(true);
         }, config.debounceMs || 380);
 
+        function bindFilterFields() {
+            getScopedFields(form, 'select, input[type="date"], input[type="month"], input[type="number"]').forEach(function (field) {
+                if (boundFields.has(field)) {
+                    return;
+                }
+                boundFields.add(field);
+                field.addEventListener('change', function () {
+                    resetPage();
+                    savePageState();
+                    refresh(true);
+                });
+                field.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        resetPage();
+                        savePageState();
+                        refresh(true);
+                    }
+                });
+            });
+
+            getScopedFields(form, 'input[type="text"], input[type="search"]').forEach(function (field) {
+                if (boundFields.has(field)) {
+                    return;
+                }
+                boundFields.add(field);
+                field.addEventListener('input', debouncedRefresh);
+                field.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        resetPage();
+                        savePageState();
+                        refresh(true);
+                    }
+                });
+            });
+        }
+
         form.addEventListener('submit', function (event) {
             event.preventDefault();
             resetPage();
             savePageState();
             refresh(true);
-        });
-
-        getScopedFields(form, 'select, input[type="date"], input[type="month"], input[type="number"]').forEach(function (field) {
-            field.addEventListener('change', function () {
-                resetPage();
-                savePageState();
-                refresh(true);
-            });
-            field.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    resetPage();
-                    savePageState();
-                    refresh(true);
-                }
-            });
-        });
-
-        getScopedFields(form, 'input[type="text"], input[type="search"]').forEach(function (field) {
-            field.addEventListener('input', debouncedRefresh);
-            field.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    resetPage();
-                    savePageState();
-                    refresh(true);
-                }
-            });
         });
 
         if (canUsePageState) {
@@ -198,6 +210,7 @@
             }
         }
 
+        bindFilterFields();
         bindPagination();
         syncExportLinks();
 
@@ -219,9 +232,9 @@
         }
 
         const summaryBlock = container.querySelector('[data-results-summary]');
-        mount.innerHTML = '';
 
         if (summaryBlock) {
+            mount.innerHTML = '';
             mount.appendChild(summaryBlock);
         }
     }
