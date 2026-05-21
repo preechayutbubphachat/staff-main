@@ -124,6 +124,9 @@ $roleLabel = app_role_label($role);
 $hasProfileImageColumn = app_column_exists($conn, 'users', 'profile_image_path');
 $profileImageSrc = $hasProfileImageColumn ? app_resolve_user_image_url($userMeta['profile_image_path'] ?? '') : null;
 $profileSignaturePath = trim((string) ($userMeta['signature_path'] ?? ''));
+$profileSignatureSrc = $profileSignaturePath !== ''
+    ? '../uploads/signatures/' . rawurlencode($profileSignaturePath)
+    : '';
 $displayName = app_user_display_name($userMeta ?: ['fullname' => $_SESSION['fullname'] ?? '-']);
 $dashboardCssHref = '../assets/css/dashboard-tailwind.output.css?v=' . @filemtime(__DIR__ . '/../assets/css/dashboard-tailwind.output.css');
 
@@ -703,7 +706,16 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     .swap-document-signature-block{margin-top:1rem;display:grid;gap:.75rem;border:1px solid #cfe7e9;border-radius:1.25rem;background:#f8fcfd;padding:1rem;color:#334155}
     .swap-document-signature-block strong{display:block;color:#082b45;font-weight:800}
     .swap-document-signature-block span{display:block;color:#64748b;font-size:.85rem;font-weight:600}
-    .swap-document-profile-signature{display:flex;align-items:center;gap:.5rem;font-weight:700;color:#063b4f}
+    .swap-document-profile-toggle{display:inline-flex;min-height:2.75rem;align-items:center;justify-content:center;gap:.5rem;border:1px solid #cfe7e9;border-radius:999px;background:#fff;color:#063b4f;padding:.6rem 1rem;font-weight:800;transition:background-color .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease}
+    .swap-document-profile-toggle[aria-pressed="true"]{border-color:#063b4f;background:#063b4f;color:#fff;box-shadow:0 14px 30px rgba(6,59,79,.18)}
+    .swap-document-profile-toggle:disabled{cursor:not-allowed;border-color:#e2e8f0;background:#f1f5f9;color:#94a3b8;box-shadow:none}
+    .swap-document-profile-toggle:focus-visible{outline:3px solid rgba(15,159,149,.26);outline-offset:2px}
+    .swap-document-signature-feedback{margin:0;color:#0f766e;font-size:.86rem;font-weight:800}
+    .swap-document-profile-preview{display:flex;align-items:center;justify-content:center;min-height:126px;border:1px dashed #9bd8d4;border-radius:1rem;background:#fff;padding:1rem}
+    .swap-document-profile-preview[hidden]{display:none}
+    .swap-document-profile-preview img{max-width:100%;max-height:112px;object-fit:contain}
+    .swap-document-draw-area{display:grid;gap:.75rem}
+    .swap-document-draw-area[hidden]{display:none}
     .swap-document-signature-canvas{width:100%;height:150px;border:1px dashed #9bd8d4;border-radius:1rem;background:#fff;touch-action:none}
 </style>
 
@@ -747,14 +759,28 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 <strong>ลายเซ็นผู้ขอเปลี่ยนเวร</strong>
                 <span>ลงลายเซ็นเพื่อแนบกับแบบขอเปลี่ยนเวรก่อนส่งคำขอ</span>
             </div>
-            <?php if ($profileSignaturePath !== ''): ?>
-                <label class="swap-document-profile-signature">
-                    <input type="checkbox" id="swapConfirmUseProfileSignature">
-                    <span>ใช้ลายเซ็นจากโปรไฟล์</span>
-                </label>
-            <?php endif; ?>
-            <canvas id="swapConfirmSignatureCanvas" class="swap-document-signature-canvas" width="720" height="180"></canvas>
-            <button type="button" class="dash-btn dash-btn-ghost" id="swapConfirmClearSignature"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+            <button type="button"
+                    class="swap-document-profile-toggle"
+                    id="swapConfirmUseProfileSignature"
+                    aria-pressed="false"
+                    data-has-profile-signature="<?= $profileSignaturePath !== '' ? '1' : '0' ?>"
+                    data-profile-signature-src="<?= htmlspecialchars($profileSignatureSrc, ENT_QUOTES, 'UTF-8') ?>"
+                    <?= $profileSignaturePath === '' ? 'disabled' : '' ?>>
+                <i class="bi bi-person-badge"></i>
+                <span data-swap-profile-toggle-label><?= $profileSignaturePath !== '' ? 'ใช้ลายเซ็นจากโปรไฟล์' : 'ยังไม่มีลายเซ็นในโปรไฟล์' ?></span>
+            </button>
+            <p class="swap-document-signature-feedback" id="swapConfirmSignatureFeedback">
+                <?= $profileSignaturePath !== '' ? 'กรุณาเลือกใช้ลายเซ็นโปรไฟล์หรือวาดลายเซ็นด้านล่าง' : 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง' ?>
+            </p>
+            <div class="swap-document-profile-preview" id="swapConfirmProfileSignaturePreview" hidden>
+                <?php if ($profileSignatureSrc !== ''): ?>
+                    <img src="<?= htmlspecialchars($profileSignatureSrc, ENT_QUOTES, 'UTF-8') ?>" alt="ลายเซ็นจากโปรไฟล์">
+                <?php endif; ?>
+            </div>
+            <div class="swap-document-draw-area" id="swapConfirmDrawArea">
+                <canvas id="swapConfirmSignatureCanvas" class="swap-document-signature-canvas" width="720" height="180" aria-label="พื้นที่วาดลายเซ็น"></canvas>
+                <button type="button" class="dash-btn dash-btn-ghost" id="swapConfirmClearSignature"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+            </div>
         </div>
         <div id="swapConfirmError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" hidden></div>
         <div class="swap-confirm-actions">
@@ -796,6 +822,10 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const confirmSignatureCanvas = document.getElementById('swapConfirmSignatureCanvas');
     const confirmClearSignature = document.getElementById('swapConfirmClearSignature');
     const confirmUseProfileSignature = document.getElementById('swapConfirmUseProfileSignature');
+    const confirmProfileToggleLabel = document.querySelector('[data-swap-profile-toggle-label]');
+    const confirmSignatureFeedback = document.getElementById('swapConfirmSignatureFeedback');
+    const confirmProfilePreview = document.getElementById('swapConfirmProfileSignaturePreview');
+    const confirmDrawArea = document.getElementById('swapConfirmDrawArea');
     const dayModal        = document.querySelector('[data-my-shift-day-modal]');
     const dayModalDate    = document.querySelector('[data-day-modal-date]');
     const dayModalDepts   = document.querySelector('[data-day-modal-departments]');
@@ -834,6 +864,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     const signatureCtx = confirmSignatureCanvas?.getContext('2d');
     let signatureDrawing = false;
     let signatureHasStroke = false;
+    let useProfileSignature = false;
 
     // ── Helpers ───────────────────────────────────────────────────────────
     function escapeHtml(value) {
@@ -914,6 +945,42 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
         if (!signatureCtx || !confirmSignatureCanvas) return;
         signatureCtx.clearRect(0, 0, confirmSignatureCanvas.width, confirmSignatureCanvas.height);
         signatureHasStroke = false;
+        if (confirmError) {
+            confirmError.hidden = true;
+            confirmError.textContent = '';
+        }
+    }
+
+    function hasProfileSignature() {
+        return confirmUseProfileSignature?.dataset.hasProfileSignature === '1';
+    }
+
+    function setProfileSignatureMode(nextValue) {
+        useProfileSignature = Boolean(nextValue && hasProfileSignature());
+        if (confirmUseProfileSignature) {
+            confirmUseProfileSignature.setAttribute('aria-pressed', useProfileSignature ? 'true' : 'false');
+            confirmUseProfileSignature.classList.toggle('is-active', useProfileSignature);
+        }
+        if (confirmProfileToggleLabel) {
+            confirmProfileToggleLabel.textContent = hasProfileSignature()
+                ? (useProfileSignature ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'ใช้ลายเซ็นจากโปรไฟล์')
+                : 'ยังไม่มีลายเซ็นในโปรไฟล์';
+        }
+        if (confirmDrawArea) {
+            confirmDrawArea.hidden = useProfileSignature;
+        }
+        if (confirmProfilePreview) {
+            confirmProfilePreview.hidden = !useProfileSignature;
+        }
+        if (confirmSignatureFeedback) {
+            confirmSignatureFeedback.textContent = hasProfileSignature()
+                ? (useProfileSignature ? 'กำลังใช้ลายเซ็นจากโปรไฟล์' : 'กรุณาวาดลายเซ็นด้านล่าง')
+                : 'ยังไม่มีลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็นด้านล่าง';
+        }
+        if (confirmError) {
+            confirmError.hidden = true;
+            confirmError.textContent = '';
+        }
     }
 
     function signaturePoint(event) {
@@ -926,17 +993,21 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     }
 
     function beginSwapSignature(event) {
-        if (!signatureCtx || confirmUseProfileSignature?.checked) return;
+        if (!signatureCtx || useProfileSignature) return;
         signatureDrawing = true;
         signatureHasStroke = true;
         const p = signaturePoint(event);
         signatureCtx.beginPath();
         signatureCtx.moveTo(p.x, p.y);
+        if (confirmError) {
+            confirmError.hidden = true;
+            confirmError.textContent = '';
+        }
         event.preventDefault();
     }
 
     function moveSwapSignature(event) {
-        if (!signatureDrawing || !signatureCtx || confirmUseProfileSignature?.checked) return;
+        if (!signatureDrawing || !signatureCtx || useProfileSignature) return;
         const p = signaturePoint(event);
         signatureCtx.lineWidth = 2.4;
         signatureCtx.lineCap = 'round';
@@ -1073,7 +1144,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
 
         if (confirmError) confirmError.hidden = true;
         clearSwapSignature();
-        if (confirmUseProfileSignature) confirmUseProfileSignature.checked = false;
+        setProfileSignatureMode(false);
         if (confirmSubmit) {
             confirmSubmit.disabled = false;
             confirmSubmit.innerHTML = '<i class="bi bi-check2-circle"></i> ยืนยันขอแลกเวร';
@@ -1233,16 +1304,23 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
     confirmSignatureCanvas?.addEventListener('touchmove', moveSwapSignature, { passive: false });
     confirmSignatureCanvas?.addEventListener('touchend', endSwapSignature);
     confirmClearSignature?.addEventListener('click', () => {
-        if (confirmUseProfileSignature) confirmUseProfileSignature.checked = false;
+        setProfileSignatureMode(false);
         clearSwapSignature();
+    });
+    confirmUseProfileSignature?.addEventListener('click', () => {
+        if (!hasProfileSignature()) {
+            setProfileSignatureMode(false);
+            return;
+        }
+        setProfileSignatureMode(!useProfileSignature);
     });
 
     // ── Confirm modal: Submit via fetch ───────────────────────────────────
     confirmSubmit?.addEventListener('click', async () => {
         if (!targetShift) return;
         if (confirmSubmit.disabled) return;
-        const useProfileSignature = Boolean(confirmUseProfileSignature?.checked);
-        if (!useProfileSignature && !signatureHasStroke) {
+        const signatureSource = useProfileSignature && hasProfileSignature() ? 'profile' : 'drawn';
+        if (signatureSource === 'drawn' && !signatureHasStroke) {
             if (confirmError) {
                 confirmError.textContent = 'กรุณาลงลายเซ็นก่อนส่งคำขอแลกเวร';
                 confirmError.hidden = false;
@@ -1267,8 +1345,9 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
             month                   : targetShift.month,
             year                    : targetShift.year,
             display                 : targetShift.display,
-            requester_signature_data: useProfileSignature ? '' : confirmSignatureCanvas.toDataURL('image/png'),
-            use_profile_signature   : useProfileSignature ? '1' : '0',
+            requester_signature_data: signatureSource === 'profile' ? '' : confirmSignatureCanvas.toDataURL('image/png'),
+            signature_source        : signatureSource,
+            use_profile_signature   : signatureSource === 'profile' ? '1' : '0',
         });
 
         try {
@@ -1291,7 +1370,7 @@ function my_shift_modal_payload(array $assignment, array $shiftTypes): string
                 sourceShift = null;
                 targetShift = null;
                 sourceDetailSnapshot = null;
-                showToast('ส่งคำขอแลกเวรสำเร็จแล้ว รอเจ้าหน้าที่ปลายทางยืนยัน', 'success');
+                showToast(data.message || (signatureSource === 'drawn' ? 'บันทึกคำขอแลกเวรและอัปเดตลายเซ็นโปรไฟล์แล้ว' : 'ส่งคำขอแลกเวรสำเร็จแล้ว รอเจ้าหน้าที่ปลายทางยืนยัน'), 'success');
                 loadingController?.hide();
                 // Navigate to view=my (strips swap_source_id) after toast is visible
                 const successUrl = 'my-shifts.php?' + new URLSearchParams({

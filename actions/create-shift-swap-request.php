@@ -40,6 +40,11 @@ try {
         throw new RuntimeException('โทเค็นความปลอดภัยไม่ถูกต้อง กรุณาลองใหม่');
     }
 
+    $signatureSource = (string) ($_POST['signature_source'] ?? '');
+    if (!in_array($signatureSource, ['profile', 'drawn'], true)) {
+        $signatureSource = (string) ($_POST['use_profile_signature'] ?? '') === '1' ? 'profile' : 'drawn';
+    }
+
     $result = app_shift_swap_create_request(
         $conn,
         $currentUserId,
@@ -47,7 +52,7 @@ try {
         (int) ($_POST['target_assignment_id'] ?? 0),
         (string) ($_POST['reason'] ?? ''),
         (string) ($_POST['requester_signature_data'] ?? ''),
-        (string) ($_POST['use_profile_signature'] ?? '') === '1'
+        $signatureSource === 'profile'
     );
 
     if ($isFetchRequest) {

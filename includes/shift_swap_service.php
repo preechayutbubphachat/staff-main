@@ -315,20 +315,31 @@ function app_shift_swap_signature_relative_path(string $fileName): string
     return 'uploads/shift_swap_signatures/' . $fileName;
 }
 
-function app_shift_swap_save_signature_file(string $signatureData, string $role, int $swapRequestId, int $actorUserId): string
+function app_shift_swap_decode_signature_data(string $signatureData): string
 {
     $signatureData = trim($signatureData);
     if ($signatureData === '') {
         throw new RuntimeException('กรุณาลงลายเซ็นก่อนดำเนินการ');
     }
-    if (strpos($signatureData, ',') !== false) {
-        [, $signatureData] = explode(',', $signatureData, 2);
-    }
-
-    $binary = base64_decode($signatureData, true);
-    if ($binary === false || strlen($binary) < 100) {
+    if (!preg_match('/^data:image\/png;base64,([a-zA-Z0-9+\/=\r\n]+)$/', $signatureData, $matches)) {
         throw new RuntimeException('ข้อมูลลายเซ็นไม่ถูกต้อง กรุณาลงลายเซ็นใหม่');
     }
+
+    $binary = base64_decode($matches[1], true);
+    if ($binary === false || strlen($binary) < 100 || strlen($binary) > 2 * 1024 * 1024) {
+        throw new RuntimeException('ข้อมูลลายเซ็นไม่ถูกต้อง กรุณาลงลายเซ็นใหม่');
+    }
+    $imageInfo = @getimagesizefromstring($binary);
+    if ($imageInfo === false || ($imageInfo['mime'] ?? '') !== 'image/png') {
+        throw new RuntimeException('ไฟล์ลายเซ็นไม่ถูกต้อง กรุณาลงลายเซ็นใหม่');
+    }
+
+    return $binary;
+}
+
+function app_shift_swap_save_signature_file(string $signatureData, string $role, int $swapRequestId, int $actorUserId): string
+{
+    $binary = app_shift_swap_decode_signature_data($signatureData);
 
     $dir = app_shift_swap_signature_storage_dir();
     if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
@@ -345,6 +356,31 @@ function app_shift_swap_save_signature_file(string $signatureData, string $role,
     return app_shift_swap_signature_relative_path($fileName);
 }
 
+function app_shift_swap_profile_signature_storage_dir(): string
+{
+    return dirname(__DIR__) . '/uploads/signatures';
+}
+
+function app_shift_swap_update_profile_signature_from_data(PDO $conn, int $userId, string $signatureData): string
+{
+    $binary = app_shift_swap_decode_signature_data($signatureData);
+    $dir = app_shift_swap_profile_signature_storage_dir();
+    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+        throw new RuntimeException('ไม่สามารถเตรียมพื้นที่เก็บลายเซ็นโปรไฟล์ได้');
+    }
+
+    $fileName = 'sign_swap_' . $userId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.png';
+    $fullPath = $dir . '/' . $fileName;
+    if (file_put_contents($fullPath, $binary) === false) {
+        throw new RuntimeException('ไม่สามารถบันทึกลายเซ็นโปรไฟล์ได้');
+    }
+
+    $stmt = $conn->prepare('UPDATE users SET signature_path = ? WHERE id = ?');
+    $stmt->execute([$fileName, $userId]);
+
+    return $fileName;
+}
+
 function app_shift_swap_copy_profile_signature(PDO $conn, int $userId, string $role, int $swapRequestId): string
 {
     $snapshot = app_shift_swap_user_snapshot($conn, $userId);
@@ -354,7 +390,11 @@ function app_shift_swap_copy_profile_signature(PDO $conn, int $userId, string $r
     }
 
     $projectRoot = realpath(dirname(__DIR__));
-    $source = realpath($projectRoot . '/' . ltrim(str_replace('\\', '/', $relative), '/'));
+    $normalized = ltrim(str_replace('\\', '/', $relative), '/');
+    $sourcePath = strpos($normalized, '/') !== false
+        ? $projectRoot . '/' . $normalized
+        : app_shift_swap_profile_signature_storage_dir() . '/' . $normalized;
+    $source = realpath($sourcePath);
     if (!$projectRoot || !$source || strpos($source, $projectRoot) !== 0 || !is_file($source)) {
         throw new RuntimeException('ไม่สามารถใช้ลายเซ็นจากโปรไฟล์ได้ กรุณาวาดลายเซ็นใหม่');
     }
@@ -416,6 +456,9 @@ function app_shift_swap_create_document(PDO $conn, int $swapRequestId, int $requ
     $requester = app_shift_swap_user_snapshot($conn, $requesterId);
     $responder = app_shift_swap_user_snapshot($conn, $targetUserId);
     $signaturePath = app_shift_swap_capture_signature($conn, $swapRequestId, $requesterId, 'requester', $signatureData, $useProfileSignature);
+    if (!$useProfileSignature) {
+        app_shift_swap_update_profile_signature_from_data($conn, $requesterId, $signatureData);
+    }
 
     $stmt = $conn->prepare("
         INSERT INTO shift_swap_documents (
@@ -603,7 +646,12 @@ function app_shift_swap_create_request(PDO $conn, int $requesterId, int $request
         app_shift_swap_create_document($conn, $swapRequestId, $requesterId, (int) $targetAssignment['staff_id'], $requesterAssignment, $targetAssignment, $reason, $requesterSignatureData, $useProfileSignature);
         $conn->commit();
 
-        return ['swap_request_id' => $swapRequestId, 'message' => 'ส่งคำขอแลกเวรเรียบร้อยแล้ว รออีกฝ่ายยืนยัน'];
+        return [
+            'swap_request_id' => $swapRequestId,
+            'message' => $useProfileSignature
+                ? 'ส่งคำขอแลกเวรเรียบร้อยแล้ว รออีกฝ่ายยืนยัน'
+                : 'บันทึกคำขอแลกเวรและอัปเดตลายเซ็นโปรไฟล์แล้ว',
+        ];
     } catch (Throwable $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
